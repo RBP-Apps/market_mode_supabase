@@ -590,7 +590,7 @@ const updateSendStatus = async (enquiryNumber, sendType) => {
       rate: rate || 0,
       amount: (qty * rate).toFixed(2),
     });
-  }, [formData.rating, formData.qty, productMap]);
+  }, [formData.rating, productMap]); // Removed formData.qty to prevent overwriting manual edits on qty change
 
   const handleCustomerChange = (e) => {
     const v = e.target.value;
@@ -632,9 +632,27 @@ const updateSendStatus = async (enquiryNumber, sendType) => {
     setFormData(prev => ({ ...prev, rating: v }));
   };
 
+  const handleProductDetailsChange = (e) => {
+    const { name, value } = e.target;
+    setProductDetails((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === "rate") {
+        const qty = parseFloat(formData.qty || 0);
+        const rate = parseFloat(value || 0);
+        updated.amount = (qty * rate).toFixed(2);
+      }
+      return updated;
+    });
+  };
+
   const handleQuantityChange = (e) => {
     const v = e.target.value;
-    setFormData(prev => ({ ...prev, qty: v }));
+    setFormData((prev) => ({ ...prev, qty: v }));
+    // Recalculate amount using current rate (which might be manually edited)
+    setProductDetails((prev) => ({
+      ...prev,
+      amount: (parseFloat(v || 0) * parseFloat(prev.rate || 0)).toFixed(2),
+    }));
   };
 
   const handleViewClick = (enquiry) => { setSelectedEnquiry(enquiry); setViewMode("form"); };
@@ -651,7 +669,7 @@ const updateSendStatus = async (enquiryNumber, sendType) => {
             />
           ) : (
             <QuotationFormView
-              formData={formData} setFormData={setFormData} productDetails={productDetails} setProductDetails={setProductDetails} selectedEnquiry={selectedEnquiry} handleBackToList={handleBackToList} successMessage={successMessage} dropdownOptions={dropdownOptions} salespersons={salespersons} handleCustomerChange={handleCustomerChange} handleDealerChange={handleDealerChange} handleChange={handleChange} handleProductChange={handleProductChange} handleQuantityChange={handleQuantityChange} handlePreview={handlePreview} getCurrentDate={getCurrentDate}
+              formData={formData} setFormData={setFormData} productDetails={productDetails} setProductDetails={setProductDetails} handleProductDetailsChange={handleProductDetailsChange} selectedEnquiry={selectedEnquiry} handleBackToList={handleBackToList} successMessage={successMessage} dropdownOptions={dropdownOptions} salespersons={salespersons} handleCustomerChange={handleCustomerChange} handleDealerChange={handleDealerChange} handleChange={handleChange} handleProductChange={handleProductChange} handleQuantityChange={handleQuantityChange} handlePreview={handlePreview} getCurrentDate={getCurrentDate}
             />
           )}
           <SendQuotationModal

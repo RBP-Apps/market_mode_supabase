@@ -11,6 +11,7 @@ export default function QuotationFormView({
   setFormData,
   productDetails,
   setProductDetails,
+  handleProductDetailsChange,
   selectedEnquiry,
   handleBackToList,
   successMessage,
@@ -126,6 +127,7 @@ export default function QuotationFormView({
           handleProductChange={handleProductChange}
           handleQuantityChange={handleQuantityChange}
           productDetails={productDetails}
+          handleProductDetailsChange={handleProductDetailsChange}
           dropdownOptions={dropdownOptions}
           sectionClass={sectionClass}
           sectionTitleClass={sectionTitleClass}

@@ -19,6 +19,7 @@ export default function PowerLoadInfoSection({
   handleProductChange,
   handleQuantityChange,
   productDetails,
+  handleProductDetailsChange,
   dropdownOptions,
   sectionClass,
   sectionTitleClass,
@@ -257,10 +258,11 @@ export default function PowerLoadInfoSection({
                 BILL OF MATERIAL (BOM)
               </label>
               <textarea
+                name="bom"
                 value={productDetails.bom}
-                className={`${inputClass} bg-gray-100 min-h-[180px] text-sm leading-relaxed`}
+                onChange={handleProductDetailsChange}
+                className={`${inputClass} min-h-[180px] text-sm leading-relaxed`}
                 placeholder="Auto-fetched BOM"
-                readOnly
               />
             </div>
 
@@ -299,10 +301,11 @@ export default function PowerLoadInfoSection({
               </label>
               <input
                 type="text"
+                name="rate"
                 value={productDetails.rate}
-                className={`${inputClass} bg-gray-100 `}
+                onChange={handleProductDetailsChange}
+                className={`${inputClass} `}
                 placeholder="Auto-fetched"
-                readOnly
               />
             </div>
 
