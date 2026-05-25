@@ -96,116 +96,116 @@ function FMSDataPage() {
   }, [])
 
   // Fetch dropdown values for status
-const fetchDropdownValues = useCallback(async () => {
-  try {
-    const { data, error } = await supabase
-      .from("dropdown")
-      .select("status");
+  const fetchDropdownValues = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("dropdown")
+        .select("status");
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const options = data
-      .map((item) => item.status)
-      .filter((val) => val && val.trim() !== "");
+      const options = data
+        .map((item) => item.status)
+        .filter((val) => val && val.trim() !== "");
 
-    setStatusOptions(options);
-  } catch (error) {
-    console.error("Error fetching dropdown data:", error);
-    setStatusOptions(["Completed", "Pending", "In Progress", "Rejected"]);
-  }
-}, []);
+      setStatusOptions(options);
+    } catch (error) {
+      console.error("Error fetching dropdown data:", error);
+      setStatusOptions(["Completed", "Pending", "In Progress", "Rejected"]);
+    }
+  }, []);
 
 
   // Optimized data fetching
-const fetchSheetData = useCallback(async () => {
-  try {
-    setLoading(true);
-    setError(null);
+  const fetchSheetData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    await fetchDropdownValues();
+      await fetchDropdownValues();
 
-    const { data, error } = await supabase
-      .from("fms")
-      .select("*")
-      .order("id", { ascending: true });
+      const { data, error } = await supabase
+        .from("fms")
+        .select("*")
+        .order("id", { ascending: true });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const pending = [];
-    const history = [];
+      const pending = [];
+      const history = [];
 
-    data.forEach((row, index) => {
-      const enquiryNumber = row.enquiry_number || "";
+      data.forEach((row, index) => {
+        const enquiryNumber = row.enquiry_number || "";
 
-      const columnT = row.planned_1;
-      const columnU = row.actual_1;
+        const columnT = row.planned_1;
+        const columnU = row.actual_1;
 
-      const hasColumnT = !isEmpty(columnT);
-      const hasColumnU = !isEmpty(columnU);
+        const hasColumnT = !isEmpty(columnT);
+        const hasColumnU = !isEmpty(columnU);
 
-      if (!hasColumnT) return;
+        if (!hasColumnT) return;
 
-      const stableId = enquiryNumber
-        ? `enquiry_${enquiryNumber}_${row.id}`
-        : `row_${row.id}`;
+        const stableId = enquiryNumber
+          ? `enquiry_${enquiryNumber}_${row.id}`
+          : `row_${row.id}`;
 
-   const rowData = {
-  _id: stableId,
-  _rowIndex: row.id,
-  _enquiryNumber: enquiryNumber,
+        const rowData = {
+          _id: stableId,
+          _rowIndex: row.id,
+          _enquiryNumber: enquiryNumber,
 
-  col1: row.enquiry_number,
-  col2: row.beneficiary_name,
-  col3: row.address,
-  col4: row.village_block,
-  col5: row.district,
-  col6: row.contact_number,
+          col1: row.enquiry_number,
+          col2: row.beneficiary_name,
+          col3: row.address,
+          col4: row.village_block,
+          col5: row.district,
+          col6: row.contact_number,
 
-  // ✅ ADD THIS PART
-  col7: row.present_load,
-  col8: row.bp_number,
-  col9: row.cspdcl_contract_demand,
-  col10: row.avg_electricity_bill,
-  col11: row.future_load_requirement,
-  col12: row.load_details,
-  col13: row.failure_hours,
+          // ✅ ADD THIS PART
+          col7: row.present_load,
+          col8: row.bp_number,
+          col9: row.cspdcl_contract_demand,
+          col10: row.avg_electricity_bill,
+          col11: row.future_load_requirement,
+          col12: row.load_details,
+          col13: row.failure_hours,
 
-  col14: row.structure_type,
-  col15: row.roof_type,
-  col16: row.system_type,
-  col17: row.need_type,
-  col18: row.project_mode,
+          col14: row.structure_type,
+          col15: row.roof_type,
+          col16: row.system_type,
+          col17: row.need_type,
+          col18: row.project_mode,
 
-  col19: row.planned_1,
-  col20: formatDateTime(row.actual_1),
-  col22: row.status_1,
+          col19: row.planned_1,
+          col20: formatDateTime(row.actual_1),
+          col22: row.status_1,
 
-  col23: row.survey_report,
-  col24: row.geotag_photo,
-  col25: row.bill_copy,
-  col26: row.aadhar_card,
-  col27: row.pan_card,
-  col28: row.address_proof,
-  col29: row.surveyor_name,
-  col30: row.surveyor_contact,
-};
+          col23: row.survey_report,
+          col24: row.geotag_photo,
+          col25: row.bill_copy,
+          col26: row.aadhar_card,
+          col27: row.pan_card,
+          col28: row.address_proof,
+          col29: row.surveyor_name,
+          col30: row.surveyor_contact,
+        };
 
-      if (!hasColumnU) {
-        pending.push(rowData);
-      } else {
-        history.push(rowData);
-      }
-    });
+        if (!hasColumnU) {
+          pending.push(rowData);
+        } else {
+          history.push(rowData);
+        }
+      });
 
-    setPendingData(pending);
-    setHistoryData(history);
-    setLoading(false);
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    setError("Failed to load FMS data: " + error.message);
-    setLoading(false);
-  }
-}, [fetchDropdownValues, isEmpty]);
+      setPendingData(pending);
+      setHistoryData(history);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError("Failed to load FMS data: " + error.message);
+      setLoading(false);
+    }
+  }, [fetchDropdownValues, isEmpty]);
 
 
 
@@ -259,122 +259,122 @@ const fetchSheetData = useCallback(async () => {
   }, [])
 
 
-const uploadImageToDrive = useCallback(async (file) => {
-  try {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${selectedRecord._enquiryNumber}_${Date.now()}.${fileExt}`;
-    const filePath = `survey/${fileName}`;
+  const uploadImageToDrive = useCallback(async (file) => {
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${selectedRecord._enquiryNumber}_${Date.now()}.${fileExt}`;
+      const filePath = `survey/${fileName}`;
 
-    const { error } = await supabase.storage
-      .from("survey_file")
-      .upload(filePath, file);
+      const { error } = await supabase.storage
+        .from("survey_file")
+        .upload(filePath, file);
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const { data } = supabase.storage
-      .from("survey_file")
-      .getPublicUrl(filePath);
+      const { data } = supabase.storage
+        .from("survey_file")
+        .getPublicUrl(filePath);
 
-    return data.publicUrl;
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    throw error;
-  }
-}, [selectedRecord]);
-
-const handleSurveySubmit = async () => {
-  if (!surveyForm.status) {
-    alert("Please select a status");
-    return;
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    let copySurveyReportUrl = selectedRecord.col23 || "";
-    let geotagPhotoUrl = selectedRecord.col24 || "";
-    let electricityBillUrl = selectedRecord.col25 || "";
-    let addressProofUrl = selectedRecord.col28 || "";
-
-    if (surveyForm.copySurveyReport) {
-      copySurveyReportUrl = await uploadImageToDrive(surveyForm.copySurveyReport);
+      return data.publicUrl;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      throw error;
     }
-    if (surveyForm.geotagPhoto) {
-      geotagPhotoUrl = await uploadImageToDrive(surveyForm.geotagPhoto);
-    }
-    if (surveyForm.electricityBill) {
-      electricityBillUrl = await uploadImageToDrive(surveyForm.electricityBill);
-    }
-    if (surveyForm.addressProof) {
-      addressProofUrl = await uploadImageToDrive(surveyForm.addressProof);
+  }, [selectedRecord]);
+
+  const handleSurveySubmit = async () => {
+    if (!surveyForm.status) {
+      alert("Please select a status");
+      return;
     }
 
-    const isEdit = !isEmpty(selectedRecord.col20);
+    setIsSubmitting(true);
 
-    const now = new Date();
-    const currentTimestamp = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    try {
+      let copySurveyReportUrl = selectedRecord.col23 || "";
+      let geotagPhotoUrl = selectedRecord.col24 || "";
+      let electricityBillUrl = selectedRecord.col25 || "";
+      let addressProofUrl = selectedRecord.col28 || "";
 
-    const updatePayload = {
-      status_1: surveyForm.status,
-      survey_report: copySurveyReportUrl,
-      geotag_photo: geotagPhotoUrl,
-      bill_copy: electricityBillUrl,
-      aadhar_card: surveyForm.aadharNumber,
-      pan_card: surveyForm.panNumber,
-      address_proof: addressProofUrl,
-      surveyor_name: surveyForm.surveyorName,
-      surveyor_contact: surveyForm.contactNumber,
-    };
+      if (surveyForm.copySurveyReport) {
+        copySurveyReportUrl = await uploadImageToDrive(surveyForm.copySurveyReport);
+      }
+      if (surveyForm.geotagPhoto) {
+        geotagPhotoUrl = await uploadImageToDrive(surveyForm.geotagPhoto);
+      }
+      if (surveyForm.electricityBill) {
+        electricityBillUrl = await uploadImageToDrive(surveyForm.electricityBill);
+      }
+      if (surveyForm.addressProof) {
+        addressProofUrl = await uploadImageToDrive(surveyForm.addressProof);
+      }
 
-    // only set actual_1 if new entry
-    if (!isEdit) {
-      updatePayload.actual_1 = new Date().toISOString();
+      const isEdit = !isEmpty(selectedRecord.col20);
+
+      const now = new Date();
+      const currentTimestamp = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+      const updatePayload = {
+        status_1: surveyForm.status,
+        survey_report: copySurveyReportUrl,
+        geotag_photo: geotagPhotoUrl,
+        bill_copy: electricityBillUrl,
+        aadhar_card: surveyForm.aadharNumber,
+        pan_card: surveyForm.panNumber,
+        address_proof: addressProofUrl,
+        surveyor_name: surveyForm.surveyorName,
+        surveyor_contact: surveyForm.contactNumber,
+      };
+
+      // only set actual_1 if new entry
+      if (!isEdit) {
+        updatePayload.actual_1 = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from("fms")
+        .update(updatePayload)
+        .eq("id", selectedRecord._rowIndex);
+
+      if (error) throw error;
+
+      const updatedRecord = {
+        ...selectedRecord,
+        col20: isEdit ? selectedRecord.col20 : currentTimestamp,
+        col22: surveyForm.status,
+        col23: copySurveyReportUrl,
+        col24: geotagPhotoUrl,
+        col25: electricityBillUrl,
+        col26: surveyForm.aadharNumber,
+        col27: surveyForm.panNumber,
+        col28: addressProofUrl,
+        col29: surveyForm.surveyorName,
+        col30: surveyForm.contactNumber,
+      };
+
+      if (isEdit) {
+        setHistoryData(prev =>
+          prev.map(rec => rec._id === selectedRecord._id ? updatedRecord : rec)
+        );
+      } else {
+        setPendingData(prev =>
+          prev.filter(record => record._id !== selectedRecord._id)
+        );
+        setHistoryData(prev => [updatedRecord, ...prev]);
+      }
+
+      setShowSurveyModal(false);
+      setSuccessMessage(`Survey completed for Enquiry: ${selectedRecord._enquiryNumber}`);
+
+      setTimeout(() => setSuccessMessage(""), 3000);
+
+    } catch (error) {
+      console.error("Error submitting survey:", error);
+      alert("Failed: " + error.message);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const { error } = await supabase
-      .from("fms")
-      .update(updatePayload)
-      .eq("id", selectedRecord._rowIndex);
-
-    if (error) throw error;
-
-    const updatedRecord = {
-      ...selectedRecord,
-      col20: isEdit ? selectedRecord.col20 : currentTimestamp,
-      col22: surveyForm.status,
-      col23: copySurveyReportUrl,
-      col24: geotagPhotoUrl,
-      col25: electricityBillUrl,
-      col26: surveyForm.aadharNumber,
-      col27: surveyForm.panNumber,
-      col28: addressProofUrl,
-      col29: surveyForm.surveyorName,
-      col30: surveyForm.contactNumber,
-    };
-
-    if (isEdit) {
-      setHistoryData(prev =>
-        prev.map(rec => rec._id === selectedRecord._id ? updatedRecord : rec)
-      );
-    } else {
-      setPendingData(prev =>
-        prev.filter(record => record._id !== selectedRecord._id)
-      );
-      setHistoryData(prev => [updatedRecord, ...prev]);
-    }
-
-    setShowSurveyModal(false);
-    setSuccessMessage(`Survey completed for Enquiry: ${selectedRecord._enquiryNumber}`);
-
-    setTimeout(() => setSuccessMessage(""), 3000);
-
-  } catch (error) {
-    console.error("Error submitting survey:", error);
-    alert("Failed: " + error.message);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   const toggleSection = useCallback((section) => {
     setShowHistory(section === 'history')
@@ -392,37 +392,37 @@ const handleSurveySubmit = async () => {
     setRecordToDelete(null)
   }, [])
 
-const handleDeleteConfirm = async () => {
-  if (!recordToDelete) return;
+  const handleDeleteConfirm = async () => {
+    if (!recordToDelete) return;
 
-  setIsDeleting(true);
+    setIsDeleting(true);
 
-  try {
-    const { error } = await supabase
-      .from("fms")
-      .delete()
-      .eq("id", recordToDelete._rowIndex);
+    try {
+      const { error } = await supabase
+        .from("fms")
+        .delete()
+        .eq("id", recordToDelete._rowIndex);
 
-    if (error) throw error;
+      if (error) throw error;
 
-    setHistoryData(prev =>
-      prev.filter(record => record._id !== recordToDelete._id)
-    );
+      setHistoryData(prev =>
+        prev.filter(record => record._id !== recordToDelete._id)
+      );
 
-    setSuccessMessage(`Deleted Enquiry: ${recordToDelete._enquiryNumber}`);
+      setSuccessMessage(`Deleted Enquiry: ${recordToDelete._enquiryNumber}`);
 
-    setTimeout(() => setSuccessMessage(""), 3000);
+      setTimeout(() => setSuccessMessage(""), 3000);
 
-    setShowDeleteModal(false);
-    setRecordToDelete(null);
+      setShowDeleteModal(false);
+      setRecordToDelete(null);
 
-  } catch (error) {
-    console.error("Delete error:", error);
-    alert("Failed to delete: " + error.message);
-  } finally {
-    setIsDeleting(false);
-  }
-};
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Failed to delete: " + error.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const closeSurveyModal = useCallback(() => {
     setShowSurveyModal(false)

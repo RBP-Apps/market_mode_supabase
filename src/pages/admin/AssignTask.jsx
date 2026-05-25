@@ -24,20 +24,20 @@ export default function BeneficiaryForm() {
   const [vendorNameOptions, setVendorNameOptions] = useState([]);
 
   const [editSelectedImage, setEditSelectedImage] = useState(null);
-const [editImagePreview, setEditImagePreview] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState(null);
+  const [historySearch, setHistorySearch] = useState("");
 
-
-const handleEditImageChange = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    setEditSelectedImage(file);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setEditImagePreview(e.target.result);
-    };
-    reader.readAsDataURL(file);
-  }
-};
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setEditSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setEditImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const [formData, setFormData] = useState({
     beneficiaryName: "",
@@ -70,38 +70,49 @@ const handleEditImageChange = (e) => {
   };
 
   // Fetch dropdown options
-const fetchDropdownOptions = async () => {
-  try {
-    const { data, error } = await supabase
-      .from("dropdown")
-      .select("*");
+  const fetchDropdownOptions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("dropdown")
+        .select("*");
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const structureTypes = [];
-    const roofTypes = [];
-    const systemTypes = [];
-    const needTypes = [];
-    const vendorNames = [];
+      const structureTypes = [];
+      const roofTypes = [];
+      const systemTypes = [];
+      const needTypes = [];
+      const vendorNames = [];
 
-    data.forEach((row) => {
-      if (row.structure_type) structureTypes.push(row.structure_type);
-      if (row.roof_type) roofTypes.push(row.roof_type);
-      if (row.system_type) systemTypes.push(row.system_type);
-      if (row.need_type) needTypes.push(row.need_type);
-      if (row.vendor_name) vendorNames.push(row.vendor_name);
-    });
+      data.forEach((row) => {
+        if (row.structure_type) structureTypes.push(row.structure_type);
+        if (row.roof_type) roofTypes.push(row.roof_type);
+        if (row.system_type) systemTypes.push(row.system_type);
+        if (row.need_type) needTypes.push(row.need_type);
+        if (row.vendor_name) vendorNames.push(row.vendor_name);
+      });
 
-    setStructureTypeOptions([...new Set(structureTypes)]);
-    setRoofTypeOptions([...new Set(roofTypes)]);
-    setSystemTypeOptions([...new Set(systemTypes)]);
-    setNeedTypeOptions([...new Set(needTypes)]);
-    setVendorNameOptions([...new Set(vendorNames)]);
+      setStructureTypeOptions([...new Set(structureTypes)]);
+      setRoofTypeOptions([...new Set(roofTypes)]);
+      setSystemTypeOptions([...new Set(systemTypes)]);
+      setNeedTypeOptions([...new Set(needTypes)]);
+      setVendorNameOptions([...new Set(vendorNames)]);
 
-  } catch (error) {
-    console.error("Dropdown error:", error);
-  }
-};
+    } catch (error) {
+      console.error("Dropdown error:", error);
+    }
+  };
+
+
+  const filteredHistoryData = historyData.filter((row) =>
+    Object.values(row).some((value) =>
+      String(value || "")
+        .toLowerCase()
+        .includes(historySearch.toLowerCase())
+    )
+  );
+
+
 
   const formatDateTime = (dateString) => {
     if (!dateString) return "";
@@ -121,251 +132,158 @@ const fetchDropdownOptions = async () => {
   };
 
   // Fetch history data from FMS sheet
-const fetchHistoryData = async () => {
-  try {
-    setIsLoadingHistory(true);
+  const fetchHistoryData = async () => {
+    try {
+      setIsLoadingHistory(true);
 
-    const { data, error } = await supabase
-      .from("fms")
-      .select("*")
-      .order("id", { ascending: false });
+      const { data, error } = await supabase
+        .from("fms")
+        .select("*")
+        .order("id", { ascending: false });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const processedData = data.map((row) => {
-      return {
-        rowIndex: row.id, // important (sheet row ki jagah id)
-        timestamp: formatDateTime(row.timestamp),
-        enquiryNumber: row.enquiry_number || "",
-        beneficiaryName: row.beneficiary_name || "",
-        address: row.address || "",
-        villageBlock: row.village_block || "",
-        district: row.district || "",
-        contactNumber: row.contact_number || "",
-        presentLoad: row.present_load || "",
-        bpNumber: row.bp_number || "",
-        cspdclContractDemand: row.cspdcl_contract_demand || "",
-        electricityBillUrl: row.avg_electricity_bill || "",
-        futureLoadRequirement: row.future_load_requirement || "",
-        loadDetailsApplication: row.load_details || "",
-        noOfHoursOfFailure: row.failure_hours || "",
-        structureType: row.structure_type || "",
-        roofType: row.roof_type || "",
-        systemType: row.system_type || "",
-        needType: row.need_type || "",
-        projectMode: row.project_mode || "",
-        vendorName: row.vendor_name || ""
-      };
-    });
+      const processedData = data.map((row) => {
+        return {
+          rowIndex: row.id, // important (sheet row ki jagah id)
+          timestamp: formatDateTime(row.timestamp),
+          enquiryNumber: row.enquiry_number || "",
+          beneficiaryName: row.beneficiary_name || "",
+          address: row.address || "",
+          villageBlock: row.village_block || "",
+          district: row.district || "",
+          contactNumber: row.contact_number || "",
+          presentLoad: row.present_load || "",
+          bpNumber: row.bp_number || "",
+          cspdclContractDemand: row.cspdcl_contract_demand || "",
+          electricityBillUrl: row.avg_electricity_bill || "",
+          futureLoadRequirement: row.future_load_requirement || "",
+          loadDetailsApplication: row.load_details || "",
+          noOfHoursOfFailure: row.failure_hours || "",
+          structureType: row.structure_type || "",
+          roofType: row.roof_type || "",
+          systemType: row.system_type || "",
+          needType: row.need_type || "",
+          projectMode: row.project_mode || "",
+          vendorName: row.vendor_name || ""
+        };
+      });
 
-    setHistoryData(processedData);
+      setHistoryData(processedData);
 
-  } catch (error) {
-    console.error("Error fetching history data:", error);
-    alert("Error loading history data. Please try again.");
-  } finally {
-    setIsLoadingHistory(false);
-  }
-};
+    } catch (error) {
+      console.error("Error fetching history data:", error);
+      alert("Error loading history data. Please try again.");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
-  // Start editing a row
-  // const startEdit = (rowData) => {
-  //   setEditingRow(rowData.rowIndex);
-  //   setEditFormData({
-  //     timestamp: rowData.timestamp,
-  //     enquiryNumber: rowData.enquiryNumber,
-  //     beneficiaryName: rowData.beneficiaryName,
-  //     address: rowData.address,
-  //     villageBlock: rowData.villageBlock,
-  //     district: rowData.district,
-  //     contactNumber: rowData.contactNumber,
-  //     presentLoad: rowData.presentLoad,
-  //     bpNumber: rowData.bpNumber,
-  //     cspdclContractDemand: rowData.cspdclContractDemand,
-  //     electricityBillUrl: rowData.electricityBillUrl,
-  //     futureLoadRequirement: rowData.futureLoadRequirement,
-  //     loadDetailsApplication: rowData.loadDetailsApplication,
-  //     noOfHoursOfFailure: rowData.noOfHoursOfFailure,
-  //     structureType: rowData.structureType,
-  //     roofType: rowData.roofType,
-  //     systemType: rowData.systemType,
-  //     needType: rowData.needType,
-  //     projectMode: rowData.projectMode,
-  //     vendorName: rowData.vendorName
-  //   });
-  //   setShowEditModal(true);
-  // };
 
   const startEdit = (rowData) => {
-  setEditingRow(rowData.rowIndex);
-  setEditFormData({
-    timestamp: rowData.timestamp,
-    enquiryNumber: rowData.enquiryNumber,
-    beneficiaryName: rowData.beneficiaryName,
-    address: rowData.address,
-    villageBlock: rowData.villageBlock,
-    district: rowData.district,
-    contactNumber: rowData.contactNumber,
-    presentLoad: rowData.presentLoad,
-    bpNumber: rowData.bpNumber,
-    cspdclContractDemand: rowData.cspdclContractDemand,
-    electricityBillUrl: rowData.electricityBillUrl,
-    futureLoadRequirement: rowData.futureLoadRequirement,
-    loadDetailsApplication: rowData.loadDetailsApplication,
-    noOfHoursOfFailure: rowData.noOfHoursOfFailure,
-    structureType: rowData.structureType,
-    roofType: rowData.roofType,
-    systemType: rowData.systemType,
-    needType: rowData.needType,
-    projectMode: rowData.projectMode,
-    vendorName: rowData.vendorName
-  });
-  setEditSelectedImage(null);
-  setEditImagePreview(null);
-  setShowEditModal(true);
-};
+    setEditingRow(rowData.rowIndex);
+    setEditFormData({
+      timestamp: rowData.timestamp,
+      enquiryNumber: rowData.enquiryNumber,
+      beneficiaryName: rowData.beneficiaryName,
+      address: rowData.address,
+      villageBlock: rowData.villageBlock,
+      district: rowData.district,
+      contactNumber: rowData.contactNumber,
+      presentLoad: rowData.presentLoad,
+      bpNumber: rowData.bpNumber,
+      cspdclContractDemand: rowData.cspdclContractDemand,
+      electricityBillUrl: rowData.electricityBillUrl,
+      futureLoadRequirement: rowData.futureLoadRequirement,
+      loadDetailsApplication: rowData.loadDetailsApplication,
+      noOfHoursOfFailure: rowData.noOfHoursOfFailure,
+      structureType: rowData.structureType,
+      roofType: rowData.roofType,
+      systemType: rowData.systemType,
+      needType: rowData.needType,
+      projectMode: rowData.projectMode,
+      vendorName: rowData.vendorName
+    });
+    setEditSelectedImage(null);
+    setEditImagePreview(null);
+    setShowEditModal(true);
+  };
 
-
-  // Cancel editing
-  // const cancelEdit = () => {
-  //   setEditingRow(null);
-  //   setEditFormData({});
-  //   setShowEditModal(false);
-  // };
 
   const cancelEdit = () => {
-  setEditingRow(null);
-  setEditFormData({});
-  setEditSelectedImage(null);
-  setEditImagePreview(null);
-  setShowEditModal(false);
-};
-
-  // Save edited row
-// const saveEdit = async (rowIndex) => {
-//   try {
-//     setIsSubmitting(true);
-
-//     const { error } = await supabase
-//       .from("fms")
-//       .update({
-//         enquiry_number: editFormData.enquiryNumber,
-//         beneficiary_name: editFormData.beneficiaryName,
-//         address: editFormData.address,
-//         village_block: editFormData.villageBlock,
-//         district: editFormData.district,
-//         contact_number: editFormData.contactNumber,
-//         present_load: editFormData.presentLoad,
-//         bp_number: editFormData.bpNumber,
-//         cspdcl_contract_demand: editFormData.cspdclContractDemand,
-//         avg_electricity_bill: editFormData.electricityBillUrl,
-//         future_load_requirement: editFormData.futureLoadRequirement,
-//         load_details: editFormData.loadDetailsApplication,
-//         failure_hours: editFormData.noOfHoursOfFailure,
-//         structure_type: editFormData.structureType,
-//         roof_type: editFormData.roofType,
-//         system_type: editFormData.systemType,
-//         need_type: editFormData.needType,
-//         project_mode: editFormData.projectMode,
-//         vendor_name: editFormData.vendorName
-//       })
-//       .eq("id", rowIndex);
-
-//     if (error) throw error;
-
-//     alert("Record updated successfully!");
-
-//     setHistoryData(prevData =>
-//       prevData.map(row =>
-//         row.rowIndex === rowIndex
-//           ? { ...row, ...editFormData }
-//           : row
-//       )
-//     );
-
-//     setEditingRow(null);
-//     setEditFormData({});
-//     setShowEditModal(false);
-
-//   } catch (error) {
-//     console.error("Error updating record:", error);
-//     alert("Error updating record!");
-//   } finally {
-//     setIsSubmitting(false);
-//   }
-// };
-
-
-
-const saveEdit = async (rowIndex) => {
-  try {
-    setIsSubmitting(true);
-
-    let imageUrl = editFormData.electricityBillUrl;
-
-    // Upload new image if selected
-    if (editSelectedImage) {
-      try {
-        imageUrl = await uploadImageToDrive(editSelectedImage);
-      } catch (error) {
-        console.error("Image upload error:", error);
-        imageUrl = editFormData.electricityBillUrl; // Keep old URL if upload fails
-      }
-    }
-
-    const { error } = await supabase
-      .from("fms")
-      .update({
-        enquiry_number: editFormData.enquiryNumber,
-        beneficiary_name: editFormData.beneficiaryName,
-        address: editFormData.address,
-        village_block: editFormData.villageBlock,
-        district: editFormData.district,
-        contact_number: editFormData.contactNumber,
-        present_load: editFormData.presentLoad,
-        bp_number: editFormData.bpNumber,
-        cspdcl_contract_demand: editFormData.cspdclContractDemand,
-        avg_electricity_bill: imageUrl,
-        future_load_requirement: editFormData.futureLoadRequirement,
-        load_details: editFormData.loadDetailsApplication,
-        failure_hours: editFormData.noOfHoursOfFailure,
-        structure_type: editFormData.structureType,
-        roof_type: editFormData.roofType,
-        system_type: editFormData.systemType,
-        need_type: editFormData.needType,
-        project_mode: editFormData.projectMode,
-        vendor_name: editFormData.vendorName
-      })
-      .eq("id", rowIndex);
-
-    if (error) throw error;
-
-    alert("Record updated successfully!");
-
-    setHistoryData(prevData =>
-      prevData.map(row =>
-        row.rowIndex === rowIndex
-          ? { ...row, ...editFormData, electricityBillUrl: imageUrl }
-          : row
-      )
-    );
-
     setEditingRow(null);
     setEditFormData({});
     setEditSelectedImage(null);
     setEditImagePreview(null);
     setShowEditModal(false);
+  };
 
-  } catch (error) {
-    console.error("Error updating record:", error);
-    alert("Error updating record!");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  const saveEdit = async (rowIndex) => {
+    try {
+      setIsSubmitting(true);
 
+      let imageUrl = editFormData.electricityBillUrl;
 
+      // Upload new image if selected
+      if (editSelectedImage) {
+        try {
+          imageUrl = await uploadImageToDrive(editSelectedImage);
+        } catch (error) {
+          console.error("Image upload error:", error);
+          imageUrl = editFormData.electricityBillUrl; // Keep old URL if upload fails
+        }
+      }
 
+      const { error } = await supabase
+        .from("fms")
+        .update({
+          enquiry_number: editFormData.enquiryNumber,
+          beneficiary_name: editFormData.beneficiaryName,
+          address: editFormData.address,
+          village_block: editFormData.villageBlock,
+          district: editFormData.district,
+          contact_number: editFormData.contactNumber,
+          present_load: editFormData.presentLoad,
+          bp_number: editFormData.bpNumber,
+          cspdcl_contract_demand: editFormData.cspdclContractDemand,
+          avg_electricity_bill: imageUrl,
+          future_load_requirement: editFormData.futureLoadRequirement,
+          load_details: editFormData.loadDetailsApplication,
+          failure_hours: editFormData.noOfHoursOfFailure,
+          structure_type: editFormData.structureType,
+          roof_type: editFormData.roofType,
+          system_type: editFormData.systemType,
+          need_type: editFormData.needType,
+          project_mode: editFormData.projectMode,
+          vendor_name: editFormData.vendorName
+        })
+        .eq("id", rowIndex);
+
+      if (error) throw error;
+
+      alert("Record updated successfully!");
+
+      setHistoryData(prevData =>
+        prevData.map(row =>
+          row.rowIndex === rowIndex
+            ? { ...row, ...editFormData, electricityBillUrl: imageUrl }
+            : row
+        )
+      );
+
+      setEditingRow(null);
+      setEditFormData({});
+      setEditSelectedImage(null);
+      setEditImagePreview(null);
+      setShowEditModal(false);
+
+    } catch (error) {
+      console.error("Error updating record:", error);
+      alert("Error updating record!");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     fetchDropdownOptions();
@@ -390,117 +308,116 @@ const saveEdit = async (rowIndex) => {
     }
   };
 
- // Replace the entire uploadImageToDrive function with this:
-const uploadImageToDrive = async (file) => {
-  try {
-    if (!file) return "";
-    
-    // Create a unique file name
-    const fileExt = file.name.split('.').pop();
-    const fileName = `electricity_bill_${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
+  // Replace the entire uploadImageToDrive function with this:
+  const uploadImageToDrive = async (file) => {
+    try {
+      if (!file) return "";
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from('enquery_file')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
+      // Create a unique file name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `electricity_bill_${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('enquery_file')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('enquery_file')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+
+    } catch (error) {
+      console.error("Error in uploadImageToDrive:", error);
+      return "";
+    }
+  };
+
+  // The handleSubmit function remains the same as it already calls uploadImageToDrive
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      let imageUrl = "";
+
+      // Using updated Supabase Storage upload
+      if (selectedImage) {
+        try {
+          imageUrl = await uploadImageToDrive(selectedImage);
+        } catch (error) {
+          console.error("Image upload error:", error);
+          imageUrl = "";
+        }
+      }
+
+      const { error } = await supabase.from("fms").insert([
+        {
+          timestamp: new Date(),
+          beneficiary_name: formData.beneficiaryName,
+          address: formData.address,
+          village_block: formData.villageBlock,
+          district: formData.district,
+          contact_number: formData.contactNumber,
+          present_load: formData.presentLoad,
+          bp_number: formData.bpNumber,
+          cspdcl_contract_demand: formData.cspdclContractDemand,
+          avg_electricity_bill: imageUrl,
+          future_load_requirement: formData.futureLoadRequirement,
+          load_details: formData.loadDetailsApplication,
+          failure_hours: formData.noOfHoursOfFailure,
+          structure_type: formData.structureType,
+          roof_type: formData.roofType,
+          system_type: formData.systemType,
+          need_type: formData.needType,
+          project_mode: formData.projectMode,
+          vendor_name: formData.vendorName
+        }
+      ]);
+
+      if (error) throw error;
+
+      alert("Successfully submitted beneficiary information!");
+
+      // reset form
+      setFormData({
+        beneficiaryName: "",
+        address: "",
+        villageBlock: "",
+        district: "",
+        contactNumber: "",
+        presentLoad: "",
+        bpNumber: "",
+        cspdclContractDemand: "",
+        futureLoadRequirement: "",
+        loadDetailsApplication: "",
+        noOfHoursOfFailure: "",
+        structureType: "",
+        roofType: "",
+        systemType: "",
+        needType: "",
+        projectMode: "",
+        vendorName: ""
       });
 
-    if (error) throw error;
+      setSelectedImage(null);
+      setImagePreview(null);
 
-    // Get the public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('enquery_file')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
-
-  } catch (error) {
-    console.error("Error in uploadImageToDrive:", error);
-    return "";
-  }
-};
-
-
-// The handleSubmit function remains the same as it already calls uploadImageToDrive
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsSubmitting(true);
-
-  try {
-    let imageUrl = "";
-
-    // Using updated Supabase Storage upload
-    if (selectedImage) {
-      try {
-        imageUrl = await uploadImageToDrive(selectedImage);
-      } catch (error) {
-        console.error("Image upload error:", error);
-        imageUrl = "";
-      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      alert("Error submitting data!");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const { error } = await supabase.from("fms").insert([
-      {
-        timestamp: new Date(),
-        beneficiary_name: formData.beneficiaryName,
-        address: formData.address,
-        village_block: formData.villageBlock,
-        district: formData.district,
-        contact_number: formData.contactNumber,
-        present_load: formData.presentLoad,
-        bp_number: formData.bpNumber,
-        cspdcl_contract_demand: formData.cspdclContractDemand,
-        avg_electricity_bill: imageUrl,
-        future_load_requirement: formData.futureLoadRequirement,
-        load_details: formData.loadDetailsApplication,
-        failure_hours: formData.noOfHoursOfFailure,
-        structure_type: formData.structureType,
-        roof_type: formData.roofType,
-        system_type: formData.systemType,
-        need_type: formData.needType,
-        project_mode: formData.projectMode,
-        vendor_name: formData.vendorName
-      }
-    ]);
-
-    if (error) throw error;
-
-    alert("Successfully submitted beneficiary information!");
-
-    // reset form
-    setFormData({
-      beneficiaryName: "",
-      address: "",
-      villageBlock: "",
-      district: "",
-      contactNumber: "",
-      presentLoad: "",
-      bpNumber: "",
-      cspdclContractDemand: "",
-      futureLoadRequirement: "",
-      loadDetailsApplication: "",
-      noOfHoursOfFailure: "",
-      structureType: "",
-      roofType: "",
-      systemType: "",
-      needType: "",
-      projectMode: "",
-      vendorName: ""
-    });
-
-    setSelectedImage(null);
-    setImagePreview(null);
-
-  } catch (error) {
-    console.error("Submission error:", error);
-    alert("Error submitting data!");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   return (
     <AdminLayout>
@@ -949,34 +866,43 @@ const handleSubmit = async (e) => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="overflow-x-auto">
+                    <div className="flex justify-end mb-4">
+                      <input
+                        type="text"
+                        placeholder="Search all columns..."
+                        value={historySearch}
+                        onChange={(e) => setHistorySearch(e.target.value)}
+                        className="w-full md:w-80 rounded-md border border-purple-300 px-4 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      />
+                    </div>
+                    <div className="overflow-x-auto h-[60vh]">
                       <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-purple-50 text-nowrap">
+                        <thead className="bg-purple-50 text-wrap sticky top-0 z-10  text-nowrap text-center">
                           <tr>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Actions</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Number</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Name</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Vender Name</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Address</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Village/Block</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">District</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Contact Number</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Present Load</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">BP Number</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">CSPDCL Contract Demand</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Electricity Bill</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Future Load Requirement</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Load Details/Application</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Hours Of Failure</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Structure Type</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Roof Type</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">System Type</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Need Type</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Project Mode</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Actions</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Number</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Name</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Vender Name</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Address</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Village/Block</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">District</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Contact Number</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Present Load</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">BP Number</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">CSPDCL Contract Demand</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Electricity Bill</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Future Load Requirement</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Load Details/Application</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Hours Of Failure</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Structure Type</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Roof Type</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">System Type</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Need Type</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Project Mode</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {historyData.map((row, index) => (
+                          {filteredHistoryData.map((row, index) => (
                             <tr key={`${row.enquiryNumber}-${index}`} className="hover:bg-purple-50">
                               <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">
                                 <button
@@ -987,31 +913,31 @@ const handleSubmit = async (e) => {
                                   <Edit2 className="h-4 w-4" />
                                 </button>
                               </td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs font-medium text-purple-600">{row.enquiryNumber}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.beneficiaryName}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.vendorName}</td>
+                              <td className="px-2 py-2  text-xs font-medium text-purple-600">{row.enquiryNumber}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.beneficiaryName}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.vendorName}</td>
                               <td className="px-2 py-2 text-xs text-gray-900 max-w-xs truncate">{row.address}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.villageBlock}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.district}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.contactNumber}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.presentLoad}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.bpNumber}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.cspdclContractDemand}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.villageBlock}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.district}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.contactNumber}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.presentLoad}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.bpNumber}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.cspdclContractDemand}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">
                                 {row.electricityBillUrl && (
                                   <a href={row.electricityBillUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
                                     View
                                   </a>
                                 )}
                               </td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.futureLoadRequirement}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.futureLoadRequirement}</td>
                               <td className="px-2 py-2 text-xs text-gray-900 max-w-xs truncate">{row.loadDetailsApplication}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.noOfHoursOfFailure}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.structureType}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.roofType}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.systemType}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.needType}</td>
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">{row.projectMode}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.noOfHoursOfFailure}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.structureType}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.roofType}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.systemType}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.needType}</td>
+                              <td className="px-2 py-2  text-xs text-gray-900">{row.projectMode}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1179,92 +1105,92 @@ const handleSubmit = async (e) => {
                     </div>
 
                     <div className="space-y-3">
-  <h4 className="text-md font-medium text-purple-700 border-b border-purple-200 pb-1">
-    Electricity Bill
-  </h4>
+                      <h4 className="text-md font-medium text-purple-700 border-b border-purple-200 pb-1">
+                        Electricity Bill
+                      </h4>
 
-  <div className="space-y-1">
-    <label className="block text-xs font-medium text-purple-700">
-      Last 6 Months Average Bill
-    </label>
-    
-    {/* Show existing bill link if available */}
-    {editFormData.electricityBillUrl && !editSelectedImage && (
-      <div className="mb-2 p-2 bg-purple-50 rounded-md">
-        <p className="text-xs text-purple-700 mb-1">Current Bill:</p>
-        <a 
-          href={editFormData.electricityBillUrl} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-blue-600 hover:text-blue-800 text-sm underline"
-        >
-          View Current Bill
-        </a>
-      </div>
-    )}
-    
-    {/* Show preview of new image if selected */}
-    {editImagePreview && (
-      <div className="mb-2">
-        <p className="text-xs text-purple-700 mb-1">New Bill Preview:</p>
-        <img 
-          src={editImagePreview} 
-          alt="Bill preview" 
-          className="max-h-32 rounded-md border border-purple-200"
-        />
-      </div>
-    )}
-    
-    <div className="border-2 border-dashed border-purple-300 rounded-lg p-3">
-      <div className="text-center">
-        <FileImage className="mx-auto h-8 w-8 text-purple-400" />
-        <div className="mt-2">
-          <label htmlFor="editElectricityBill" className="cursor-pointer">
-            <span className="block text-xs font-medium text-purple-600">
-              {editSelectedImage 
-                ? editSelectedImage.name 
-                : editFormData.electricityBillUrl 
-                  ? "Click to upload new bill (optional)"
-                  : "Click to upload electricity bill"}
-            </span>
-            <input
-              id="editElectricityBill"
-              type="file"
-              accept="image/*"
-              onChange={handleEditImageChange}
-              className="hidden"
-            />
-          </label>
-          {editFormData.electricityBillUrl && !editSelectedImage && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditSelectedImage(null);
-                setEditImagePreview(null);
-                setEditFormData(prev => ({ ...prev, electricityBillUrl: "" }));
-              }}
-              className="mt-2 text-xs text-red-600 hover:text-red-700"
-            >
-              Remove Current Bill
-            </button>
-          )}
-          {editSelectedImage && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditSelectedImage(null);
-                setEditImagePreview(null);
-              }}
-              className="mt-2 text-xs text-red-600 hover:text-red-700"
-            >
-              Cancel New Bill
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-purple-700">
+                          Last 6 Months Average Bill
+                        </label>
+
+                        {/* Show existing bill link if available */}
+                        {editFormData.electricityBillUrl && !editSelectedImage && (
+                          <div className="mb-2 p-2 bg-purple-50 rounded-md">
+                            <p className="text-xs text-purple-700 mb-1">Current Bill:</p>
+                            <a
+                              href={editFormData.electricityBillUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 text-sm underline"
+                            >
+                              View Current Bill
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Show preview of new image if selected */}
+                        {editImagePreview && (
+                          <div className="mb-2">
+                            <p className="text-xs text-purple-700 mb-1">New Bill Preview:</p>
+                            <img
+                              src={editImagePreview}
+                              alt="Bill preview"
+                              className="max-h-32 rounded-md border border-purple-200"
+                            />
+                          </div>
+                        )}
+
+                        <div className="border-2 border-dashed border-purple-300 rounded-lg p-3">
+                          <div className="text-center">
+                            <FileImage className="mx-auto h-8 w-8 text-purple-400" />
+                            <div className="mt-2">
+                              <label htmlFor="editElectricityBill" className="cursor-pointer">
+                                <span className="block text-xs font-medium text-purple-600">
+                                  {editSelectedImage
+                                    ? editSelectedImage.name
+                                    : editFormData.electricityBillUrl
+                                      ? "Click to upload new bill (optional)"
+                                      : "Click to upload electricity bill"}
+                                </span>
+                                <input
+                                  id="editElectricityBill"
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleEditImageChange}
+                                  className="hidden"
+                                />
+                              </label>
+                              {editFormData.electricityBillUrl && !editSelectedImage && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditSelectedImage(null);
+                                    setEditImagePreview(null);
+                                    setEditFormData(prev => ({ ...prev, electricityBillUrl: "" }));
+                                  }}
+                                  className="mt-2 text-xs text-red-600 hover:text-red-700"
+                                >
+                                  Remove Current Bill
+                                </button>
+                              )}
+                              {editSelectedImage && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditSelectedImage(null);
+                                    setEditImagePreview(null);
+                                  }}
+                                  className="mt-2 text-xs text-red-600 hover:text-red-700"
+                                >
+                                  Cancel New Bill
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
 
                     {/* System Configuration */}

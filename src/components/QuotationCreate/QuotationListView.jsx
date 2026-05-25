@@ -28,42 +28,7 @@ export default function QuotationListView({
 }) {
   const [sheetData, setSheetData] = React.useState({});
 
-  React.useEffect(() => {
-    const fetchSheetData = async () => {
-      try {
-        const url = "https://script.google.com/macros/s/AKfycbzoW5genlypXrhcjlPEau99DRXBCDYXOocB_ynUPuz37KQFCjrim570_8fwKlRlfhb_PA/exec?sheet=QuotationData";
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        const mappedData = {};
-        
-        // Data format: data.table.rows = [{ c: [{v: cellValue}, ...] }, ...]
-        if (data && data.table && data.table.rows) {
-          data.table.rows.forEach((row, index) => {
-            if (index === 0) return; // Skip header row
-            if (row.c && row.c.length > 40) {
-              // AI is 35th column (index 34), AO is 41st column (index 40)
-              const enquiryCell = row.c[34];
-              const pdfCell = row.c[40];
-              
-              const enquiryNo = enquiryCell ? enquiryCell.v : null;
-              const pdfLink = pdfCell ? pdfCell.v : null;
-              
-              if (enquiryNo && pdfLink) {
-                mappedData[String(enquiryNo).trim()] = pdfLink;
-              }
-            }
-          });
-        }
-        
-        setSheetData(mappedData);
-      } catch (error) {
-        console.error("Error fetching Google Sheet data:", error);
-      }
-    };
-    
-    fetchSheetData();
-  }, []);
+  
 
   const tableColumns = [
     { key: "enquiryNumber", label: "Enquiry No.", icon: FileText },
@@ -190,14 +155,7 @@ export default function QuotationListView({
                   </th>
                 )}
 
-                {/* {activeTab === "history" && (
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gradient-to-r from-gray-50 to-blue-50">
-                    <div className="flex items-center gap-1">
-                      <Copy className="h-3 w-3" />
-                      Quotation Copy
-                    </div>
-                  </th>
-                )} */}
+               
 
                 {activeTab === "history" && (
                   <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gradient-to-r from-gray-50 to-blue-50">
@@ -303,7 +261,7 @@ export default function QuotationListView({
                       </td>
                     )}
 
-                    {/* {activeTab === "history" && (
+                    {activeTab === "history" && (
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {row.quotationCopy &&
                           row.quotationCopy !== "Not Generated" ? (
@@ -320,24 +278,6 @@ export default function QuotationListView({
                           <span className="text-gray-400">Not Generated</span>
                         )}
                       </td>
-                    )} */}
-
-                    {activeTab === "history" && (
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-  {sheetData[row.enquiryNumber] ? (
-    <a
-      href={sheetData[row.enquiryNumber]}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-600 hover:text-blue-800 underline flex items-center justify-center gap-1"
-    >
-      <FileText className="h-4 w-4" />
-      View PDF
-    </a>
-  ) : (
-    <span className="text-gray-400">Not Generated</span>
-  )}
-</td>
                     )}
 
                     {/* Baaki ke columns */}

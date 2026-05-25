@@ -168,46 +168,26 @@ const MonthlyPerformanceReport = () => {
 
 
 
-// Initialize default date range (current month)
-// Initialize default date range (current month)
-// useEffect(() => {
-//   const today = new Date();
-//   const start = new Date(today.getFullYear(), today.getMonth(), 1);
-//   const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-//   const formatDate = (date) => {
-//     const year = date.getFullYear();
-//     const month = String(date.getMonth() + 1).padStart(2, "0");
-//     const day = String(date.getDate()).padStart(2, "0");
-//     return `${year}-${month}-${day}`;
-//   };
+  // Initialize default date range (current month)
+  useEffect(() => {
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    const end = today; // default end date is today
 
-//   setDateRange({
-//     startDate: formatDate(start),
-//     endDate: formatDate(end),
-//     customRange: false
-//   });
-// }, []);
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
 
-// Initialize default date range (current month)
-useEffect(() => {
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-  const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  setDateRange({
-    startDate: formatDate(start),
-    endDate: formatDate(end),
-    customRange: false
-  });
-}, []);
+    setDateRange({
+      startDate: formatDate(start),
+      endDate: formatDate(end),
+      customRange: false
+    });
+  }, []);
 
 
   // Format date for API
@@ -607,109 +587,109 @@ useEffect(() => {
                 }
               }
 
-             
 
-            // Fetch energy data using PS key
-const energyRes = await fetch('https://gateway.isolarcloud.com.hk/openapi/getDevicePointsDayMonthYearDataList', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-access-key': SOLAR_SECRET_KEY,
-    'sys_code': SOLAR_SYS_CODE,
-    'token': activeToken
-  },
-  body: JSON.stringify({
-    appkey: SOLAR_APPKEY,
-    data_point: 'p2', // p2 is cumulative energy
-    data_type: '2',
-    end_time: apiEndDate,
-    lang: '_en_US',
-    order: '0',
-    ps_key_list: [psKey],
-    query_type: '1',
-    start_time: apiStartDate, // This should be 1 day before user's start date
-    sys_code: 207
-  })
-});
 
-if (!energyRes.ok) {
-  if (energyRes.status === 401 || energyRes.status === 403) {
-    clearToken();
-    clearCachedData(CACHE_KEYS.TOKEN);
-    throw new Error('Session expired. Please login again.');
-  }
-  throw new Error(`Failed to fetch energy data: ${energyRes.status}`);
-}
+              // Fetch energy data using PS key
+              const energyRes = await fetch('https://gateway.isolarcloud.com.hk/openapi/getDevicePointsDayMonthYearDataList', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-access-key': SOLAR_SECRET_KEY,
+                  'sys_code': SOLAR_SYS_CODE,
+                  'token': activeToken
+                },
+                body: JSON.stringify({
+                  appkey: SOLAR_APPKEY,
+                  data_point: 'p2', // p2 is cumulative energy
+                  data_type: '2',
+                  end_time: apiEndDate,
+                  lang: '_en_US',
+                  order: '0',
+                  ps_key_list: [psKey],
+                  query_type: '1',
+                  start_time: apiStartDate, // This should be 1 day before user's start date
+                  sys_code: 207
+                })
+              });
 
-const energyData = await energyRes.json();
-console.log("RAW ENERGY API RESPONSE:", energyData);
-let totalKwh = 0;
-const dailyData = [];
+              if (!energyRes.ok) {
+                if (energyRes.status === 401 || energyRes.status === 403) {
+                  clearToken();
+                  clearCachedData(CACHE_KEYS.TOKEN);
+                  throw new Error('Session expired. Please login again.');
+                }
+                throw new Error(`Failed to fetch energy data: ${energyRes.status}`);
+              }
 
-if (energyData.result_code === "1" && energyData.result_data) {
-  const psKeyData = Object.keys(energyData.result_data)[0];
-  if (psKeyData) {
-    const dataPoint = Object.keys(energyData.result_data[psKeyData])[0];
-    const dataArray = energyData.result_data[psKeyData][dataPoint];
+              const energyData = await energyRes.json();
+              console.log("RAW ENERGY API RESPONSE:", energyData);
+              let totalKwh = 0;
+              const dailyData = [];
 
-    if (dataArray && Array.isArray(dataArray)) {
-      // Sort data by timestamp chronologically
-      const sortedData = [...dataArray].sort((a, b) => a.time_stamp.localeCompare(b.time_stamp));
-      
-      // Convert all data points to kWh and store with timestamps
-      const allDataPoints = sortedData.map(item => {
-        const valueKey = Object.keys(item).find(key => key !== 'time_stamp');
-        if (!valueKey) return null;
-        
-        return {
-          timestamp: item.time_stamp,
-          cumulativeWh: parseFloat(item[valueKey]) || 0,
-          cumulativeKwh: (parseFloat(item[valueKey]) || 0) / 1000
-        };
-      }).filter(item => item !== null);
+              if (energyData.result_code === "1" && energyData.result_data) {
+                const psKeyData = Object.keys(energyData.result_data)[0];
+                if (psKeyData) {
+                  const dataPoint = Object.keys(energyData.result_data[psKeyData])[0];
+                  const dataArray = energyData.result_data[psKeyData][dataPoint];
 
-      console.log(`Inverter ${inverterId} - Total data points:`, allDataPoints.length);
-      
-      // Calculate daily energy from cumulative values (like in CombinedAreaChart)
-      let previousCumulativeKwh = 0;
-      
-      allDataPoints.forEach((currentPoint, idx) => {
-        // Skip the first point as we need previous day to calculate
-        if (idx === 0) {
-          previousCumulativeKwh = currentPoint.cumulativeKwh;
-          return;
-        }
+                  if (dataArray && Array.isArray(dataArray)) {
+                    // Sort data by timestamp chronologically
+                    const sortedData = [...dataArray].sort((a, b) => a.time_stamp.localeCompare(b.time_stamp));
 
-        // Calculate daily energy = current cumulative - previous cumulative
-        const dailyKwh = Math.max(0, currentPoint.cumulativeKwh - previousCumulativeKwh);
-        
-        // Only include if it's within our selected date range
-        const itemDate = currentPoint.timestamp.slice(0, 8);
-        const startStr = dateRange.startDate.replace(/-/g, '');
-        const endStr = dateRange.endDate.replace(/-/g, '');
-        
-        if (itemDate >= startStr && itemDate <= endStr) {
-          dailyData.push({
-            date: currentPoint.timestamp,
-            dailyKwh: Number(dailyKwh.toFixed(2)),
-            cumulativeKwh: currentPoint.cumulativeKwh,
-            previousCumulativeKwh: previousCumulativeKwh
-          });
-          
-          // Add to total
-          totalKwh += dailyKwh;
-        }
-        
-        previousCumulativeKwh = currentPoint.cumulativeKwh;
-      });
+                    // Convert all data points to kWh and store with timestamps
+                    const allDataPoints = sortedData.map(item => {
+                      const valueKey = Object.keys(item).find(key => key !== 'time_stamp');
+                      if (!valueKey) return null;
 
-      console.log(`Inverter ${inverterId} - Daily data points in range:`, dailyData.length);
-      console.log(`Inverter ${inverterId} - Total kWh:`, totalKwh.toFixed(2));
-    }
-  }
-} else {
-  throw new Error(energyData.result_msg || 'Invalid energy data');
-}
+                      return {
+                        timestamp: item.time_stamp,
+                        cumulativeWh: parseFloat(item[valueKey]) || 0,
+                        cumulativeKwh: (parseFloat(item[valueKey]) || 0) / 1000
+                      };
+                    }).filter(item => item !== null);
+
+                    console.log(`Inverter ${inverterId} - Total data points:`, allDataPoints.length);
+
+                    // Calculate daily energy from cumulative values (like in CombinedAreaChart)
+                    let previousCumulativeKwh = 0;
+
+                    allDataPoints.forEach((currentPoint, idx) => {
+                      // Skip the first point as we need previous day to calculate
+                      if (idx === 0) {
+                        previousCumulativeKwh = currentPoint.cumulativeKwh;
+                        return;
+                      }
+
+                      // Calculate daily energy = current cumulative - previous cumulative
+                      const dailyKwh = Math.max(0, currentPoint.cumulativeKwh - previousCumulativeKwh);
+
+                      // Only include if it's within our selected date range
+                      const itemDate = currentPoint.timestamp.slice(0, 8);
+                      const startStr = dateRange.startDate.replace(/-/g, '');
+                      const endStr = dateRange.endDate.replace(/-/g, '');
+
+                      if (itemDate >= startStr && itemDate <= endStr) {
+                        dailyData.push({
+                          date: currentPoint.timestamp,
+                          dailyKwh: Number(dailyKwh.toFixed(2)),
+                          cumulativeKwh: currentPoint.cumulativeKwh,
+                          previousCumulativeKwh: previousCumulativeKwh
+                        });
+
+                        // Add to total
+                        totalKwh += dailyKwh;
+                      }
+
+                      previousCumulativeKwh = currentPoint.cumulativeKwh;
+                    });
+
+                    console.log(`Inverter ${inverterId} - Daily data points in range:`, dailyData.length);
+                    console.log(`Inverter ${inverterId} - Total kWh:`, totalKwh.toFixed(2));
+                  }
+                }
+              } else {
+                throw new Error(energyData.result_msg || 'Invalid energy data');
+              }
 
               const avgDailyKwh = daysInRange > 0 ? totalKwh / daysInRange : 0;
               const specYield = inverter.capacity > 0 ? avgDailyKwh / inverter.capacity : 0;
@@ -768,7 +748,9 @@ if (energyData.result_code === "1" && energyData.result_data) {
         setFetchProgress({ current: currentProg, total: selectedInverters.length });
 
         // Update performance data progressively
-        setPerformanceData([...results]);
+        // setPerformanceData([...results]);
+
+        
 
         // Add delay between batches to avoid rate limiting
         if (i + batchSize < selectedInverters.length) {
@@ -776,6 +758,7 @@ if (energyData.result_code === "1" && energyData.result_data) {
         }
       }
 
+      setPerformanceData(results);
       // Cache PS keys
       setCachedData(CACHE_KEYS.PS_KEYS, psKeyCache);
 
@@ -816,189 +799,79 @@ if (energyData.result_code === "1" && energyData.result_data) {
     }
   }, [localToken, token, selectedInverters, inverters, dateRange, formatDateForAPI, calculateDaysInRange, showToast, clearToken, handleAutoLogin]);
 
-  // SYNC TO GOOGLE SHEETS IN CSV FORMAT
-//   const handleSyncCSVFormat = useCallback(async () => {
-//     if (performanceData.length === 0) {
-//       showToast("No performance data available to sync", "error");
-//       return { success: false };
-//     }
 
-//     setSyncLoading(true);
-//     showToast("Syncing data in CSV format to Google Sheets...", "info");
+  const handleSyncCSVFormat = useCallback(async () => {
+    if (performanceData.length === 0) {
+      showToast("No performance data available to sync", "error");
+      return { success: false };
+    }
 
-//     try {
-//       const syncData = [];
-//       const now = new Date();
+    setSyncLoading(true);
+    showToast("Syncing data to Supabase...", "info");
 
-//       // Format dates as dd/mm/yyyy for the header
-//       const formattedStartDate = formatDateToDDMMYYYY(dateRange.startDate);
-//       const formattedEndDate = formatDateToDDMMYYYY(dateRange.endDate);
+    try {
+      const syncData = [];
 
-//       // For each inverter, prepare data in CSV format
-//       performanceData.forEach(item => {
-//         if (!item.error) { // Only sync successful data
-//           syncData.push({
-//             serialNo: item.serialNo || `S${item.id}`,
-//             inverterId: item.inverterId.trim(),
-//             beneficiaryName: item.beneficiaryName.trim(),
-//             capacity: item.capacity,
-//             totalKwh: item.totalKwh,
-//             avgDailyKwh: item.avgDailyKwh,
-//             specYield: item.specYield,
-//             daysInRange: item.daysInRange || calculateDaysInRange(),
-//             lifetimeGeneration: item.lifetimeGeneration || 0
-//           });
-//         }
-//       });
+      const formattedStartDate = formatDateToDDMMYYYY(dateRange.startDate);
+      const formattedEndDate = formatDateToDDMMYYYY(dateRange.endDate);
 
-//       if (syncData.length === 0) {
-//         throw new Error("No valid data to sync (all records have errors)");
-//       }
+      performanceData.forEach(item => {
+        if (!item.error) {
+          syncData.push({
+            serial: item.serialNo || null,
+            inverter: item.inverterId.trim(),
+            beneficiary: item.beneficiaryName.trim(),
+            capacity: item.capacity,
+            total_kwh: item.totalKwh,
+            avg_daily: item.avgDailyKwh,
+            spec_yield: item.specYield,
+            days: item.daysInRange || calculateDaysInRange(),
+            lifetime: item.lifetimeGeneration || 0,
+            month: `${formattedStartDate} - ${formattedEndDate}`, // monthly range
+            log_date: new Date().toISOString().split("T")[0]
+          });
+        }
+      });
 
-
-
-//       const jsonData = JSON.stringify(syncData);
-
-//     //   const response = await fetch(GOOGLE_SCRIPT_URL, {
-//     //     method: 'POST',
-//     //     headers: {
-//     //       'Content-Type': 'application/x-www-form-urlencoded',
-//     //       'Accept': 'application/json'
-//     //     },
-//     //     body: new URLSearchParams({
-//     //       action: 'syncCSVFormat',
-//     //       sheetName: 'Monthly_Performance_Logs',
-//     //       dateRangeStart: formattedStartDate,
-//     //       dateRangeEnd: formattedEndDate,
-//     //       data: JSON.stringify(syncData)
-//     //     }).toString()
-//     //   });
-
-//     const response = await fetch(GOOGLE_SCRIPT_URL, {
-//   method: 'POST',
-//   headers: {
-//     'Content-Type': 'application/x-www-form-urlencoded',
-//     'Accept': 'application/json'
-//   },
-//   body: new URLSearchParams({
-//     action: 'syncMonthlyReport',  // Changed from syncCSVFormat
-//     sheetName: 'Monthly_Performance_Logs',  // Changed sheet name
-//     dateRangeStart: formattedStartDate,
-//     dateRangeEnd: formattedEndDate,
-//     data: JSON.stringify(syncData)
-//   }).toString()
-// });
-
-//       if (!response.ok) {
-//         throw new Error(`HTTP error! status: ${response.status}`);
-//       }
-
-//       const result = await response.json();
-
-
-//       if (result.success) {
-//         const syncInfo = {
-//           lastSync: new Date(),
-//           count: result.newRows + result.updatedRows,
-//           totalRows: result.totalRows,
-//           timestamp: result.timestamp,
-//           format: 'csv'
-//         };
-//         setSyncStatus(syncInfo);
-//         setCachedData(CACHE_KEYS.SYNC_INFO, JSON.stringify(syncInfo));
-//         setCachedData(CACHE_KEYS.LAST_CSV_SYNC, Date.now().toString());
-
-//         let message = `✓ Synced ${syncData.length} records in CSV format`;
-//         if (result.newRows > 0) message += ` (${result.newRows} new)`;
-//         if (result.updatedRows > 0) message += ` (${result.updatedRows} updated)`;
-
-//         showToast(message, "success", 6000);
-//         return { success: true };
-//       } else {
-//         throw new Error(result.error || result.message || "Sync failed");
-//       }
-//     } catch (err) {
-
-//       showToast(`CSV Sync Failed: ${err.message}`, "error", 8000);
-//       return { success: false, error: err.message };
-//     } finally {
-//       setSyncLoading(false);
-//     }
-//   }, [performanceData, dateRange, calculateDaysInRange, showToast]);
-
-
-const handleSyncCSVFormat = useCallback(async () => {
-  if (performanceData.length === 0) {
-    showToast("No performance data available to sync", "error");
-    return { success: false };
-  }
-
-  setSyncLoading(true);
-  showToast("Syncing data to Supabase...", "info");
-
-  try {
-    const syncData = [];
-
-    const formattedStartDate = formatDateToDDMMYYYY(dateRange.startDate);
-    const formattedEndDate = formatDateToDDMMYYYY(dateRange.endDate);
-
-    performanceData.forEach(item => {
-      if (!item.error) {
-        syncData.push({
-          serial: item.serialNo || null,
-          inverter: item.inverterId.trim(),
-          beneficiary: item.beneficiaryName.trim(),
-          capacity: item.capacity,
-          total_kwh: item.totalKwh,
-          avg_daily: item.avgDailyKwh,
-          spec_yield: item.specYield,
-          days: item.daysInRange || calculateDaysInRange(),
-          lifetime: item.lifetimeGeneration || 0,
-          month: `${formattedStartDate} - ${formattedEndDate}`, // monthly range
-          log_date: new Date().toISOString().split("T")[0]
-        });
+      if (syncData.length === 0) {
+        throw new Error("No valid data to sync (all records have errors)");
       }
-    });
 
-    if (syncData.length === 0) {
-      throw new Error("No valid data to sync (all records have errors)");
+      // 🔥 Supabase Insert
+      const { data, error } = await supabase
+        .from("Monthly_Performance_Logs")
+        .insert(syncData);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // ✅ Same success logic (minimal change)
+      const syncInfo = {
+        lastSync: new Date(),
+        count: syncData.length,
+        totalRows: syncData.length,
+        timestamp: new Date(),
+        format: 'supabase'
+      };
+
+      setSyncStatus(syncInfo);
+      setCachedData(CACHE_KEYS.SYNC_INFO, JSON.stringify(syncInfo));
+      setCachedData(CACHE_KEYS.LAST_CSV_SYNC, Date.now().toString());
+
+      showToast(`✓ Synced ${syncData.length} records to Supabase`, "success", 6000);
+
+      return { success: true };
+
+    } catch (err) {
+      showToast(`Sync Failed: ${err.message}`, "error", 8000);
+      return { success: false, error: err.message };
+    } finally {
+      setSyncLoading(false);
     }
+  }, [performanceData, dateRange, calculateDaysInRange, showToast]);
 
-    // 🔥 Supabase Insert
-    const { data, error } = await supabase
-      .from("Monthly_Performance_Logs")
-      .insert(syncData);
 
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    // ✅ Same success logic (minimal change)
-    const syncInfo = {
-      lastSync: new Date(),
-      count: syncData.length,
-      totalRows: syncData.length,
-      timestamp: new Date(),
-      format: 'supabase'
-    };
-
-    setSyncStatus(syncInfo);
-    setCachedData(CACHE_KEYS.SYNC_INFO, JSON.stringify(syncInfo));
-    setCachedData(CACHE_KEYS.LAST_CSV_SYNC, Date.now().toString());
-
-    showToast(`✓ Synced ${syncData.length} records to Supabase`, "success", 6000);
-
-    return { success: true };
-
-  } catch (err) {
-    showToast(`Sync Failed: ${err.message}`, "error", 8000);
-    return { success: false, error: err.message };
-  } finally {
-    setSyncLoading(false);
-  }
-}, [performanceData, dateRange, calculateDaysInRange, showToast]);
-
-  
 
   // Store handleSyncCSVFormat in ref so it can be used in useEffect
   useEffect(() => {
@@ -1026,6 +899,8 @@ const handleSyncCSVFormat = useCallback(async () => {
       selectedInverters: [...selectedInverters].sort()
     };
 
+    
+
     const paramsChanged =
       currentParams.dateRange.startDate !== lastFetchedParamsRef.current.dateRange.startDate ||
       currentParams.dateRange.endDate !== lastFetchedParamsRef.current.dateRange.endDate ||
@@ -1036,9 +911,12 @@ const handleSyncCSVFormat = useCallback(async () => {
         fetchPerformanceData();
       }, 500); // Increased debounce for better performance
       return () => clearTimeout(timeoutId);
+
+     
     }
   }, [localToken, token, inverters.length, selectedInverters, dateRange, performanceData.length, loading.inverters, loading.data, fetchPerformanceData, isTokenExpired, handleAutoLogin]);
 
+  
   // Handle inverter selection
   const toggleInverterSelection = useCallback((inverterId) => {
     if (selectedInverters.includes(inverterId)) {
@@ -1114,77 +992,38 @@ const handleSyncCSVFormat = useCallback(async () => {
   }, [filteredData]);
 
 
-  
 
   // Handle date preset
-  // const applyDatePreset = useCallback((preset) => {
-  //   const end = new Date();
-  //   const start = new Date();
+  const applyDatePreset = useCallback((preset) => {
+    const end = new Date();
+    const start = new Date();
 
-  //   switch (preset) {
-  //     case 'week':
-  //       start.setDate(start.getDate() - 7);
-  //       break;
-  //     case '2weeks':
-  //       start.setDate(start.getDate() - 14);
-  //       break;
-  //     case 'month':
-  //       start.setMonth(start.getMonth() - 1);
-  //       break;
-  //     case '3months':
-  //       start.setMonth(start.getMonth() - 3);
-  //       break;
-  //     default:
-  //       start.setDate(start.getDate() - 7);
-  //   }
+    switch (preset) {
+      case 'month':
+        start.setMonth(start.getMonth() - 1);
+        break;
+      // case '3months':
+      //   start.setMonth(start.getMonth() - 3);
+      //   break;
+      default:
+        start.setMonth(start.getMonth() - 1); // Default to 30 days
+    }
 
-  //   const formatDate = (date) => {
-  //     const year = date.getFullYear();
-  //     const month = String(date.getMonth() + 1).padStart(2, '0');
-  //     const day = String(date.getDate()).padStart(2, '0');
-  //     return `${year}-${month}-${day}`;
-  //   };
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
-  //   setDateRange({
-  //     startDate: formatDate(start),
-  //     endDate: formatDate(end),
-  //     customRange: false
-  //   });
+    setDateRange({
+      startDate: formatDate(start),
+      endDate: formatDate(end),
+      customRange: false
+    });
 
-  //   showToast(`Date range set to last ${preset}`, 'info');
-  // }, [showToast]);
-
-  // Handle date preset
-const applyDatePreset = useCallback((preset) => {
-  const end = new Date();
-  const start = new Date();
-
-  switch (preset) {
-    case 'month':
-      start.setMonth(start.getMonth() - 1);
-      break;
-    // case '3months':
-    //   start.setMonth(start.getMonth() - 3);
-    //   break;
-    default:
-      start.setMonth(start.getMonth() - 1); // Default to 30 days
-  }
-
-  const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  setDateRange({
-    startDate: formatDate(start),
-    endDate: formatDate(end),
-    customRange: false
-  });
-
-  showToast(`Date range set to last ${preset}`, 'info');
-}, [showToast]);
+    showToast(`Date range set to last ${preset}`, 'info');
+  }, [showToast]);
 
 
   // Export to CSV with dd/mm/yyyy format
@@ -1263,67 +1102,67 @@ const applyDatePreset = useCallback((preset) => {
 
 
   // WhatsApp alert for low generation
-const sendLowGenerationAlerts = useCallback(async () => {
-  const lowPerformingInverters = filteredData.filter(item => 
-    !item.error && item.specYield < 2.5
-  );
+  const sendLowGenerationAlerts = useCallback(async () => {
+    const lowPerformingInverters = filteredData.filter(item =>
+      !item.error && item.specYield < 2.5
+    );
 
-  if (lowPerformingInverters.length === 0) {
-    showToast("No low performing inverters found (Specific Yield < 2.5)", "info");
-    return;
-  }
-
-  setSyncLoading(true);
-  showToast(`Preparing WhatsApp alerts for ${lowPerformingInverters.length} beneficiaries...`, "info");
-
-  try {
-    // Format month for logging (YYYY-MM)
-    const month = dateRange.startDate.substring(0, 7);
-    
-    const alertData = lowPerformingInverters.map(item => ({
-      beneficiaryName: item.beneficiaryName,
-      inverterId: item.inverterId,
-      specYield: item.specYield.toFixed(3),
-      capacity: item.capacity,
-      totalKwh: item.totalKwh.toFixed(2),
-      message: `Dear ${item.beneficiaryName},\n\nYour solar plant generation for ${formatDateToDDMMYYYY(dateRange.startDate)} to ${formatDateToDDMMYYYY(dateRange.endDate)} is below expected levels.\n\nAverage generation: ${item.specYield.toFixed(3)} kWh/kW\nTotal Energy: ${item.totalKwh.toFixed(2)} kWh\n\nOur team will provide a free cleaning service to improve performance.\nPlease watch the cleaning guide video below:\n[Video Link]`
-    }));
-
-    // Send to Google Apps Script for logging
-    const response = await fetch(GOOGLE_SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        action: 'sendWhatsAppAlerts',
-        data: JSON.stringify(alertData),
-        month: month,
-        dateRangeStart: formatDateToDDMMYYYY(dateRange.startDate),
-        dateRangeEnd: formatDateToDDMMYYYY(dateRange.endDate)
-      }).toString()
-    });
-
-    const result = await response.json();
-    
-    if (result.success) {
-      showToast(`✓ WhatsApp alerts logged for ${lowPerformingInverters.length} beneficiaries`, "success");
-      
-      // Show which inverters need attention
-      console.log('Low performing inverters:', lowPerformingInverters.map(i => ({
-        name: i.beneficiaryName,
-        specYield: i.specYield
-      })));
-    } else {
-      throw new Error(result.error || 'Failed to send alerts');
+    if (lowPerformingInverters.length === 0) {
+      showToast("No low performing inverters found (Specific Yield < 2.5)", "info");
+      return;
     }
-  } catch (error) {
-    console.error('WhatsApp alert error:', error);
-    showToast(`⚠ Failed to send WhatsApp alerts: ${error.message}`, 'error');
-  } finally {
-    setSyncLoading(false);
-  }
-}, [filteredData, dateRange, showToast]);
+
+    setSyncLoading(true);
+    showToast(`Preparing WhatsApp alerts for ${lowPerformingInverters.length} beneficiaries...`, "info");
+
+    try {
+      // Format month for logging (YYYY-MM)
+      const month = dateRange.startDate.substring(0, 7);
+
+      const alertData = lowPerformingInverters.map(item => ({
+        beneficiaryName: item.beneficiaryName,
+        inverterId: item.inverterId,
+        specYield: item.specYield.toFixed(3),
+        capacity: item.capacity,
+        totalKwh: item.totalKwh.toFixed(2),
+        message: `Dear ${item.beneficiaryName},\n\nYour solar plant generation for ${formatDateToDDMMYYYY(dateRange.startDate)} to ${formatDateToDDMMYYYY(dateRange.endDate)} is below expected levels.\n\nAverage generation: ${item.specYield.toFixed(3)} kWh/kW\nTotal Energy: ${item.totalKwh.toFixed(2)} kWh\n\nOur team will provide a free cleaning service to improve performance.\nPlease watch the cleaning guide video below:\n[Video Link]`
+      }));
+
+      // Send to Google Apps Script for logging
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'sendWhatsAppAlerts',
+          data: JSON.stringify(alertData),
+          month: month,
+          dateRangeStart: formatDateToDDMMYYYY(dateRange.startDate),
+          dateRangeEnd: formatDateToDDMMYYYY(dateRange.endDate)
+        }).toString()
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showToast(`✓ WhatsApp alerts logged for ${lowPerformingInverters.length} beneficiaries`, "success");
+
+        // Show which inverters need attention
+        console.log('Low performing inverters:', lowPerformingInverters.map(i => ({
+          name: i.beneficiaryName,
+          specYield: i.specYield
+        })));
+      } else {
+        throw new Error(result.error || 'Failed to send alerts');
+      }
+    } catch (error) {
+      console.error('WhatsApp alert error:', error);
+      showToast(`⚠ Failed to send WhatsApp alerts: ${error.message}`, 'error');
+    } finally {
+      setSyncLoading(false);
+    }
+  }, [filteredData, dateRange, showToast]);
 
   // Render chart
   const renderChart = useCallback(() => {
@@ -1522,6 +1361,11 @@ const sendLowGenerationAlerts = useCallback(async () => {
     showToast('Logged out successfully', 'info');
   }, [clearToken, showToast]);
 
+  console.log("AUTO FETCH RUNNING");
+console.log("performanceData", performanceData);
+console.log("filteredData", filteredData);
+console.log("selectedInverters", selectedInverters.length);
+
 
   return (
     <AdminLayout>
@@ -1699,7 +1543,23 @@ const sendLowGenerationAlerts = useCallback(async () => {
                   )}
                 </div>
 
-                {/* <div className="flex items-center gap-3 flex-wrap">
+
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* WhatsApp Alert Button - New */}
+                  <button
+                    onClick={sendLowGenerationAlerts}
+                    disabled={syncLoading || filteredData.filter(item => item.specYield < 2.5).length === 0}
+                    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${syncLoading || filteredData.filter(item => item.specYield < 2.5).length === 0
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse'
+                      }`}
+                    title="Send WhatsApp alerts for low performing inverters (Specific Yield < 2.5)"
+                  >
+                    <Bell className={`w-4 h-4 ${syncLoading ? 'animate-pulse' : ''}`} />
+                    {syncLoading ? 'Sending...' : `Alert Low Yield (${filteredData.filter(item => item.specYield < 2.5).length})`}
+                  </button>
+
                   <button
                     onClick={exportToCSV}
                     disabled={filteredData.length === 0}
@@ -1712,6 +1572,7 @@ const sendLowGenerationAlerts = useCallback(async () => {
                     Export CSV
                   </button>
 
+                  {/* Sync Buttons */}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleSyncCSVFormat}
@@ -1720,10 +1581,10 @@ const sendLowGenerationAlerts = useCallback(async () => {
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         : 'bg-teal-600 hover:bg-teal-700 text-white'
                         }`}
-                      title="Sync in CSV format (weekly report)"
+                      title="Sync monthly report to Google Sheets"
                     >
                       <FileText className={`w-4 h-4 ${syncLoading ? 'animate-pulse' : ''}`} />
-                      {syncLoading ? 'Syncing...' : 'Upload CSV to Google Sheet'}
+                      {syncLoading ? 'Syncing...' : 'Upload to Database'}
                     </button>
                   </div>
 
@@ -1738,64 +1599,7 @@ const sendLowGenerationAlerts = useCallback(async () => {
                     <RefreshCw className={`w-4 h-4 ${loading.data ? 'animate-spin' : ''}`} />
                     {loading.data ? 'Refreshing...' : 'Refresh Data'}
                   </button>
-                </div> */}
-
-                <div className="flex items-center gap-3 flex-wrap">
-  {/* WhatsApp Alert Button - New */}
-  <button
-    onClick={sendLowGenerationAlerts}
-    disabled={syncLoading || filteredData.filter(item => item.specYield < 2.5).length === 0}
-    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${
-      syncLoading || filteredData.filter(item => item.specYield < 2.5).length === 0
-        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-        : 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse'
-    }`}
-    title="Send WhatsApp alerts for low performing inverters (Specific Yield < 2.5)"
-  >
-    <Bell className={`w-4 h-4 ${syncLoading ? 'animate-pulse' : ''}`} />
-    {syncLoading ? 'Sending...' : `Alert Low Yield (${filteredData.filter(item => item.specYield < 2.5).length})`}
-  </button>
-
-  <button
-    onClick={exportToCSV}
-    disabled={filteredData.length === 0}
-    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${filteredData.length === 0
-      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-      : 'bg-green-600 hover:bg-green-700 text-white'
-      }`}
-  >
-    <DownloadCloud className="w-4 h-4" />
-    Export CSV
-  </button>
-
-  {/* Sync Buttons */}
-  <div className="flex items-center gap-2">
-    <button
-      onClick={handleSyncCSVFormat}
-      disabled={syncLoading || filteredData.length === 0 || (!localToken && !token)}
-      className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${syncLoading || filteredData.length === 0 || (!localToken && !token)
-        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-        : 'bg-teal-600 hover:bg-teal-700 text-white'
-        }`}
-      title="Sync monthly report to Google Sheets"
-    >
-      <FileText className={`w-4 h-4 ${syncLoading ? 'animate-pulse' : ''}`} />
-      {syncLoading ? 'Syncing...' : 'Upload to Google Sheet'}
-    </button>
-  </div>
-
-  <button
-    onClick={() => fetchPerformanceData(true)}
-    disabled={loading.data || (!localToken && !token)}
-    className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${loading.data || (!localToken && !token)
-      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-      : 'bg-blue-600 hover:bg-blue-700 text-white'
-      }`}
-  >
-    <RefreshCw className={`w-4 h-4 ${loading.data ? 'animate-spin' : ''}`} />
-    {loading.data ? 'Refreshing...' : 'Refresh Data'}
-  </button>
-</div>
+                </div>
               </div>
 
               {summaryStats && (
@@ -1891,47 +1695,20 @@ const sendLowGenerationAlerts = useCallback(async () => {
                     />
                   </div>
 
-                  {/* <div>
+
+
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Quick Presets</label>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => applyDatePreset('week')}
-                        className="flex-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
-                      >
-                        Last 7 Days
-                      </button>
-                      <button
-                        onClick={() => applyDatePreset('2weeks')}
-                        className="flex-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
-                      >
-                        Last 14 Days
-                      </button>
-                      <button
                         onClick={() => applyDatePreset('month')}
-                        className="flex-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+                        className="flex-1 px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
                       >
                         Last 30 Days
                       </button>
-                    </div>
-                  </div> */}
 
-                  <div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">Quick Presets</label>
-  <div className="flex gap-2">
-    <button
-      onClick={() => applyDatePreset('month')}
-      className="flex-1 px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
-    >
-      Last 30 Days
-    </button>
-    {/* <button
-      onClick={() => applyDatePreset('3months')}
-      className="flex-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
-    >
-      Last 3 Months
-    </button> */}
-  </div>
-</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

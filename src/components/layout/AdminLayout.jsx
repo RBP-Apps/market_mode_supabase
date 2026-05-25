@@ -64,17 +64,8 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
 
   // Filter dataCategories based on user role
   const dataCategories = [
-    //{ id: "main", name: "PURAB", link: "/dashboard/data/main" },
     { id: "sales", name: "Checklist", link: "/dashboard/data/sales" },
-    // { id: "service", name: "Service", link: "/dashboard/data/service" },
-    //{ id: "account", name: "RKL", link: "/dashboard/data/account" },
-    //{ id: "warehouse", name: "REFRASYNTH", link: "/dashboard/data/warehouse" },
-    //{ id: "delegation", name: "Delegation", link: "/dashboard/data/delegation" },
-    //{ id: "purchase", name: "Slag Crusher", link: "/dashboard/data/purchase" },
-    //{ id: "director", name: "Hr", link: "/dashboard/data/director" },
-    //{ id: "managing-director", name: "PURAB", link: "/dashboard/data/managing-director" },
-    // { id: "coo", name: "COO", link: "/dashboard/data/coo" },
-    // { id: "jockey", name: "Jockey", link: "/dashboard/data/jockey" },
+    
   ]
 
   // Update the routes array with unique icons for each section

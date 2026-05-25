@@ -1,5 +1,11 @@
 import React from "react";
-import { FileText, MessageCircle, Mail, Send } from "lucide-react";
+import {
+  FileText,
+  MessageCircle,
+  Mail,
+  Send,
+  X,
+} from "lucide-react";
 
 export default function SendQuotationModal({
   showSendModal,
@@ -14,90 +20,187 @@ export default function SendQuotationModal({
   if (!showSendModal || !selectedQuotation) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 rounded-t-xl">
-          <h3 className="text-white font-semibold text-lg flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Send Quotation
-          </h3>
-        </div>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-200 animate-in zoom-in-95 duration-300">
 
-        <div className="p-6">
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm mb-2">
-              <strong>Quotation No:</strong> {selectedQuotation.enquiryNumber}
-            </p>
-            <p className="text-sm mb-2">
-              <strong>Customer:</strong> {selectedQuotation.beneficiaryName}
-            </p>
-            <p className="text-sm">
-              <strong>Contact:</strong> {selectedQuotation.contactNumber}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => handleSend("whatsapp", selectedQuotation)}
-              disabled={sendingWhatsApp || sendingEmail || sendingBoth}
-              className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sendingWhatsApp ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <MessageCircle className="h-5 w-5" />
-                  Send WhatsApp Only
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={() => handleSend("email", selectedQuotation)}
-              disabled={sendingWhatsApp || sendingEmail || sendingBoth}
-              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sendingEmail ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Mail className="h-5 w-5" />
-                  Send Email Only
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={() => handleSendBoth(selectedQuotation)}
-              disabled={sendingWhatsApp || sendingEmail || sendingBoth}
-              className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sendingBoth ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Send className="h-5 w-5" />
-                  Send Both
-                </>
-              )}
-            </button>
-          </div>
-
+        {/* Header */}
+        <div className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-6 py-5">
+          
+          {/* Close Icon */}
           <button
             onClick={() => setShowSendModal(false)}
-            className="mt-4 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            className="absolute top-4 right-4 h-10 w-10 flex items-center justify-center rounded-full bg-white/20 hover:bg-red-500 text-white transition-all duration-300 hover:rotate-90 hover:scale-110"
           >
-            Cancel
+            <X className="h-5 w-5" />
           </button>
+
+          {/* Title */}
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-white/20 rounded-2xl shadow-lg">
+              <FileText className="h-6 w-6 text-white" />
+            </div>
+
+            <div>
+              <h3 className="text-white font-bold text-2xl">
+                Send Quotation
+              </h3>
+              <p className="text-blue-100 text-sm">
+                Share quotation instantly
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-6">
+
+          {/* Quotation Info */}
+          <div className="mb-6 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-2xl p-5 shadow-sm">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-medium">
+                  Quotation No
+                </span>
+
+                <span className="font-bold text-gray-800">
+                  {selectedQuotation.enquiryNumber}
+                </span>
+              </div>
+
+              <div className="border-t border-gray-200"></div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-medium">
+                  Customer
+                </span>
+
+                <span className="font-semibold text-gray-800 text-right">
+                  {selectedQuotation.beneficiaryName}
+                </span>
+              </div>
+
+              <div className="border-t border-gray-200"></div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-medium">
+                  Contact
+                </span>
+
+                <span className="font-semibold text-gray-800">
+                  {selectedQuotation.contactNumber}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-col gap-4">
+
+            {/* First Row */}
+            <div className="grid grid-cols-2 gap-4">
+
+              {/* WhatsApp Button */}
+              <button
+                onClick={() =>
+                  handleSend("whatsapp", selectedQuotation)
+                }
+                disabled={
+                  sendingWhatsApp ||
+                  sendingEmail ||
+                  sendingBoth
+                }
+                className="group relative overflow-hidden px-4 py-4 bg-gradient-to-r from-green-500 to-green-700 text-white rounded-2xl shadow-lg hover:shadow-green-300 transition-all duration-300 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex flex-col items-center justify-center gap-2">
+                  {sendingWhatsApp ? (
+                    <>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                      <span className="font-medium text-sm">
+                        Sending...
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="h-7 w-7 group-hover:scale-110 transition-transform" />
+                      <span className="font-semibold text-sm text-center">
+                        WhatsApp
+                      </span>
+                    </>
+                  )}
+                </div>
+              </button>
+
+              {/* Email Button */}
+              <button
+                onClick={() =>
+                  handleSend("email", selectedQuotation)
+                }
+                disabled={
+                  sendingWhatsApp ||
+                  sendingEmail ||
+                  sendingBoth
+                }
+                className="group relative overflow-hidden px-4 py-4 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-2xl shadow-lg hover:shadow-blue-300 transition-all duration-300 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex flex-col items-center justify-center gap-2">
+                  {sendingEmail ? (
+                    <>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                      <span className="font-medium text-sm">
+                        Sending...
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-7 w-7 group-hover:scale-110 transition-transform" />
+                      <span className="font-semibold text-sm text-center">
+                        Email
+                      </span>
+                    </>
+                  )}
+                </div>
+              </button>
+            </div>
+
+            {/* Send Both Button */}
+            <button
+              onClick={() =>
+                handleSendBoth(selectedQuotation)
+              }
+              disabled={
+                sendingWhatsApp ||
+                sendingEmail ||
+                sendingBoth
+              }
+              className="group w-full px-5 py-4 bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-700 text-white rounded-2xl shadow-xl hover:shadow-purple-300 transition-all duration-300 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center justify-center gap-3">
+                {sendingBoth ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    <span className="font-semibold text-lg">
+                      Sending...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
+                    <span className="font-bold text-lg">
+                      Send Both
+                    </span>
+                  </>
+                )}
+              </div>
+            </button>
+
+            {/* Bottom Cancel Button */}
+            <button
+              onClick={() => setShowSendModal(false)}
+              className="mt-2 w-full px-4 py-3 bg-gradient-to-r from-red-500 to-red-700 text-white font-semibold rounded-2xl hover:scale-[1.02] hover:shadow-lg hover:shadow-red-300 transition-all duration-300"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import emailjs from "@emailjs/browser";
 import QuotationPreview from "../components/layout/QuotationPreview";
 import supabase from "../utils/supabase";
 import AdminLayout from "../components/layout/AdminLayout";
@@ -242,16 +243,68 @@ const updateSendStatus = async (enquiryNumber, sendType) => {
   }
 };
 
+  const sendWhatsApp = async (quotationData) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-quotation', {
+        body: {
+          phone: quotationData.contactNumber,
+          customerName: quotationData.beneficiaryName,
+          pdfUrl: quotationData.quotationCopy || null, // PDF document for header (optional)
+        },
+      });
+
+      console.log(data)
+console.log(error)
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("WhatsApp Send Error:", error);
+      throw error;
+    }
+  };
+
+  const sendEmail = async (quotationData) => {
+    try {
+      const templateParams = {
+        customer_name: quotationData.beneficiaryName,
+        enquiry_number: quotationData.enquiryNumber,
+        product_name: quotationData.presentLoad || "Solar System",
+        quotation_link: quotationData.quotationCopy,
+        to_email: quotationData.email || "", // Need to ensure email is available
+        reply_to: import.meta.env.VITE_USER_ACCOUNT || "sahoo@rbpindia.com",
+      };
+
+      const result = await emailjs.send(
+        import.meta.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "service_mkdtlae",
+        import.meta.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "template_quotation",
+        templateParams,
+        import.meta.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "JN3T3k1LsQ0KSOn-A"
+      );
+      return result;
+    } catch (error) {
+      console.error("Email Send Error:", error);
+      throw error;
+    }
+  };
+
   const handleSend = async (sendType, quotationData) => {
     if (sendType === 'whatsapp') setSendingWhatsApp(true);
     else if (sendType === 'email') setSendingEmail(true);
+    
     try {
+      if (sendType === 'whatsapp') {
+        await sendWhatsApp(quotationData);
+      } else if (sendType === 'email') {
+        await sendEmail(quotationData);
+      }
+
       await updateSendStatus(quotationData.enquiryNumber, sendType);
       setShowSendModal(false);
       setSelectedQuotation(null);
-      alert(`${sendType === 'whatsapp' ? 'WhatsApp' : 'Email'} status updated!`);
+      alert(`${sendType === 'whatsapp' ? 'WhatsApp' : 'Email'} sent successfully!`);
     } catch (error) {
-      alert("Error occurred. Please try again.");
+      console.error("Send Error:", error);
+      alert(`Failed to send ${sendType}. Please check your credentials.`);
     } finally {
       if (sendType === 'whatsapp') setSendingWhatsApp(false);
       else if (sendType === 'email') setSendingEmail(false);
@@ -261,13 +314,17 @@ const updateSendStatus = async (enquiryNumber, sendType) => {
   const handleSendBoth = async (quotationData) => {
     setSendingBoth(true);
     try {
-      await updateSendStatus(quotationData.enquiryNumber, "whatsapp");
-      await updateSendStatus(quotationData.enquiryNumber, "email");
+      const waPromise = sendWhatsApp(quotationData).then(() => updateSendStatus(quotationData.enquiryNumber, "whatsapp"));
+      const mailPromise = sendEmail(quotationData).then(() => updateSendStatus(quotationData.enquiryNumber, "email"));
+      
+      await Promise.all([waPromise, mailPromise]);
+
       setShowSendModal(false);
       setSelectedQuotation(null);
-      alert("WhatsApp and Email status updated!");
+      alert("WhatsApp and Email sent successfully!");
     } catch (error) {
-      alert("Error occurred. Please try again.");
+      console.error("Send Both Error:", error);
+      alert("Failed to send one or both notifications.");
     } finally {
       setSendingBoth(false);
     }

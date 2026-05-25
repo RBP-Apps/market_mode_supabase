@@ -12,7 +12,10 @@ serve(async (req) => {
     // Meta API Environment Variables
     const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('VITE_WHATSAPP_PHONE_NUMBER_ID')
     const WHATSAPP_ACCESS_TOKEN = Deno.env.get('VITE_WHATSAPP_ACCESS_TOKEN')
+
+
     const TEMPLATE_NAME = 'solar_alert_hindi' // Hardcoded based on user plan
+    const HIGH_PERFORMANCE_TEMPLATE = 'solar_congratulation_market_mode'
 
     if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
       throw new Error("Missing Meta WhatsApp API credentials in environment")
@@ -39,12 +42,27 @@ serve(async (req) => {
       return diffHours <= 24 && specYield < 3
     })
 
-    if (recentLogs.length === 0) {
-      return new Response(JSON.stringify({ message: "No recent monthly logs found in the last 24 hours. Sync script might not have run yet." }), {
-        headers: { "Content-Type": "application/json" },
-        status: 200,
-      })
-    }
+
+
+    const highPerformanceLogs = logs.filter(log => {
+  const logDate = new Date(log.created_at)
+  const now = new Date()
+  const diffHours = (now.getTime() - logDate.getTime()) / (1000 * 60 * 60)
+
+  const specYield = parseFloat(log.spec_yield) || 0
+
+  return diffHours <= 24 && specYield > 5
+})
+
+
+    if (recentLogs.length === 0 && highPerformanceLogs.length === 0) {
+  return new Response(JSON.stringify({
+    message: "No matching logs found."
+  }), {
+    headers: { "Content-Type": "application/json" },
+    status: 200,
+  })
+}
 
     // Deduplicate just in case there are multiple entries for the same inverter
     const uniqueLogs = []
@@ -61,7 +79,7 @@ serve(async (req) => {
     // 2. Fetch contact numbers from 'fms' table
     const { data: fmsData, error: fmsError } = await supabase
       .from('fms')
-      .select('inverter_id, contact_number')
+      .select('inverter_id, contact_number, need_type')
 
     if (fmsError) throw fmsError
 
@@ -97,10 +115,7 @@ serve(async (req) => {
         continue
       }
 
-      // Variables for the template
-      // {{1}} = beneficiary_name
-      // {{2}} = lifetime
-      // {{3}} = total_kwh
+    
       const beneficiaryName = String(log.beneficiary || 'ग्राहक').trim()
       const lifetimeKwh = String(log.lifetime || '0')
       const monthlyKwh = String(log.total_kwh || '0')
@@ -155,6 +170,76 @@ serve(async (req) => {
       // Small delay to prevent rate limiting from Meta API
       await new Promise(r => setTimeout(r, 100))
     }
+
+
+
+    for (const log of highPerformanceLogs) {
+
+  const inverterId = String(log.inverter).trim()
+  const phoneNumber = fmsMap.get(inverterId)
+
+  if (!phoneNumber) continue
+
+  const beneficiaryName = String(log.beneficiary || 'ग्राहक').trim()
+  const lifetimeKwh = String(log.lifetime || '0')
+  const monthlyKwh = parseFloat(log.total_kwh || 0)
+
+  const customerData = fmsData.find(
+    item => String(item.inverter_id).trim() === inverterId
+  )
+
+  const needType = customerData?.need_type || 'Residential'
+
+  const ratePerUnit = needType === 'Commercial' ? 10 : 6.5
+
+  const moneySaved = (monthlyKwh * ratePerUnit).toFixed(0)
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: phoneNumber,
+    type: "template",
+    template: {
+      name: HIGH_PERFORMANCE_TEMPLATE,
+      language: {
+        code: "hi"
+      },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: beneficiaryName },
+            { type: "text", text: lifetimeKwh },
+            { type: "text", text: monthlyKwh.toString() },
+            { type: "text", text: moneySaved }
+          ]
+        }
+      ]
+    }
+  }
+
+  try {
+    const wpRes = await fetch(metaApiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+
+    if (wpRes.ok) {
+      results.success++
+    }
+
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+
+
+
+
 
     console.log("WhatsApp sync complete.", results)
 
