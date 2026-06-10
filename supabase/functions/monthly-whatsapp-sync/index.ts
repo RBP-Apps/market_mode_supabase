@@ -21,8 +21,6 @@ serve(async (req) => {
       throw new Error("Missing Meta WhatsApp API credentials in environment")
     }
 
-    // 1. Fetch recent records from Monthly_Performance_Logs (synced in the last 24 hours)
-    // We fetch a bit more and filter in memory to ensure we only get the latest batch
     const { data: logs, error: logsError } = await supabase
       .from('Monthly_Performance_Logs')
       .select('*')
@@ -31,7 +29,6 @@ serve(async (req) => {
 
     if (logsError) throw logsError
 
-    // Filter to only include logs created in the last 24 hours AND spec_yield < 3 (so we only alert underperforming systems)
     const recentLogs = logs.filter(log => {
       const logDate = new Date(log.created_at)
       const now = new Date()
@@ -39,7 +36,7 @@ serve(async (req) => {
       
       const specYield = parseFloat(log.spec_yield) || 0
       
-      return diffHours <= 24 && specYield < 3
+      return diffHours <= 720 && specYield < 3
     })
 
 
@@ -51,7 +48,7 @@ serve(async (req) => {
 
   const specYield = parseFloat(log.spec_yield) || 0
 
-  return diffHours <= 24 && specYield > 5
+  return diffHours <= 720 && specYield > 5
 })
 
 
@@ -64,7 +61,7 @@ serve(async (req) => {
   })
 }
 
-    // Deduplicate just in case there are multiple entries for the same inverter
+    
     const uniqueLogs = []
     const seenInverters = new Set()
     for (const log of recentLogs) {
@@ -119,6 +116,7 @@ serve(async (req) => {
       const beneficiaryName = String(log.beneficiary || 'ग्राहक').trim()
       const lifetimeKwh = String(log.lifetime || '0')
       const monthlyKwh = String(log.total_kwh || '0')
+      const monthRange = String(log.month || '').trim()
 
       const payload = {
         messaging_product: "whatsapp",
@@ -135,7 +133,8 @@ serve(async (req) => {
               parameters: [
                 { type: "text", text: beneficiaryName },
                 { type: "text", text: lifetimeKwh },
-                { type: "text", text: monthlyKwh }
+                { type: "text", text: monthlyKwh },
+                { type: "text", text: monthRange }
               ]
             }
           ]
@@ -183,6 +182,8 @@ serve(async (req) => {
   const beneficiaryName = String(log.beneficiary || 'ग्राहक').trim()
   const lifetimeKwh = String(log.lifetime || '0')
   const monthlyKwh = parseFloat(log.total_kwh || 0)
+  const monthRange = String(log.month || '').trim()
+  
 
   const customerData = fmsData.find(
     item => String(item.inverter_id).trim() === inverterId
@@ -210,7 +211,8 @@ serve(async (req) => {
             { type: "text", text: beneficiaryName },
             { type: "text", text: lifetimeKwh },
             { type: "text", text: monthlyKwh.toString() },
-            { type: "text", text: moneySaved }
+            { type: "text", text: moneySaved },
+            { type: "text", text: monthRange },
           ]
         }
       ]

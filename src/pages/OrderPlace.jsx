@@ -379,6 +379,8 @@ useEffect(() => {
     setOrderForm((prev) => ({ ...prev, [field]: value }))
   }, [])
 
+  
+
 const handleOrderSubmit = async () => {
   if (!orderForm.module || !orderForm.inverter) {
     alert("Please fill Module and Inverter")
@@ -399,9 +401,17 @@ const handleOrderSubmit = async () => {
 
     const isEdit = !isEmpty(selectedRecord.actualDate)
 
+    // const actualDate = isEdit
+    //   ? selectedRecord.actualDate
+    //   : new Date().toISOString()
+
+    
+
     const actualDate = isEdit
-      ? selectedRecord.actualDate
-      : new Date().toISOString()
+  ? selectedRecord.actualDate.split("/").reverse().join("-")
+  : new Date().toISOString().split("T")[0]
+
+    console.log("selectedRecord.actualDate =", selectedRecord.actualDate)
 
     const orderCopyUrl = fileUploads.orderCopy.url
 

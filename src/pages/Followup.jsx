@@ -55,35 +55,58 @@ function FollowUpPage() {
   // Debounced search term for better performance
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
+  // const formatTimestamp = useCallback(() => {
+  //   const now = new Date()
+  //   const day = now.getDate().toString().padStart(2, "0")
+  //   const month = (now.getMonth() + 1).toString().padStart(2, "0")
+  //   const year = now.getFullYear()
+  //   const hours = now.getHours().toString().padStart(2, "0")
+  //   const minutes = now.getMinutes().toString().padStart(2, "0")
+  //   const seconds = now.getSeconds().toString().padStart(2, "0")
+  //   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
+  // }, [])
+
+
+
   const formatTimestamp = useCallback(() => {
-    const now = new Date()
-    const day = now.getDate().toString().padStart(2, "0")
-    const month = (now.getMonth() + 1).toString().padStart(2, "0")
-    const year = now.getFullYear()
-    const hours = now.getHours().toString().padStart(2, "0")
-    const minutes = now.getMinutes().toString().padStart(2, "0")
-    const seconds = now.getSeconds().toString().padStart(2, "0")
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
-  }, [])
+  return new Date().toISOString().split("T")[0]
+}, [])
+
+
+
 
   // Normalize any date value (ISO string, Date object, etc.) to DD/MM/YYYY HH:mm:ss
+  // const normalizeTimestamp = useCallback((value) => {
+  //   if (!value) return ""
+  //   // Already in correct DD/MM/YYYY HH:mm:ss format
+  //   if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(value)) {
+  //     return value
+  //   }
+  //   // Convert from ISO / Date object to local DD/MM/YYYY HH:mm:ss
+  //   const date = new Date(value)
+  //   if (isNaN(date.getTime())) return value
+  //   const day = date.getDate().toString().padStart(2, "0")
+  //   const month = (date.getMonth() + 1).toString().padStart(2, "0")
+  //   const year = date.getFullYear()
+  //   const hours = date.getHours().toString().padStart(2, "0")
+  //   const minutes = date.getMinutes().toString().padStart(2, "0")
+  //   const seconds = date.getSeconds().toString().padStart(2, "0")
+  //   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
+  // }, [])
+
+
   const normalizeTimestamp = useCallback((value) => {
-    if (!value) return ""
-    // Already in correct DD/MM/YYYY HH:mm:ss format
-    if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(value)) {
-      return value
-    }
-    // Convert from ISO / Date object to local DD/MM/YYYY HH:mm:ss
-    const date = new Date(value)
-    if (isNaN(date.getTime())) return value
-    const day = date.getDate().toString().padStart(2, "0")
-    const month = (date.getMonth() + 1).toString().padStart(2, "0")
-    const year = date.getFullYear()
-    const hours = date.getHours().toString().padStart(2, "0")
-    const minutes = date.getMinutes().toString().padStart(2, "0")
-    const seconds = date.getSeconds().toString().padStart(2, "0")
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
-  }, [])
+  if (!value) return null
+
+  const date = new Date(value)
+
+  if (isNaN(date.getTime())) return null
+
+  return date.toISOString().split("T")[0]
+}, [])
+
+
+
 
   const formatDateForInput = useCallback((dateString) => {
     if (!dateString) return ""
@@ -102,14 +125,25 @@ function FollowUpPage() {
     return `${year}-${month}-${day}`
   }, [])
 
+  // const formatDateForStorage = useCallback((dateString) => {
+  //   if (!dateString) return ""
+  //   const date = new Date(dateString)
+  //   const day = date.getDate().toString().padStart(2, "0")
+  //   const month = (date.getMonth() + 1).toString().padStart(2, "0")
+  //   const year = date.getFullYear()
+  //   return `${day}/${month}/${year}`
+  // }, [])
+
+
   const formatDateForStorage = useCallback((dateString) => {
-    if (!dateString) return ""
-    const date = new Date(dateString)
-    const day = date.getDate().toString().padStart(2, "0")
-    const month = (date.getMonth() + 1).toString().padStart(2, "0")
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }, [])
+  if (!dateString) return null
+
+  const date = new Date(dateString)
+
+  if (isNaN(date.getTime())) return null
+
+  return date.toISOString().split("T")[0]
+}, [])
 
   const isEmpty = useCallback((value) => {
     return value === null || value === undefined || (typeof value === "string" && value.trim() === "")
@@ -150,81 +184,6 @@ const fetchDropdownValues = useCallback(async () => {
   }
 }, [])
 
-
-//   // Optimized data fetching
-// const fetchSheetData = useCallback(async () => {
-//   try {
-//     setLoading(true)
-//     setError(null)
-
-//     // fetch dropdown + data parallel
-//     await Promise.all([
-//       fetchDropdownValues(),
-
-//       (async () => {
-//         const { data, error } = await supabase
-//           .from("fms")
-//           .select("*")
-
-//         if (error) throw error
-
-//         const pending = []
-//         const history = []
-
-//         data.forEach((row) => {
-//           const enquiryNumber = row.enquiry_number || ""
-
-//           if (!enquiryNumber) return
-
-//           const rowData = {
-//             _id: `enquiry_${enquiryNumber}_${row.id}`,
-//             _rowIndex: row.id, // अब id use होगा
-//             _enquiryNumber: enquiryNumber,
-
-//             enquiryNumber: row.enquiry_number || "",
-//             beneficiaryName: row.beneficiary_name || "",
-//             address: row.address || "",
-//             villageBlock: row.village_block || "",
-//             district: row.district || "",
-//             contactNumber: row.contact_number || "",
-//             aadharCard: row.aadhar_card || "",
-//             addressProof: row.address_proof || "",
-//             surveyorName: row.surveyor_name || "",
-//             surveyorContact: row.surveyor_contact || "",
-//             quotationNumber: row.reference_no || "",
-//             valueOfQuotation: row.amount || "",
-//             quotationCopy: row.url || "",
-
-//             // ✅ Follow-up fields (IMPORTANT CHANGE)
-//             actual: row.actual_3 || "",
-//             whatDidCustomerSay: row.customer_feedback || "",
-//             stage: row.stage || "",
-//             nextDateOfCall: row.next_call_date || "",
-//             valueOfOrder: row.order_value || "",
-//           }
-
-//           console.log("aadharCard:", row.aadharCard)
-
-//           const isColumnEmpty = !row.actual_3
-
-//           if (isColumnEmpty) {
-//             pending.push(rowData)
-//           } else {
-//             history.push(rowData)
-//           }
-//         })
-
-//         setPendingData(pending)
-//         setHistoryData(history)
-//         setLoading(false)
-//       })(),
-//     ])
-//   } catch (error) {
-//     console.error("Error fetching data:", error)
-//     setError("Failed to load Follow-Up data: " + error.message)
-//     setLoading(false)
-//   }
-// }, [fetchDropdownValues])
 
 
 const fetchSheetData = useCallback(async () => {
