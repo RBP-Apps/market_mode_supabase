@@ -883,6 +883,7 @@ export default function BeneficiaryForm() {
                           <tr>
                             <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Actions</th>
                             <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Number</th>
+                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Created Date</th>
                             <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Name</th>
                             <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Vender Name</th>
                             <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Address</th>
@@ -916,6 +917,7 @@ export default function BeneficiaryForm() {
                                 </button>
                               </td>
                               <td className="px-2 py-2  text-xs font-medium text-purple-600">{row.enquiryNumber}</td>
+                              <td className="px-2 py-2  text-xs font-medium text-purple-600">{row.timestamp}</td>
                               <td className="px-2 py-2  text-xs text-gray-900">{row.beneficiaryName}</td>
                               <td className="px-2 py-2  text-xs text-gray-900">{row.vendorName}</td>
                               <td className="px-2 py-2 text-xs text-gray-900 max-w-xs truncate">{row.address}</td>

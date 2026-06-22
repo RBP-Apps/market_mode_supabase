@@ -257,7 +257,7 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
             </div>
 
             {/* Layout using Tables for Absolute Positioning Confidence */}
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "6px 0", marginLeft: "-6px", width: "calc(100% + 12px)", marginBottom: "5px" }}>
+            <table style={{ borderCollapse: "separate", borderSpacing: "6px 0", marginLeft: "-6px", width: "calc(100% + 12px)", marginBottom: "5px" }}>
               <tbody>
                 <tr>
                   <td style={{ verticalAlign: "top", width: "50%", padding: "0" }}>
@@ -296,7 +296,7 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
             </table>
 
             {/* Buyer & Terms */}
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "6px 0", marginLeft: "-6px", width: "calc(100% + 12px)", marginBottom: "5px" }}>
+            <table style={{ borderCollapse: "separate", borderSpacing: "6px 0", marginLeft: "-6px", width: "calc(100% + 12px)", marginBottom: "5px" }}>
               <tbody>
                 <tr>
                   <td style={{ verticalAlign: "top", width: "50%", padding: "0" }}>
@@ -379,7 +379,7 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
             </table>
 
             {/* General Terms & Price Summary */}
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "6px 0", marginLeft: "-6px", width: "calc(100% + 12px)", marginBottom: "5px" }}>
+            <table style={{ borderCollapse: "separate", borderSpacing: "6px 0", marginLeft: "-6px", width: "calc(100% + 12px)", marginBottom: "5px" }}>
               <tbody>
                 <tr>
                   <td style={{ verticalAlign: "top", width: "55%", padding: "0" }}>
