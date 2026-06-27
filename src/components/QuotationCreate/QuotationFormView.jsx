@@ -1,10 +1,11 @@
 import React from "react";
-import { ArrowLeft, FileSignature, Printer, Download, CheckCircle, Trash2, Eye } from "lucide-react";
+import { ArrowLeft, FileSignature, Printer, Download, CheckCircle, Trash2, Eye, Zap } from "lucide-react";
 import QuotationInfoSection from "./QuotationInfoSection";
 import CustomerDetailsSection from "./CustomerDetailsSection";
 import InstallationDetailsSection from "./InstallationDetailsSection";
 import PowerLoadInfoSection from "./PowerLoadInfoSection";
 import CostCalculationSection from "./CostCalculationSection";
+import HybridSelector from "./HybridSelector";
 
 export default function QuotationFormView({
   formData,
@@ -86,6 +87,32 @@ export default function QuotationFormView({
       )}
 
       <form className="space-y-6">
+        {/* Product Selection */}
+        <div className={sectionClass}>
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
+            <h2 className={sectionTitleClass}>
+              <Zap className="h-5 w-5 mr-2" />
+              Product Selection
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="max-w-md">
+              <HybridSelector
+                label="Product"
+                name="rating"
+                value={formData.rating}
+                onChange={handleProductChange}
+                options={dropdownOptions.rating}
+                icon={Zap}
+                required={true}
+                inputClass={inputClass}
+                selectClass={selectClass}
+                labelClass={labelClass}
+              />
+            </div>
+          </div>
+        </div>
+
         <QuotationInfoSection
           formData={formData}
           handleChange={handleChange}

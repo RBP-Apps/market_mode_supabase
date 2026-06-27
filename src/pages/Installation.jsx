@@ -85,7 +85,7 @@ function InstallationPage() {
     projectCommissioningCertificate: { uploading: false, uploaded: false, url: "", error: null, name: "" },
   })
 
-  
+
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -1548,7 +1548,7 @@ const handleInstallSubmit = async () => {
                           value={installForm.mobileNumber || ""}
                           onChange={(e) => {
                             const val = e.target.value;
-                            if (/^\d*$/.test(val) && val.length <= 10) {
+                            if (/^\d*$/.test(val) && val.length <= 50) {
                               handleInputChange("mobileNumber", val);
                             }
                           }}

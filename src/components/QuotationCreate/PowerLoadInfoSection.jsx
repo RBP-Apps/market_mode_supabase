@@ -16,7 +16,6 @@ import HybridSelector from "./HybridSelector";
 export default function PowerLoadInfoSection({
   formData,
   handleChange,
-  handleProductChange,
   handleQuantityChange,
   productDetails,
   handleProductDetailsChange,
@@ -37,20 +36,6 @@ export default function PowerLoadInfoSection({
       </div>
       <div className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm">
-          {/* Product */}
-          <HybridSelector
-            label="Product"
-            name="rating"
-            value={formData.rating}
-            onChange={handleProductChange}
-            options={dropdownOptions.rating}
-            icon={Zap}
-            required={true}
-            inputClass={inputClass}
-            selectClass={selectClass}
-            labelClass={labelClass}
-          />
-
           {/* Qty */}
           <div className="space-y-1">
             <label className={labelClass}>
