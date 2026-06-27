@@ -31,6 +31,7 @@ function InstallationPage() {
   const [pendingData, setPendingData] = useState([])
   const [historyData, setHistoryData] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [dataLoggerFilter, setDataLoggerFilter] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showHistory, setShowHistory] = useState(false)
@@ -69,6 +70,10 @@ function InstallationPage() {
     repeatedCertificate: null,
     projectCommissioningCertificate: null,
     inverterId: "",
+    dataLoggerType: "",
+    simNumber: "",
+    mobileNumber: "",
+    dataPlan: "",
   })
 
   const [fileUploads, setFileUploads] = useState({
@@ -222,6 +227,10 @@ const fetchSheetData = useCallback(async () => {
         investorId: row.inverter_id || "",
         repeatedCertificate: row.repeated_certificate || "",
         projectCommissioningCertificate: row.commissioning_certificate || "",
+        dataLoggerType: row.data_logger_type || "",
+        simNumber: row.sim_number || "",
+        mobileNumber: row.mobile_number || "",
+        dataPlan: row.data_plan || "",
       }
 
       if (!row.actual_9) {
@@ -250,24 +259,32 @@ const fetchSheetData = useCallback(async () => {
   }, [fetchSheetData, fetchDropdownOptions])
 
   const filteredPendingData = useMemo(() => {
+    let data = pendingData
+    if (dataLoggerFilter) {
+      data = data.filter((record) => record.dataLoggerType === dataLoggerFilter)
+    }
     return debouncedSearchTerm
-      ? pendingData.filter((record) =>
+      ? data.filter((record) =>
         Object.values(record).some(
           (value) => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase()),
         ),
       )
-      : pendingData
-  }, [pendingData, debouncedSearchTerm])
+      : data
+  }, [pendingData, debouncedSearchTerm, dataLoggerFilter])
 
   const filteredHistoryData = useMemo(() => {
+    let data = historyData
+    if (dataLoggerFilter) {
+      data = data.filter((record) => record.dataLoggerType === dataLoggerFilter)
+    }
     return debouncedSearchTerm
-      ? historyData.filter((record) =>
+      ? data.filter((record) =>
         Object.values(record).some(
           (value) => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase()),
         ),
       )
-      : historyData
-  }, [historyData, debouncedSearchTerm])
+      : data
+  }, [historyData, debouncedSearchTerm, dataLoggerFilter])
 
   const handleInstallClick = useCallback((record) => {
     setSelectedRecord(record)
@@ -290,6 +307,10 @@ const fetchSheetData = useCallback(async () => {
       repeatedCertificate: null,
       projectCommissioningCertificate: null,
       inverterId: record.investorId || "",
+      dataLoggerType: record.dataLoggerType || "",
+      simNumber: record.simNumber || "",
+      mobileNumber: record.mobileNumber || "",
+      dataPlan: record.dataPlan || "",
     })
     // Initialize file uploads state with existing data and progress tracking
     setFileUploads({
@@ -455,13 +476,194 @@ const uploadImageToDrive = useCallback(async (file) => {
   }
 
   const handleInputChange = useCallback((field, value) => {
-    setInstallForm((prev) => ({ ...prev, [field]: value }))
+    setInstallForm((prev) => {
+      const updated = { ...prev, [field]: value }
+      if (field === "dataLoggerType" && value === "WiFi") {
+        updated.simNumber = ""
+        updated.mobileNumber = ""
+        updated.dataPlan = ""
+      }
+      return updated
+    })
   }, [])
+
+  const exportToExcel = useCallback(() => {
+    const isHistory = showHistory
+    const dataToExport = isHistory ? filteredHistoryData : filteredPendingData
+
+    if (dataToExport.length === 0) {
+      alert("No data available to export")
+      return
+    }
+
+    let headers = []
+    let rows = []
+
+    if (isHistory) {
+      headers = [
+        "Enquiry Number",
+        "Beneficiary Name",
+        "Address",
+        "Contact Number Of Beneficiary",
+        "Surveyor Name",
+        "Contact Number",
+        "Dispatch Material",
+        "Inform To Customer",
+        "Copy Of Receipt",
+        "Date Of Receipt",
+        "Date Of Installation",
+        "Routing",
+        "Earthing",
+        "Base Foundation",
+        "Wiring",
+        "Plant Photo",
+        "DCR Certificate",
+        "Module Warranty certificate",
+        "Complete Installation Photo",
+        "Repeated Certificate",
+        "Project Commissioning Certificate",
+        "Inverter Make",
+        "Inverter Capacity",
+        "Module Make",
+        "Module Capacity",
+        "Module Type",
+        "Structure Make",
+        "Inverter ID",
+        "Data Logger Type",
+        "SIM Number",
+        "Mobile Number",
+        "Data Plan"
+      ]
+
+      rows = dataToExport.map((record) => [
+        record.enquiryNumber,
+        record.beneficiaryName,
+        record.address,
+        record.contactNumber,
+        record.surveyorName,
+        record.surveyorContact,
+        record.dispatchMaterial,
+        record.informToCustomer,
+        record.copyOfReceipt,
+        record.dateOfReceipt,
+        record.dateOfInstallation,
+        record.routing,
+        record.earthing,
+        record.baseFoundation,
+        record.wiring,
+        record.foundationPhoto,
+        record.afterInstallationPhoto,
+        record.photoWithCustomer,
+        record.completeInstallationPhoto,
+        record.repeatedCertificate,
+        record.projectCommissioningCertificate,
+        record.inverterMake,
+        record.inverterCapacity,
+        record.moduleMake,
+        record.moduleCapacity,
+        record.moduleType,
+        record.structureMake,
+        record.investorId,
+        record.dataLoggerType,
+        record.simNumber,
+        record.mobileNumber,
+        record.dataPlan
+      ])
+    } else {
+      headers = [
+        "Enquiry Number",
+        "Beneficiary Name",
+        "Address",
+        "Contact Number Of Beneficiary",
+        "Surveyor Name",
+        "Contact Number",
+        "Order Copy",
+        "IP Name",
+        "Contact Number Of IP",
+        "GST Number",
+        "Aadhar Card",
+        "Pan Card",
+        "Work Order Number",
+        "Work Order Copy",
+        "Dispatch Material",
+        "Inform To Customer",
+        "Copy Of Receipt",
+        "Date Of Receipt"
+      ]
+
+      rows = dataToExport.map((record) => [
+        record.enquiryNumber,
+        record.beneficiaryName,
+        record.address,
+        record.contactNumber,
+        record.surveyorName,
+        record.surveyorContact,
+        record.orderCopy,
+        record.ipName,
+        record.ipContact,
+        record.gstNumber,
+        record.aadharCard,
+        record.panCard,
+        record.workOrderNumber,
+        record.workOrderCopy,
+        record.dispatchMaterial,
+        record.informToCustomer,
+        record.copyOfReceipt,
+        record.dateOfReceipt
+      ])
+    }
+
+    // Convert values to CSV safe strings (handling comma, quotes and newlines)
+    const formatValue = (val) => {
+      if (val === undefined || val === null) return '""'
+      const str = String(val)
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return `"${str}"`
+    }
+
+    const csvContent = [
+      headers.map(formatValue).join(','),
+      ...rows.map((row) => row.map(formatValue).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    const fileName = isHistory ? "installation-history" : "pending-installations"
+    const timestamp = new Date().toISOString().split("T")[0]
+    link.download = `${fileName}-${timestamp}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  }, [showHistory, filteredHistoryData, filteredPendingData])
 
 const handleInstallSubmit = async () => {
   if (!installForm.dateOfInstallation) {
     alert("Please select the date of installation")
     return
+  }
+
+  if (installForm.dataLoggerType === "SIM") {
+    if (!installForm.simNumber || !installForm.simNumber.trim()) {
+      alert("Please enter the SIM Number")
+      return
+    }
+    if (!installForm.mobileNumber || !installForm.mobileNumber.trim()) {
+      alert("Please enter the Mobile Number")
+      return
+    }
+    if (!/^\d{10}$/.test(installForm.mobileNumber)) {
+      alert("Mobile Number must be exactly 10 digits")
+      return
+    }
+    if (!installForm.dataPlan || !installForm.dataPlan.trim()) {
+      alert("Please enter the Data Plan")
+      return
+    }
   }
 
   setIsSubmitting(true)
@@ -513,6 +715,11 @@ const handleInstallSubmit = async () => {
         inverter_id: installForm.inverterId,
         repeated_certificate: currentFileUploads.repeatedCertificate?.url,
         commissioning_certificate: currentFileUploads.projectCommissioningCertificate?.url,
+
+        data_logger_type: installForm.dataLoggerType,
+        sim_number: installForm.simNumber,
+        mobile_number: installForm.mobileNumber,
+        data_plan: installForm.dataPlan,
       })
       .eq("id", Number(selectedRecord._id))
 
@@ -561,6 +768,10 @@ const handleInstallSubmit = async () => {
       photoWithCustomer: null,
       completeInstallationPhoto: null,
       investorId: "",
+      dataLoggerType: "",
+      simNumber: "",
+      mobileNumber: "",
+      dataPlan: "",
     })
     setFileUploads({
       foundationPhoto: { uploading: false, uploaded: false, url: "", error: null, name: "" },
@@ -578,7 +789,7 @@ const handleInstallSubmit = async () => {
         {/* Header */}
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <h1 className="text-xl font-bold tracking-tight text-blue-700">{CONFIG.PAGE_CONFIG.title}</h1>
-          <div className="flex space-x-4">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
@@ -586,9 +797,26 @@ const handleInstallSubmit = async () => {
                 placeholder={showHistory ? "Search history..." : "Search pending installations..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="pl-9 pr-4 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
               />
             </div>
+
+            <select
+              value={dataLoggerFilter}
+              onChange={(e) => setDataLoggerFilter(e.target.value)}
+              className="px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700"
+            >
+              <option value="">All Data Logger Types</option>
+              <option value="WiFi">WiFi</option>
+              <option value="SIM">SIM</option>
+            </select>
+
+            <button
+              onClick={exportToExcel}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-linear-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              Export to Excel
+            </button>
           </div>
         </div>
 
@@ -801,6 +1029,18 @@ const handleInstallSubmit = async () => {
                         <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Inverter ID
                         </th>
+                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Data Logger Type
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          SIM Number
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Mobile Number
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Data Plan
+                        </th>
                       </>
                     )}
                   </tr>
@@ -991,11 +1231,23 @@ const handleInstallSubmit = async () => {
                           <td className="px-2 py-3 whitespace-nowrap">
                             <div className="text-xs text-gray-900">{record.investorId || "—"}</div>
                           </td>
+                          <td className="px-2 py-3 whitespace-nowrap">
+                            <div className="text-xs text-gray-900">{record.dataLoggerType || "—"}</div>
+                          </td>
+                          <td className="px-2 py-3 whitespace-nowrap">
+                            <div className="text-xs text-gray-900">{record.simNumber || "—"}</div>
+                          </td>
+                          <td className="px-2 py-3 whitespace-nowrap">
+                            <div className="text-xs text-gray-900">{record.mobileNumber || "—"}</div>
+                          </td>
+                          <td className="px-2 py-3 whitespace-nowrap">
+                            <div className="text-xs text-gray-900">{record.dataPlan || "—"}</div>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={27} className="px-4 py-8 text-center text-gray-500 text-sm">
+                        <td colSpan={33} className="px-4 py-8 text-center text-gray-500 text-sm">
                           {searchTerm ? "No history records matching your search" : "No completed installations found"}
                         </td>
                       </tr>
@@ -1250,6 +1502,76 @@ const handleInstallSubmit = async () => {
                       />
                     )}
                   </div>
+
+
+                  {/* Data Logger Type */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Data Logger Type</label>
+                    <select
+                      value={installForm.dataLoggerType || ""}
+                      onChange={(e) => handleInputChange("dataLoggerType", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      <option value="">-- Select Data Logger Type --</option>
+                      <option value="WiFi">WiFi</option>
+                      <option value="SIM">SIM</option>
+                    </select>
+                  </div>
+
+                  {installForm.dataLoggerType === "SIM" && (
+                    <>
+                      {/* SIM Number */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          SIM Number <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={installForm.simNumber || ""}
+                          onChange={(e) => handleInputChange("simNumber", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="Enter SIM Number"
+                          required
+                        />
+                      </div>
+
+                      {/* Mobile Number */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Mobile Number <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={installForm.mobileNumber || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (/^\d*$/.test(val) && val.length <= 10) {
+                              handleInputChange("mobileNumber", val);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="Enter Mobile Number"
+                          required
+                        />
+                      </div>
+
+                      {/* Data Plan */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Data Plan <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={installForm.dataPlan || ""}
+                          onChange={(e) => handleInputChange("dataPlan", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="Enter Data Plan"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {/* Module Make */}
                   <div className="mb-4">

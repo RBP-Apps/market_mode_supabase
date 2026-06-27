@@ -6,6 +6,7 @@ import AdminLayout from "../components/layout/AdminLayout";
 import QuotationListView from "../components/QuotationCreate/QuotationListView";
 import QuotationFormView from "../components/QuotationCreate/QuotationFormView";
 import SendQuotationModal from "../components/QuotationCreate/SendQuotationModal";
+import Quotation10kvModal from "../components/QuotationCreate/Quotation10kvModal";
 
 export default function QuatationCreate() {
   // State for list/view mode
@@ -19,6 +20,7 @@ export default function QuatationCreate() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [dealerBankMap, setDealerBankMap] = useState({});
+  const [show10kvModal, setShow10kvModal] = useState(false);
 
   // Send Modal States
   const [showSendModal, setShowSendModal] = useState(false);
@@ -105,29 +107,52 @@ export default function QuatationCreate() {
 
 
   const fetchQuotationCopyData = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('quatation_create')
-      .select('enquiry_number, planned_2, actual_2, quatation_copy');
+    try {
+      // First try to fetch including the new is_10kv column
+      const { data, error } = await supabase
+        .from('quatation_create')
+        .select('enquiry_number, planned_2, actual_2, quatation_copy, is_10kv');
 
-    if (error) throw error;
+      if (error) {
+        // Fallback if is_10kv column doesn't exist yet
+        console.warn("is_10kv column query failed, falling back without is_10kv:", error);
+        const { data: fbData, error: fbError } = await supabase
+          .from('quatation_create')
+          .select('enquiry_number, planned_2, actual_2, quatation_copy');
+        
+        if (fbError) throw fbError;
 
-    const quotationMap = {};
-    if (data) {
-      data.forEach(row => {
-        quotationMap[row.enquiry_number] = {
-          planned2: row.planned_2,
-          actual2: row.actual_2,
-          quotationCopy: row.quatation_copy
-        };
-      });
+        const quotationMap = {};
+        if (fbData) {
+          fbData.forEach(row => {
+            quotationMap[row.enquiry_number] = {
+              planned2: row.planned_2,
+              actual2: row.actual_2,
+              quotationCopy: row.quatation_copy,
+              is10kv: false
+            };
+          });
+        }
+        return quotationMap;
+      }
+
+      const quotationMap = {};
+      if (data) {
+        data.forEach(row => {
+          quotationMap[row.enquiry_number] = {
+            planned2: row.planned_2,
+            actual2: row.actual_2,
+            quotationCopy: row.quatation_copy,
+            is10kv: row.is_10kv || false
+          };
+        });
+      }
+      return quotationMap;
+    } catch (err) {
+      console.error(err);
+      return {};
     }
-    return quotationMap;
-  } catch (err) {
-    console.error(err);
-    return {};
-  }
-};
+  };
 
 
 
@@ -174,6 +199,7 @@ export default function QuatationCreate() {
         planned2: qData.planned2 || null,
         actual2: qData.actual2 || null,
         quotationCopy: qData.quotationCopy || null,
+        is10kv: qData.is10kv || false,
 
         // old fields
         planned1: row.planned_1 || "",
@@ -439,6 +465,79 @@ console.log(error)
   }
 };
 
+  const handleSave10kv = async (formVal, productVal, pdfBlob) => {
+    try {
+      const fileName = `Quotation_10kv_${formVal.customer || "Customer"}.pdf`;
+      const url = await uploadPDFToDrive(pdfBlob, fileName);
+      if (!url) {
+        throw new Error("Failed to upload PDF");
+      }
+
+      const amountVal = parseFloat(productVal.amount || 0);
+      const discVal = parseFloat(formVal.disc || 0);
+      const gstRawVal = parseFloat(productVal.gst || 0);
+      const centralVal = parseFloat(formVal.subCentral || 0);
+      const stateVal = parseFloat(formVal.subState || 0);
+
+      const afterDiscount = amountVal - (amountVal * discVal) / 100;
+      const gstAmount = gstRawVal < 1 ? afterDiscount * gstRawVal : (afterDiscount * gstRawVal) / 100;
+      const afterGST = afterDiscount + gstAmount;
+      const netCost = afterGST - centralVal - stateVal;
+
+      const rowData = {
+        actual_2: new Date().toISOString(),
+        quotation_date: formVal.date,
+        salesperson: formVal.salesperson,
+        customer: formVal.customer,
+        contact_no: formVal.contactNo,
+        email: formVal.email,
+        dealer: formVal.dealer,
+        alternative_phone_no: formVal.phoneNo,
+        structure_type: formVal.structureType,
+        place_of_installation: formVal.placeOfInstallation,
+        terms_conditions: formVal.termsConditions,
+        product: formVal.rating,
+        qty: parseFloat(formVal.qty) || null,
+        central_subsidy: centralVal || null,
+        state_subsidy: stateVal || null,
+        discount_percent: discVal || null,
+        need_type: formVal.needType,
+        reference_by: formVal.referenceBy,
+        bank_name: formVal.bankAccount,
+        account_no: formVal.accountNo,
+        ifsc_code: formVal.ifscCode,
+        branch: formVal.branch,
+        general_terms_conditions: formVal.generalTerms,
+        hours_of_failures: formVal.failureHours,
+        load_details: formVal.loadDetails,
+        product_name: productVal.productName,
+        bill_of_material: productVal.bom,
+        size: productVal.size,
+        gst: gstRawVal || null,
+        rate: parseFloat(productVal.rate) || null,
+        amount: amountVal || null,
+        enquiry_number: formVal.enquiryNumber,
+        net_cost: netCost,
+        quatation_copy: url,
+        is_10kv: true, // Mark it as 10kv
+      };
+
+      const { error } = await supabase
+        .from('quatation_create')
+        .upsert(rowData, { onConflict: 'enquiry_number' });
+
+      if (error) {
+        throw error;
+      }
+
+      alert("10kv Quotation saved successfully!");
+      fetchFMSData();
+    } catch (err) {
+      console.error("Error saving 10kv quotation:", err);
+      alert("Failed to save 10kv quotation: " + err.message);
+    }
+  };
+
   const fetchProductData = async () => {
     try {
       const { data, error } = await supabase.from('product_list').select('*');
@@ -581,27 +680,29 @@ console.log(error)
     }
   }, [viewMode]);
 
- useEffect(() => {
-  let filtered = fmsData.filter(item => {
-    if (activeTab === "pending") {
-      return item.planned2 && !item.actual2;
-    } else {
-      return item.planned2 && item.actual2;
+  useEffect(() => {
+    let filtered = fmsData.filter(item => {
+      if (activeTab === "pending") {
+        return item.planned2 && !item.actual2;
+      } else if (activeTab === "10kv_history") {
+        return item.planned2 && item.actual2 && item.is10kv;
+      } else {
+        return item.planned2 && item.actual2 && !item.is10kv;
+      }
+    });
+
+    if (searchTerm.trim() !== "") {
+      const t = searchTerm.toLowerCase();
+
+      filtered = filtered.filter(i =>
+        (i.enquiryNumber || "").toLowerCase().includes(t) ||
+        (i.beneficiaryName || "").toLowerCase().includes(t)
+      );
     }
-  });
 
-  if (searchTerm.trim() !== "") {
-    const t = searchTerm.toLowerCase();
+    setFilteredData(filtered);
 
-    filtered = filtered.filter(i =>
-      (i.enquiryNumber || "").toLowerCase().includes(t) ||
-      (i.beneficiaryName || "").toLowerCase().includes(t)
-    );
-  }
-
-  setFilteredData(filtered);
-
-}, [fmsData, activeTab, searchTerm]);
+  }, [fmsData, activeTab, searchTerm]);
 
   useEffect(() => {
     if (selectedEnquiry && viewMode === "form") {
@@ -722,7 +823,7 @@ console.log(error)
         <div className="max-w-7xl mx-auto space-y-6">
           {viewMode === "list" ? (
             <QuotationListView
-              activeTab={activeTab} setActiveTab={setActiveTab} fmsData={fmsData} filteredData={filteredData} loading={loading} searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleRefresh={handleRefresh} handleViewClick={handleViewClick} handleViewQuotation={handleViewQuotation}
+              activeTab={activeTab} setActiveTab={setActiveTab} fmsData={fmsData} filteredData={filteredData} loading={loading} searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleRefresh={handleRefresh} handleViewClick={handleViewClick} handleViewQuotation={handleViewQuotation} onOpen10kv={() => setShow10kvModal(true)}
             />
           ) : (
             <QuotationFormView
@@ -736,6 +837,18 @@ console.log(error)
         {showPreview && (
           <QuotationPreview
             formData={formData} productDetails={productDetails} onClose={() => setShowPreview(false)} onSubmit={handleSubmitWithPDF} isSubmitting={isSubmittingToSheet}
+          />
+        )}
+        {show10kvModal && (
+          <Quotation10kvModal
+            isOpen={show10kvModal}
+            onClose={() => setShow10kvModal(false)}
+            fmsData={fmsData}
+            dropdownOptions={dropdownOptions}
+            productMap={productMap}
+            customerMap={customerMap}
+            dealerBankMap={dealerBankMap}
+            onSave={handleSave10kv}
           />
         )}
       </div>

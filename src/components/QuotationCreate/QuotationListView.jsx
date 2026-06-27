@@ -25,6 +25,7 @@ export default function QuotationListView({
   handleRefresh,
   handleViewClick,
   handleViewQuotation,
+  onOpen10kv,
 }) {
   const [sheetData, setSheetData] = React.useState({});
 
@@ -69,16 +70,25 @@ export default function QuotationListView({
           </p>
         </div>
 
-        {/* Refresh Button */}
-        <button
-          onClick={handleRefresh}
-          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 flex items-center gap-2 shadow-sm"
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </button>
+        {/* 10kv Quotation Button & Refresh Button */}
+        <div className="flex gap-2">
+          <button
+            onClick={onOpen10kv}
+            className="px-4 py-2 bg-teal-50 border border-teal-200 text-teal-700 hover:bg-teal-100 hover:border-teal-300 rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm font-medium animate-pulse"
+          >
+            <Zap className="h-4 w-4 text-teal-600" />
+            10kv Quotation
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 flex items-center gap-2 shadow-sm"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -113,7 +123,24 @@ export default function QuotationListView({
             <span className="ml-2 bg-green-100 text-green-600 px-2 py-0.5 rounded-full text-xs">
               {
                 fmsData.filter(
-                  (item) => item.planned2 && item.actual2
+                  (item) => item.planned2 && item.actual2 && !item.is10kv
+                ).length
+              }
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("10kv_history")}
+            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "10kv_history"
+              ? "border-teal-500 text-teal-600"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+          >
+            <Zap className="h-5 w-5" />
+            10kv History
+            <span className="ml-2 bg-teal-100 text-teal-600 px-2 py-0.5 rounded-full text-xs">
+              {
+                fmsData.filter(
+                  (item) => item.planned2 && item.actual2 && item.is10kv
                 ).length
               }
             </span>
@@ -149,7 +176,7 @@ export default function QuotationListView({
                 )}
 
                 {/* History tab Action column */}
-                {activeTab === "history" && (
+                {(activeTab === "history" || activeTab === "10kv_history") && (
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28 bg-gradient-to-r from-gray-50 to-blue-50">
                     Action
                   </th>
@@ -157,7 +184,7 @@ export default function QuotationListView({
 
                
 
-                {activeTab === "history" && (
+                {(activeTab === "history" || activeTab === "10kv_history") && (
                   <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gradient-to-r from-gray-50 to-blue-50">
   <div className="flex items-center justify-center gap-1">
     <FileText className="h-3 w-3" />
@@ -188,7 +215,7 @@ export default function QuotationListView({
                     colSpan={
                       activeTab === "pending" 
                         ? tableColumns.length + 1 
-                        : activeTab === "history"
+                        : (activeTab === "history" || activeTab === "10kv_history")
                         ? tableColumns.length + 3
                         : tableColumns.length
                     }
@@ -208,7 +235,7 @@ export default function QuotationListView({
                     colSpan={
                       activeTab === "pending" 
                         ? tableColumns.length + 1 
-                        : activeTab === "history"
+                        : (activeTab === "history" || activeTab === "10kv_history")
                         ? tableColumns.length + 3
                         : tableColumns.length
                     }
@@ -247,8 +274,8 @@ export default function QuotationListView({
                       </td>
                     )}
 
-                    {/* History tab ka Action button */}
-                    {activeTab === "history" && (
+                    {/* History or 10kv History tab ka Action button */}
+                    {(activeTab === "history" || activeTab === "10kv_history") && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
                           onClick={() => handleViewQuotation(row)}
@@ -260,8 +287,8 @@ export default function QuotationListView({
                         </button>
                       </td>
                     )}
-
-                    {activeTab === "history" && (
+ 
+                    {(activeTab === "history" || activeTab === "10kv_history") && (
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {row.quotationCopy &&
                           row.quotationCopy !== "Not Generated" ? (
@@ -358,8 +385,10 @@ export default function QuotationListView({
               Showing {filteredData.length} of{" "}
               {activeTab === "pending"
                 ? fmsData.filter((item) => item.planned2 && !item.actual2).length
-                : fmsData.filter((item) => item.planned2 && item.actual2).length}{" "}
-
+                : activeTab === "history"
+                ? fmsData.filter((item) => item.planned2 && item.actual2 && !item.is10kv).length
+                : fmsData.filter((item) => item.planned2 && item.actual2 && item.is10kv).length}{" "}
+ 
               records
             </span>
             <div className="flex items-center gap-4">
@@ -377,7 +406,16 @@ export default function QuotationListView({
                 History:{" "}
                 {
                   fmsData.filter(
-                    (item) => item.planned2 && item.actual2
+                    (item) => item.planned2 && item.actual2 && !item.is10kv
+                  ).length
+                }
+              </span>
+              <span className="flex items-center gap-1">
+                <Zap className="h-4 w-4 text-teal-500" />
+                10kv History:{" "}
+                {
+                  fmsData.filter(
+                    (item) => item.planned2 && item.actual2 && item.is10kv
                   ).length
                 }
               </span>
