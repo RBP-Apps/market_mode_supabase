@@ -50,36 +50,42 @@ function SpecificationTable({ data }) {
 }
 
 export default function ProjectGlancePage({ formData = {} }) {
-  const capacityStr = formData.capacity || "2.5 MWp";
+  const capacityStr = formData.proposalFor || formData.capacity || "2.5 MWp";
+  const capacityMwp = formData.capacityMwp || capacityStr;
   
   // Extract number and unit to make page calculations dynamic
   const capacityNum = parseFloat(capacityStr) || 2.5;
   const isKW = capacityStr.toLowerCase().includes("kw");
-  const capacityUnit = isKW ? "kWp" : "MWp";
   
   // Calculate dynamic statistics
-  const watts = isKW ? capacityNum * 1000 : capacityNum * 1000000;
-  const moduleCount = Math.round(watts / 600);
-  const approxModuleCount = `~${moduleCount.toLocaleString("en-IN")} modules of ~600 Wp`;
+  const watts = formData.capacityWp ? parseFloat(String(formData.capacityWp).replace(/,/g, "")) : (isKW ? capacityNum * 1000 : capacityNum * 1000000);
+  const calculatedModuleCount = Math.round(watts / 600);
+  const approxModuleCount = formData.moduleCount 
+    ? `${parseFloat(formData.moduleCount).toLocaleString("en-IN")} modules`
+    : `~${calculatedModuleCount.toLocaleString("en-IN")} modules of ~600 Wp`;
   
-  const landRequired = isKW 
+  const landRequired = formData.landAcres || (isKW 
     ? `~${Math.round(capacityNum * 90).toLocaleString("en-IN")} sq ft of shadow-free rooftop area` 
-    : `~${(capacityNum * 3).toFixed(1)} acres of shadow-free, south-facing land (3 acres per MW)`;
+    : `~${(capacityNum * 3).toFixed(1)} acres of shadow-free, south-facing land (3 acres per MW)`);
   
   const kWp = isKW ? capacityNum : capacityNum * 1000;
   const annualGenKwh = kWp * 1500;
-  const estAnnualGeneration = annualGenKwh >= 100000 
-    ? `${(annualGenKwh / 100000).toFixed(1)}+ lakh units / year (minimum guarantee of 1,500 kWh per kWp)` 
-    : `${annualGenKwh.toLocaleString("en-IN")}+ kWh / year (minimum guarantee of 1,500 kWh per kWp)`;
+  const estAnnualGeneration = formData.annualGen 
+    ? `${formData.annualGen} units / year`
+    : (annualGenKwh >= 100000 
+      ? `${(annualGenKwh / 100000).toFixed(1)}+ lakh units / year (minimum guarantee of 1,500 kWh per kWp)` 
+      : `${annualGenKwh.toLocaleString("en-IN")}+ kWh / year (minimum guarantee of 1,500 kWh per kWp)`);
   
   const co2AvoidedVal = Math.round((annualGenKwh * 0.8) / 1000);
-  const co2Avoided = `~${co2AvoidedVal.toLocaleString("en-IN")}+ tonnes per year`;
+  const co2Avoided = formData.co2Tonnes 
+    ? `${formData.co2Tonnes} tonnes / year`
+    : `~${co2AvoidedVal.toLocaleString("en-IN")}+ tonnes per year`;
 
   // Dynamic table specifications array
   const specs = [
     {
       label: "System type",
-      value: `${capacityStr} grid-connected solar PV plant (without battery bank)`
+      value: `${capacityMwp} grid-connected solar PV plant (without battery bank)`
     },
     {
       label: "Module technology",

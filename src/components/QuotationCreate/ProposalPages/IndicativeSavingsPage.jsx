@@ -2,24 +2,27 @@ import React from "react";
 
 export default function IndicativeSavingsPage({ formData = {}, productDetails = {} }) {
   // Parse capacity
-  const capacity = formData.capacity || "2.5 MWp";
+  const capacity = formData.proposalFor || formData.capacity || "2.5 MWp";
   const capNum = parseFloat(capacity) || 2.5;
   const isKW = capacity.toLowerCase().includes("kw");
   const capacityKW = isKW ? capNum : capNum * 1000;
-  const annualGen = capacityKW * 1500; // in kWh per annum
+  const annualGen = formData.annualGen 
+    ? parseFloat(String(formData.annualGen).replace(/,/g, "")) 
+    : (capacityKW * 1500); // in kWh per annum
   const lakhUnits = annualGen / 100000;
 
   // Parse cost
+  const capexCrVal = formData.capexCr ? parseFloat(formData.capexCr) * 10000000 : null;
   const costClean = String(productDetails.amount || "").replace(/,/g, "");
-  const costNum = parseFloat(costClean) || 102900000; // Default to 10.29 Cr
+  const costNum = capexCrVal || parseFloat(costClean) || 102900000; // Default to 10.29 Cr
 
   // Calculate savings & payback
-  const tariff1 = 6.5;
-  const savings1 = annualGen * tariff1;
+  const tariff1 = formData.tariffLow ? parseFloat(formData.tariffLow) : 6.5;
+  const savings1 = formData.savingsLow ? parseFloat(String(formData.savingsLow).replace(/,/g, "")) : (annualGen * tariff1);
   const payback1 = costNum / savings1;
 
-  const tariff2 = 8.0;
-  const savings2 = annualGen * tariff2;
+  const tariff2 = formData.tariffHigh ? parseFloat(formData.tariffHigh) : 8.0;
+  const savings2 = formData.savingsHigh ? parseFloat(String(formData.savingsHigh).replace(/,/g, "")) : (annualGen * tariff2);
   const payback2 = costNum / savings2;
 
   // Format helper for currency (lakh/crore)
@@ -34,15 +37,15 @@ export default function IndicativeSavingsPage({ formData = {}, productDetails = 
   };
 
   // 25-year lifetime gross savings
-  const lifeSavings1 = savings1 * 25;
-  const lifeSavings2 = savings2 * 25;
+  const lifeSavings1 = formData.savings25Low ? parseFloat(String(formData.savings25Low).replace(/,/g, "")) : (savings1 * 25);
+  const lifeSavings2 = formData.savings25High ? parseFloat(String(formData.savings25High).replace(/,/g, "")) : (savings2 * 25);
 
-  const costCrStr = costNum >= 10000000 ? `${(costNum / 10000000).toFixed(2)} Cr` : `${(costNum / 100000).toFixed(2)} Lakh`;
-  const lifeSavings1Str = lifeSavings1 >= 10000000 ? `₹${Math.round(lifeSavings1 / 10000000)} Cr` : `₹${(lifeSavings1 / 100000).toFixed(1)} Lakh`;
-  const lifeSavings2Str = lifeSavings2 >= 10000000 ? `₹${Math.round(lifeSavings2 / 10000000)} Cr` : `₹${(lifeSavings2 / 100000).toFixed(1)} Lakh`;
+  const costCrStr = formData.capexCr ? `${formData.capexCr} Cr` : (costNum >= 10000000 ? `${(costNum / 10000000).toFixed(2)} Cr` : `${(costNum / 100000).toFixed(2)} Lakh`);
+  const lifeSavings1Str = formData.savings25Low ? `₹${formData.savings25Low}` : (lifeSavings1 >= 10000000 ? `₹${Math.round(lifeSavings1 / 10000000)} Cr` : `₹${(lifeSavings1 / 100000).toFixed(1)} Lakh`);
+  const lifeSavings2Str = formData.savings25High ? `₹${formData.savings25High}` : (lifeSavings2 >= 10000000 ? `₹${Math.round(lifeSavings2 / 10000000)} Cr` : `₹${(lifeSavings2 / 100000).toFixed(1)} Lakh`);
 
   // CO2 avoided (0.8 kg/kWh)
-  const co2Avoided = Math.round(annualGen * 0.0008);
+  const co2Avoided = formData.co2Tonnes ? parseFloat(String(formData.co2Tonnes).replace(/,/g, "")) : Math.round(annualGen * 0.0008);
 
   const tableData = [
     {

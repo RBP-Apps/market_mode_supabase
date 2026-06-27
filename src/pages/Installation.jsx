@@ -658,10 +658,14 @@ const handleInstallSubmit = async () => {
       alert("Please enter the Mobile Number")
       return
     }
-    if (!/^\d{10}$/.test(installForm.mobileNumber)) {
-      alert("Mobile Number must be exactly 10 digits")
-      return
-    }
+    // if (!/^\d{10}$/.test(installForm.mobileNumber)) {
+    //   alert("Mobile Number must be exactly 10 digits")
+    //   return
+    // }
+    if (!/^\d{1,50}$/.test(installForm.mobileNumber)) {
+  alert("Mobile Number must be between 1 and 50 digits")
+  return
+}
     if (!installForm.dataPlan || !installForm.dataPlan.trim()) {
       alert("Please enter the Data Plan")
       return

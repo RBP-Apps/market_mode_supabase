@@ -48,28 +48,42 @@ function toWordsIndian(num) {
 
 export default function PriceSchedulePage({ formData = {}, productDetails = {} }) {
   // Parse capacity
-  const capacity = formData.capacity || "2.5 MWp";
+  const capacity = formData.proposalFor || formData.capacity || "2.5 MWp";
   const capNum = parseFloat(capacity) || 2.5;
   const isKW = capacity.toLowerCase().includes("kw");
   const capacityKW = isKW ? capNum : capNum * 1000;
 
   // Parse total cost A (amount from productDetails)
   const costClean = String(productDetails.amount || "").replace(/,/g, "");
-  const totalAmountA = parseFloat(costClean) || 102910500; // Default: 10,29,10,500
+  const totalAmountA = formData.priceTotalA 
+    ? parseFloat(String(formData.priceTotalA).replace(/,/g, "")) 
+    : (parseFloat(costClean) || 102910500); // Default: 10,29,10,500
 
   // Back-calculate plant cost and GST for Row 1 & Row 2
   // A = PlantCost * 1.089
-  const plantCost = Math.round(totalAmountA / 1.089);
-  const gstAmountA = totalAmountA - plantCost;
+  const plantCost = formData.priceMaterial 
+    ? parseFloat(String(formData.priceMaterial).replace(/,/g, "")) 
+    : Math.round(totalAmountA / 1.089);
+  const gstAmountA = formData.priceGstSupply 
+    ? parseFloat(String(formData.priceGstSupply).replace(/,/g, "")) 
+    : (totalAmountA - plantCost);
 
   // Calculate COMC (Row 4 & Row 5 & Row 6)
   // COMC is ₹5 Lakhs per MW per year for 5 years = ₹25 Lakhs per MW = ₹2500 per kW
-  const comcBase = Math.round(capacityKW * 2500); // 62,50,000 for 2.5 MWp
-  const gstAmountB = Math.round(comcBase * 0.18);
-  const totalAmountB = comcBase + gstAmountB;
+  const comcBase = formData.priceOm 
+    ? parseFloat(String(formData.priceOm).replace(/,/g, "")) 
+    : Math.round(capacityKW * 2500); // 62,50,000 for 2.5 MWp
+  const gstAmountB = formData.priceOmGst 
+    ? parseFloat(String(formData.priceOmGst).replace(/,/g, "")) 
+    : Math.round(comcBase * 0.18);
+  const totalAmountB = formData.priceTotalB 
+    ? parseFloat(String(formData.priceTotalB).replace(/,/g, "")) 
+    : (comcBase + gstAmountB);
 
   // Row 7 (Total Project Cost)
-  const totalProjectCost = totalAmountA + totalAmountB;
+  const totalProjectCost = formData.priceTotal 
+    ? parseFloat(String(formData.priceTotal).replace(/,/g, "")) 
+    : (totalAmountA + totalAmountB);
 
   const formattedPlantCost = Math.round(plantCost).toLocaleString("en-IN");
   const formattedGstA = Math.round(gstAmountA).toLocaleString("en-IN");
@@ -79,7 +93,7 @@ export default function PriceSchedulePage({ formData = {}, productDetails = {} }
   const formattedTotalB = Math.round(totalAmountB).toLocaleString("en-IN");
   const formattedProjectCost = Math.round(totalProjectCost).toLocaleString("en-IN");
 
-  const amountInWords = toWordsIndian(totalProjectCost);
+  const amountInWords = formData.priceWords || toWordsIndian(totalProjectCost);
 
   return (
     <div

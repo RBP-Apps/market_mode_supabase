@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, FileSignature, Printer, Download, CheckCircle, Trash2, Eye, Zap } from "lucide-react";
+import { ArrowLeft, FileSignature, Printer, Download, CheckCircle, Trash2, Eye, Zap, FileText, TrendingUp, Coins } from "lucide-react";
 import QuotationInfoSection from "./QuotationInfoSection";
 import CustomerDetailsSection from "./CustomerDetailsSection";
 import InstallationDetailsSection from "./InstallationDetailsSection";
@@ -113,16 +113,6 @@ export default function QuotationFormView({
           </div>
         </div>
 
-        <QuotationInfoSection
-          formData={formData}
-          handleChange={handleChange}
-          sectionClass={sectionClass}
-          sectionHeaderClass={sectionHeaderClass}
-          sectionTitleClass={sectionTitleClass}
-          labelClass={labelClass}
-          inputClass={inputClass}
-        />
-
         <CustomerDetailsSection
           formData={formData}
           handleChange={handleChange}
@@ -137,38 +127,384 @@ export default function QuotationFormView({
           selectClass={selectClass}
         />
 
-        <InstallationDetailsSection
-          formData={formData}
-          handleChange={handleChange}
-          dropdownOptions={dropdownOptions}
-          sectionClass={sectionClass}
-          sectionTitleClass={sectionTitleClass}
-          labelClass={labelClass}
-          inputClass={inputClass}
-          selectClass={selectClass}
-        />
+        {(() => {
+          const rating = formData.rating;
+          const isMoreThan10KW = (r) => {
+            if (!r) return false;
+            const match = r.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
+            if (match) {
+              const value = parseFloat(match[1]);
+              const isMW = /MW/i.test(r);
+              if (isMW) return true;
+              return value >= 10;
+            }
+            return false;
+          };
 
-        <PowerLoadInfoSection
-          formData={formData}
-          handleChange={handleChange}
-          handleProductChange={handleProductChange}
-          handleQuantityChange={handleQuantityChange}
-          productDetails={productDetails}
-          handleProductDetailsChange={handleProductDetailsChange}
-          dropdownOptions={dropdownOptions}
-          sectionClass={sectionClass}
-          sectionTitleClass={sectionTitleClass}
-          labelClass={labelClass}
-          inputClass={inputClass}
-          selectClass={selectClass}
-        />
+          if (isMoreThan10KW(rating)) {
+            return (
+              <>
+                {/* Card 1: General Proposal Metadata */}
+                <div className={sectionClass}>
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                    <h2 className={sectionTitleClass}>
+                      <FileText className="h-5 w-5 mr-2" />
+                      General Proposal Metadata (10kW+)
+                    </h2>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className={labelClass}>Proposal For</label>
+                      <input
+                        type="text"
+                        name="proposalFor"
+                        value={formData.proposalFor || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 2.5 MWp"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Prepared For</label>
+                      <input
+                        type="text"
+                        name="preparedFor"
+                        value={formData.preparedFor || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. Mr. Subham Singhal"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Proposal Date (Text)</label>
+                      <input
+                        type="text"
+                        name="dated"
+                        value={formData.dated || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. Dated: 9th June 2026"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-        <CostCalculationSection
-          formData={formData}
-          productDetails={productDetails}
-          sectionClass={sectionClass}
-          sectionTitleClass={sectionTitleClass}
-        />
+                {/* Card 2: Project Specifications & Projections */}
+                <div className={sectionClass}>
+                  <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4">
+                    <h2 className={sectionTitleClass}>
+                      <Zap className="h-5 w-5 mr-2" />
+                      Technical Specifications (10kW+)
+                    </h2>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className={labelClass}>Capacity (MWp)</label>
+                      <input
+                        type="text"
+                        name="capacityMwp"
+                        value={formData.capacityMwp || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 2.500 MWp"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Capacity (Wp)</label>
+                      <input
+                        type="text"
+                        name="capacityWp"
+                        value={formData.capacityWp || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 25,00,000 Wp"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Module Count</label>
+                      <input
+                        type="text"
+                        name="moduleCount"
+                        value={formData.moduleCount || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 4166"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Land Required (Acres/Sq Ft)</label>
+                      <input
+                        type="text"
+                        name="landAcres"
+                        value={formData.landAcres || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. ~7.5 acres"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Est. Annual Generation (Units/Year)</label>
+                      <input
+                        type="text"
+                        name="annualGen"
+                        value={formData.annualGen || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 37.5 Lakh"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>CO2 Tonnes Avoided / Year</label>
+                      <input
+                        type="text"
+                        name="co2Tonnes"
+                        value={formData.co2Tonnes || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 3000"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 3: Indicative Savings & Tariffs */}
+                <div className={sectionClass}>
+                  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-4">
+                    <h2 className={sectionTitleClass}>
+                      <TrendingUp className="h-5 w-5 mr-2" />
+                      Savings & Payback (10kW+)
+                    </h2>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div>
+                      <label className={labelClass}>Tariff (Low) (₹/unit)</label>
+                      <input
+                        type="text"
+                        name="tariffLow"
+                        value={formData.tariffLow || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 6.5"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Savings (Low) (₹/year)</label>
+                      <input
+                        type="text"
+                        name="savingsLow"
+                        value={formData.savingsLow || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 2,43,75,000"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Tariff (High) (₹/unit)</label>
+                      <input
+                        type="text"
+                        name="tariffHigh"
+                        value={formData.tariffHigh || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 8.0"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Savings (High) (₹/year)</label>
+                      <input
+                        type="text"
+                        name="savingsHigh"
+                        value={formData.savingsHigh || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 3,00,00,000"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Capex (Cr) (₹)</label>
+                      <input
+                        type="text"
+                        name="capexCr"
+                        value={formData.capexCr || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 10.29"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>Savings over 25 Years (Low) (₹)</label>
+                      <input
+                        type="text"
+                        name="savings25Low"
+                        value={formData.savings25Low || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 61 Cr"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Savings over 25 Years (High) (₹)</label>
+                      <input
+                        type="text"
+                        name="savings25High"
+                        value={formData.savings25High || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 75 Cr"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 4: Pricing Schedule */}
+                <div className={sectionClass}>
+                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
+                    <h2 className={sectionTitleClass}>
+                      <Coins className="h-5 w-5 mr-2" />
+                      Price Schedule (10kW+)
+                    </h2>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className={labelClass}>Material Price (₹)</label>
+                      <input
+                        type="text"
+                        name="priceMaterial"
+                        value={formData.priceMaterial || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 9,45,00,000"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>GST on Supply (₹)</label>
+                      <input
+                        type="text"
+                        name="priceGstSupply"
+                        value={formData.priceGstSupply || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 84,10,500"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Total Price A (Supply) (₹)</label>
+                      <input
+                        type="text"
+                        name="priceTotalA"
+                        value={formData.priceTotalA || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 10,29,10,500"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>O&M Price (₹)</label>
+                      <input
+                        type="text"
+                        name="priceOm"
+                        value={formData.priceOm || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 62,50,000"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>GST on O&M (₹)</label>
+                      <input
+                        type="text"
+                        name="priceOmGst"
+                        value={formData.priceOmGst || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 11,25,000"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Total Price B (O&M) (₹)</label>
+                      <input
+                        type="text"
+                        name="priceTotalB"
+                        value={formData.priceTotalB || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 73,75,000"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>Grand Total Price (₹)</label>
+                      <input
+                        type="text"
+                        name="priceTotal"
+                        value={formData.priceTotal || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 11,02,85,500"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className={labelClass}>Price in Words</label>
+                      <textarea
+                        name="priceWords"
+                        value={formData.priceWords || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. Eleven Crore Two Lakh Eighty Five Thousand Five Hundred Only."
+                        className={`${inputClass} h-20 resize-none`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          } else {
+            return (
+              <>
+                <QuotationInfoSection
+                  formData={formData}
+                  handleChange={handleChange}
+                  sectionClass={sectionClass}
+                  sectionHeaderClass={sectionHeaderClass}
+                  sectionTitleClass={sectionTitleClass}
+                  labelClass={labelClass}
+                  inputClass={inputClass}
+                />
+
+                <InstallationDetailsSection
+                  formData={formData}
+                  handleChange={handleChange}
+                  dropdownOptions={dropdownOptions}
+                  sectionClass={sectionClass}
+                  sectionTitleClass={sectionTitleClass}
+                  labelClass={labelClass}
+                  inputClass={inputClass}
+                  selectClass={selectClass}
+                />
+
+                <PowerLoadInfoSection
+                  formData={formData}
+                  handleChange={handleChange}
+                  handleProductChange={handleProductChange}
+                  handleQuantityChange={handleQuantityChange}
+                  productDetails={productDetails}
+                  handleProductDetailsChange={handleProductDetailsChange}
+                  dropdownOptions={dropdownOptions}
+                  sectionClass={sectionClass}
+                  sectionTitleClass={sectionTitleClass}
+                  labelClass={labelClass}
+                  inputClass={inputClass}
+                  selectClass={selectClass}
+                />
+
+                <CostCalculationSection
+                  formData={formData}
+                  productDetails={productDetails}
+                  sectionClass={sectionClass}
+                  sectionTitleClass={sectionTitleClass}
+                />
+              </>
+            );
+          }
+        })()}
 
         {/* Form Actions */}
         <div className="flex justify-between items-center pt-4">

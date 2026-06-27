@@ -94,7 +94,181 @@ export default function QuatationCreate() {
     enquiryNumber: "",
     generalTerms:
       "1. Power output from Control Panel will be in customers scope.\n2. Civil work other than Module Mounting Structure will be in customer's scope.\n3. Our offer is valid for 15 Days. Any custom specifications will be charged extra.\n4. Regular cleaning of Modules with plain water (soft) for desired generation guarantee in customer's scope.\n5. Detailed Quotation with engineering document will be provided on finalisation, for systems above 10KW.\n6. Subsidy (if any) is subject to government approval and will be directly credited in customer's account.\n7. Transportation inclusive. Insurance inclusive upto site and thereafter in customer's scope.\n8. Payment 50% advance on booking, Balance 50% against PI before dispatch of material.\n9. Delivery within 2 weeks from sanction and installation immediately thereafter.\n10. AMC inclusive for 5 years and chargeable thereafter.\n11. Structure height consider 5 feet, for additional height should charge extra.\n12. DC, AC, Earthing cable length considered 30 meter, for additional length should charge extra.",
+    
+    // 10 kW+ specific fields
+    proposalFor: "",
+    preparedFor: "",
+    dated: "",
+    capacityMwp: "",
+    moduleCount: "",
+    landAcres: "",
+    annualGen: "",
+    co2Tonnes: "",
+    capacityWp: "",
+    tariffLow: "",
+    savingsLow: "",
+    tariffHigh: "",
+    savingsHigh: "",
+    capexCr: "",
+    savings25Low: "",
+    savings25High: "",
+    priceMaterial: "",
+    priceGstSupply: "",
+    priceTotalA: "",
+    priceOm: "",
+    priceOmGst: "",
+    priceTotalB: "",
+    priceTotal: "",
+    priceWords: "",
   });
+
+  const isMoreThan10KW = (rating) => {
+    if (!rating) return false;
+    const match = rating.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
+    if (match) {
+      const value = parseFloat(match[1]);
+      const isMW = /MW/i.test(rating);
+      if (isMW) return true;
+      return value >= 10;
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    if (!formData.rating) return;
+    if (isMoreThan10KW(formData.rating)) {
+      const match = formData.rating.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
+      const capacityVal = match ? parseFloat(match[1]) : 2.5;
+      const isMWStr = formData.rating.toLowerCase().includes("mw");
+      const isKWStr = formData.rating.toLowerCase().includes("kw") || !isMWStr;
+
+      const capMWp = isMWStr ? capacityVal : capacityVal / 1000;
+      const capKWp = isMWStr ? capacityVal * 1000 : capacityVal;
+      const capWp = capKWp * 1000;
+
+      const defaultProposalFor = `${capMWp.toFixed(3)} MWp`.replace(/\.?0+$/, '') + " MWp";
+      const defaultPreparedFor = formData.customer || "";
+      const defaultDated = formData.date ? (() => {
+        const d = new Date(formData.date);
+        const months = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ];
+        const day = d.getDate();
+        let suffix = "th";
+        if (day === 1 || day === 21 || day === 31) suffix = "st";
+        else if (day === 2 || day === 22) suffix = "nd";
+        else if (day === 3 || day === 23) suffix = "rd";
+        return `Dated: ${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
+      })() : "";
+
+      const defaultCapacityMwp = defaultProposalFor;
+      const defaultModuleCount = String(Math.round(capWp / 600));
+      const defaultLandAcres = isKWStr 
+        ? `~${Math.round(capacityVal * 90).toLocaleString("en-IN")} sq ft of shadow-free rooftop area` 
+        : `~${(capacityVal * 3).toFixed(1)} acres of shadow-free, south-facing land (3 acres per MW)`;
+      
+      const annualGenVal = capKWp * 1500;
+      const defaultAnnualGen = annualGenVal >= 100000 
+        ? `${(annualGenVal / 100000).toFixed(1)} Lakh` 
+        : `${annualGenVal.toLocaleString("en-IN")}`;
+      
+      const defaultCo2Tonnes = String(Math.round(annualGenVal * 0.0008));
+      const defaultCapacityWp = capWp.toLocaleString("en-IN");
+
+      const tariffLowVal = 6.5;
+      const savingsLowVal = annualGenVal * tariffLowVal;
+      const tariffHighVal = 8.0;
+      const savingsHighVal = annualGenVal * tariffHighVal;
+
+      const defaultTariffLow = String(tariffLowVal);
+      const defaultSavingsLow = Math.round(savingsLowVal).toLocaleString("en-IN");
+      const defaultTariffHigh = String(tariffHighVal);
+      const defaultSavingsHigh = Math.round(savingsHighVal).toLocaleString("en-IN");
+
+      const costClean = String(productDetails.amount || "").replace(/,/g, "");
+      const totalAmountA = parseFloat(costClean) || 0;
+      const defaultCapexCr = totalAmountA >= 10000000 
+        ? (totalAmountA / 10000000).toFixed(2) 
+        : (totalAmountA / 100000).toFixed(2) + " Lakh";
+
+      const defaultSavings25Low = Math.round(savingsLowVal * 25).toLocaleString("en-IN");
+      const defaultSavings25High = Math.round(savingsHighVal * 25).toLocaleString("en-IN");
+
+      const defaultPriceMaterial = Math.round(totalAmountA / 1.089);
+      const defaultPriceGstSupply = totalAmountA - defaultPriceMaterial;
+      const defaultPriceTotalA = totalAmountA;
+
+      const defaultPriceOm = Math.round(capKWp * 2500);
+      const defaultPriceOmGst = Math.round(defaultPriceOm * 0.18);
+      const defaultPriceTotalB = defaultPriceOm + defaultPriceOmGst;
+
+      const defaultPriceTotal = defaultPriceTotalA + defaultPriceTotalB;
+
+      const toWordsIndianLocal = (num) => {
+        const a = [
+          "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+          "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+        ];
+        const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+        function numToWords(n) {
+          if (n < 20) return a[n];
+          if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
+          if (n < 1000) return a[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " " + numToWords(n % 100) : "");
+          return "";
+        }
+        let n = Math.round(num);
+        if (n === 0) return "Zero";
+        let str = "";
+        const crore = Math.floor(n / 10000000);
+        n %= 10000000;
+        if (crore > 0) str += numToWords(crore) + " Crore ";
+        const lakh = Math.floor(n / 100000);
+        n %= 100000;
+        if (lakh > 0) str += numToWords(lakh) + " Lakh ";
+        const thousand = Math.floor(n / 1000);
+        n %= 1000;
+        if (thousand > 0) str += numToWords(thousand) + " Thousand ";
+        if (n > 0) str += numToWords(n) + " ";
+        return (str.trim() + " Only.").replace(/\s+/g, " ");
+      };
+
+      const defaultPriceWords = toWordsIndianLocal(defaultPriceTotal);
+
+      setFormData(prev => {
+        const updates = {};
+        if (!prev.proposalFor) updates.proposalFor = defaultProposalFor;
+        if (!prev.preparedFor) updates.preparedFor = defaultPreparedFor;
+        if (!prev.dated) updates.dated = defaultDated;
+        if (!prev.capacityMwp) updates.capacityMwp = defaultCapacityMwp;
+        if (!prev.moduleCount) updates.moduleCount = defaultModuleCount;
+        if (!prev.landAcres) updates.landAcres = defaultLandAcres;
+        if (!prev.annualGen) updates.annualGen = defaultAnnualGen;
+        if (!prev.co2Tonnes) updates.co2Tonnes = defaultCo2Tonnes;
+        if (!prev.capacityWp) updates.capacityWp = defaultCapacityWp;
+        if (!prev.tariffLow) updates.tariffLow = defaultTariffLow;
+        if (!prev.savingsLow) updates.savingsLow = defaultSavingsLow;
+        if (!prev.tariffHigh) updates.tariffHigh = defaultTariffHigh;
+        if (!prev.savingsHigh) updates.savingsHigh = defaultSavingsHigh;
+        if (!prev.capexCr) updates.capexCr = String(defaultCapexCr);
+        if (!prev.savings25Low) updates.savings25Low = defaultSavings25Low;
+        if (!prev.savings25High) updates.savings25High = defaultSavings25High;
+        if (!prev.priceMaterial) updates.priceMaterial = String(defaultPriceMaterial);
+        if (!prev.priceGstSupply) updates.priceGstSupply = String(defaultPriceGstSupply);
+        if (!prev.priceTotalA) updates.priceTotalA = String(defaultPriceTotalA);
+        if (!prev.priceOm) updates.priceOm = String(defaultPriceOm);
+        if (!prev.priceOmGst) updates.priceOmGst = String(defaultPriceOmGst);
+        if (!prev.priceTotalB) updates.priceTotalB = String(defaultPriceTotalB);
+        if (!prev.priceTotal) updates.priceTotal = String(defaultPriceTotal);
+        if (!prev.priceWords) updates.priceWords = defaultPriceWords;
+
+        if (Object.keys(updates).length > 0) {
+          return { ...prev, ...updates };
+        }
+        return prev;
+      });
+    }
+  }, [formData.rating, formData.customer, formData.date, productDetails.amount]);
 
   // Helpers
   const getCurrentDate = () => {
@@ -108,13 +282,14 @@ export default function QuatationCreate() {
 
   const fetchQuotationCopyData = async () => {
     try {
-      // First try to fetch including the new is_10kv column
+      let quotationMap = {};
+
+      // 1. Fetch from quatation_create
       const { data, error } = await supabase
         .from('quatation_create')
         .select('enquiry_number, planned_2, actual_2, quatation_copy, is_10kv');
 
       if (error) {
-        // Fallback if is_10kv column doesn't exist yet
         console.warn("is_10kv column query failed, falling back without is_10kv:", error);
         const { data: fbData, error: fbError } = await supabase
           .from('quatation_create')
@@ -122,7 +297,6 @@ export default function QuatationCreate() {
         
         if (fbError) throw fbError;
 
-        const quotationMap = {};
         if (fbData) {
           fbData.forEach(row => {
             quotationMap[row.enquiry_number] = {
@@ -133,11 +307,7 @@ export default function QuatationCreate() {
             };
           });
         }
-        return quotationMap;
-      }
-
-      const quotationMap = {};
-      if (data) {
+      } else if (data) {
         data.forEach(row => {
           quotationMap[row.enquiry_number] = {
             planned2: row.planned_2,
@@ -147,6 +317,23 @@ export default function QuatationCreate() {
           };
         });
       }
+
+      // 2. Fetch from quatation_10kw
+      const { data: q10Data, error: q10Error } = await supabase
+        .from('quatation_10kw')
+        .select('enquiry_number, created_at, dated, quatation_copy');
+
+      if (!q10Error && q10Data) {
+        q10Data.forEach(row => {
+          quotationMap[row.enquiry_number] = {
+            planned2: row.dated || row.created_at,
+            actual2: row.created_at,
+            quotationCopy: row.quatation_copy,
+            is10kv: true
+          };
+        });
+      }
+
       return quotationMap;
     } catch (err) {
       console.error(err);
@@ -362,60 +549,96 @@ console.log(error)
   };
 
   const submitToSheet = async (formDataToSubmit, quotationCopyUrl = null) => {
-    const currentTimestamp = new Date();
-    const amount = parseFloat(productDetails.amount || 0);
-    const disc = parseFloat(formDataToSubmit.disc || 0);
-    const gst = parseFloat(productDetails.gst || 0);
-    const central = parseFloat(formDataToSubmit.subCentral || 0);
-    const state = parseFloat(formDataToSubmit.subState || 0);
+    if (isMoreThan10KW(formDataToSubmit.rating)) {
+      const rowData = {
+        enquiry_number: formDataToSubmit.enquiryNumber,
+        proposal_for: formDataToSubmit.proposalFor || formDataToSubmit.capacity || formDataToSubmit.rating,
+        prepared_for: formDataToSubmit.preparedFor || formDataToSubmit.customer,
+        dated: formDataToSubmit.dated || formDataToSubmit.date,
+        capacity_mwp: formDataToSubmit.capacityMwp,
+        module_count: formDataToSubmit.moduleCount,
+        land_acres: formDataToSubmit.landAcres,
+        annual_gen: formDataToSubmit.annualGen,
+        co2_tonnes: formDataToSubmit.co2Tonnes,
+        capacity_wp: formDataToSubmit.capacityWp,
+        tariff_low: formDataToSubmit.tariffLow,
+        savings_low: formDataToSubmit.savingsLow,
+        tariff_high: formDataToSubmit.tariffHigh,
+        savings_high: formDataToSubmit.savingsHigh,
+        capex_cr: formDataToSubmit.capexCr,
+        savings_25_low: formDataToSubmit.savings25Low,
+        savings_25_high: formDataToSubmit.savings25High,
+        price_material: formDataToSubmit.priceMaterial,
+        price_gst_supply: formDataToSubmit.priceGstSupply,
+        price_total_a: formDataToSubmit.priceTotalA,
+        price_om: formDataToSubmit.priceOm,
+        price_om_gst: formDataToSubmit.priceOmGst,
+        price_total_b: formDataToSubmit.priceTotalB,
+        price_total: formDataToSubmit.priceTotal,
+        price_words: formDataToSubmit.priceWords,
+        quatation_copy: quotationCopyUrl,
+      };
 
-    const afterDiscount = amount - (amount * disc) / 100;
-    const gstAmount = gst < 1 ? afterDiscount * gst : (afterDiscount * gst) / 100;
-    const afterGST = afterDiscount + gstAmount;
-    const netCost = afterGST - central - state;
+      const { error } = await supabase
+        .from('quatation_10kw')
+        .upsert(rowData, { onConflict: 'enquiry_number' });
+      if (error) throw error;
+    } else {
+      const currentTimestamp = new Date();
+      const amount = parseFloat(productDetails.amount || 0);
+      const disc = parseFloat(formDataToSubmit.disc || 0);
+      const gst = parseFloat(productDetails.gst || 0);
+      const central = parseFloat(formDataToSubmit.subCentral || 0);
+      const state = parseFloat(formDataToSubmit.subState || 0);
 
-    const rowData = {
-      // quatation_no: formDataToSubmit.quotationNo,
-      actual_2: new Date().toISOString(),
-      quotation_date: formDataToSubmit.date,
-      salesperson: formDataToSubmit.salesperson,
-      customer: formDataToSubmit.customer,
-      contact_no: formDataToSubmit.contactNo,
-      email: formDataToSubmit.email,
-      dealer: formDataToSubmit.dealer,
-      alternative_phone_no: formDataToSubmit.phoneNo,
-      structure_type: formDataToSubmit.structureType,
-      place_of_installation: formDataToSubmit.placeOfInstallation,
-      terms_conditions: formDataToSubmit.termsConditions,
-      product: formDataToSubmit.rating,
-      qty: parseFloat(formDataToSubmit.qty) || null,
-      central_subsidy: central || null,
-      state_subsidy: state || null,
-      discount_percent: disc || null,
-      need_type: formDataToSubmit.needType,
-      reference_by: formDataToSubmit.referenceBy,
-      bank_name: formDataToSubmit.bankAccount,
-      account_no: formDataToSubmit.accountNo,
-      ifsc_code: formDataToSubmit.ifscCode,
-      branch: formDataToSubmit.branch,
-      general_terms_conditions: formDataToSubmit.generalTerms,
-      hours_of_failures: formDataToSubmit.failureHours,
-      load_details: formDataToSubmit.loadDetails,
-      product_name: productDetails.productName,
-      bill_of_material: productDetails.bom,
-      size: productDetails.size,
-      gst: gst || null,
-      rate: parseFloat(productDetails.rate) || null,
-      amount: amount || null,
-      enquiry_number: formDataToSubmit.enquiryNumber,
-      net_cost: netCost,
-      quatation_copy: quotationCopyUrl,
-    };
+      const afterDiscount = amount - (amount * disc) / 100;
+      const gstAmount = gst < 1 ? afterDiscount * gst : (afterDiscount * gst) / 100;
+      const afterGST = afterDiscount + gstAmount;
+      const netCost = afterGST - central - state;
 
-    const { error } = await supabase
-      .from('quatation_create')
-      .upsert(rowData, { onConflict: 'enquiry_number' });
-    if (error) throw error;
+      const rowData = {
+        // quatation_no: formDataToSubmit.quotationNo,
+        actual_2: new Date().toISOString(),
+        quotation_date: formDataToSubmit.date,
+        salesperson: formDataToSubmit.salesperson,
+        customer: formDataToSubmit.customer,
+        contact_no: formDataToSubmit.contactNo,
+        email: formDataToSubmit.email,
+        dealer: formDataToSubmit.dealer,
+        alternative_phone_no: formDataToSubmit.phoneNo,
+        structure_type: formDataToSubmit.structureType,
+        place_of_installation: formDataToSubmit.placeOfInstallation,
+        terms_conditions: formDataToSubmit.termsConditions,
+        product: formDataToSubmit.rating,
+        qty: parseFloat(formDataToSubmit.qty) || null,
+        central_subsidy: central || null,
+        state_subsidy: state || null,
+        discount_percent: disc || null,
+        need_type: formDataToSubmit.needType,
+        reference_by: formDataToSubmit.referenceBy,
+        bank_name: formDataToSubmit.bankAccount,
+        account_no: formDataToSubmit.accountNo,
+        ifsc_code: formDataToSubmit.ifscCode,
+        branch: formDataToSubmit.branch,
+        general_terms_conditions: formDataToSubmit.generalTerms,
+        hours_of_failures: formDataToSubmit.failureHours,
+        load_details: formDataToSubmit.loadDetails,
+        product_name: productDetails.productName,
+        bill_of_material: productDetails.bom,
+        size: productDetails.size,
+        gst: gst || null,
+        rate: parseFloat(productDetails.rate) || null,
+        amount: amount || null,
+        enquiry_number: formDataToSubmit.enquiryNumber,
+        net_cost: netCost,
+        quatation_copy: quotationCopyUrl,
+      };
+
+      const { error } = await supabase
+        .from('quatation_create')
+        .upsert(rowData, { onConflict: 'enquiry_number' });
+      if (error) throw error;
+    }
   };
 
   const handlePreview = (e) => {
@@ -427,103 +650,87 @@ console.log(error)
         return;
       }
     }
-    setShowPreview(true);
+    if (isMoreThan10KW(formData.rating)) {
+      setShow10kvModal(true);
+    } else {
+      setShowPreview(true);
+    }
   };
 
 
   const handleSubmitWithPDF = async (pdfBlob) => {
-  setIsSubmittingToSheet(true);
+    setIsSubmittingToSheet(true);
 
-  try {
-    const fileName = `Quotation_${formData.customer || "Customer"}.pdf`;
-    const url = await uploadPDFToDrive(pdfBlob, fileName);
+    try {
+      const fileName = `Quotation_${formData.customer || "Customer"}.pdf`;
+      const url = await uploadPDFToDrive(pdfBlob, fileName);
 
-    await submitToSheet(formData, url);
+      await submitToSheet(formData, url);
 
-    setSuccessMessage("Quotation created successfully!");
+      setSuccessMessage("Quotation created successfully!");
 
-    setFormData(prev => ({
-      ...prev,
-      customer: "",
-      salesperson: "",
-      contactNo: "",
-      email: "",
-      phoneNo: "",
-      rating: "",
-      qty: "",
-      enquiryNumber: ""
-    }));
+      setFormData(prev => ({
+        ...prev,
+        customer: "",
+        salesperson: "",
+        contactNo: "",
+        email: "",
+        phoneNo: "",
+        rating: "",
+        qty: "",
+        enquiryNumber: ""
+      }));
 
-    setShowPreview(false);
-    fetchFMSData();
+      setShowPreview(false);
+      fetchFMSData();
 
-  } catch (error) {
-    console.error("ERROR 👉", error);
-    alert(error.message || "Something went wrong");
-  } finally {
-    setIsSubmittingToSheet(false);
-  }
-};
+    } catch (error) {
+      console.error("ERROR 👉", error);
+      alert(error.message || "Something went wrong");
+    } finally {
+      setIsSubmittingToSheet(false);
+    }
+  };
 
   const handleSave10kv = async (formVal, productVal, pdfBlob) => {
     try {
-      const fileName = `Quotation_10kv_${formVal.customer || "Customer"}.pdf`;
+      const fileName = `Quotation_10kv_${formVal.preparedFor || formVal.customer || "Customer"}.pdf`;
       const url = await uploadPDFToDrive(pdfBlob, fileName);
       if (!url) {
         throw new Error("Failed to upload PDF");
       }
 
-      const amountVal = parseFloat(productVal.amount || 0);
-      const discVal = parseFloat(formVal.disc || 0);
-      const gstRawVal = parseFloat(productVal.gst || 0);
-      const centralVal = parseFloat(formVal.subCentral || 0);
-      const stateVal = parseFloat(formVal.subState || 0);
-
-      const afterDiscount = amountVal - (amountVal * discVal) / 100;
-      const gstAmount = gstRawVal < 1 ? afterDiscount * gstRawVal : (afterDiscount * gstRawVal) / 100;
-      const afterGST = afterDiscount + gstAmount;
-      const netCost = afterGST - centralVal - stateVal;
-
       const rowData = {
-        actual_2: new Date().toISOString(),
-        quotation_date: formVal.date,
-        salesperson: formVal.salesperson,
-        customer: formVal.customer,
-        contact_no: formVal.contactNo,
-        email: formVal.email,
-        dealer: formVal.dealer,
-        alternative_phone_no: formVal.phoneNo,
-        structure_type: formVal.structureType,
-        place_of_installation: formVal.placeOfInstallation,
-        terms_conditions: formVal.termsConditions,
-        product: formVal.rating,
-        qty: parseFloat(formVal.qty) || null,
-        central_subsidy: centralVal || null,
-        state_subsidy: stateVal || null,
-        discount_percent: discVal || null,
-        need_type: formVal.needType,
-        reference_by: formVal.referenceBy,
-        bank_name: formVal.bankAccount,
-        account_no: formVal.accountNo,
-        ifsc_code: formVal.ifscCode,
-        branch: formVal.branch,
-        general_terms_conditions: formVal.generalTerms,
-        hours_of_failures: formVal.failureHours,
-        load_details: formVal.loadDetails,
-        product_name: productVal.productName,
-        bill_of_material: productVal.bom,
-        size: productVal.size,
-        gst: gstRawVal || null,
-        rate: parseFloat(productVal.rate) || null,
-        amount: amountVal || null,
         enquiry_number: formVal.enquiryNumber,
-        net_cost: netCost,
+        proposal_for: formVal.proposalFor || formVal.capacity || formVal.rating,
+        prepared_for: formVal.preparedFor || formVal.customer,
+        dated: formVal.dated || formVal.date,
+        capacity_mwp: formVal.capacityMwp,
+        module_count: formVal.moduleCount,
+        land_acres: formVal.landAcres,
+        annual_gen: formVal.annualGen,
+        co2_tonnes: formVal.co2Tonnes,
+        capacity_wp: formVal.capacityWp,
+        tariff_low: formVal.tariffLow,
+        savings_low: formVal.savingsLow,
+        tariff_high: formVal.tariffHigh,
+        savings_high: formVal.savingsHigh,
+        capex_cr: formVal.capexCr,
+        savings_25_low: formVal.savings25Low,
+        savings_25_high: formVal.savings25High,
+        price_material: formVal.priceMaterial,
+        price_gst_supply: formVal.priceGstSupply,
+        price_total_a: formVal.priceTotalA,
+        price_om: formVal.priceOm,
+        price_om_gst: formVal.priceOmGst,
+        price_total_b: formVal.priceTotalB,
+        price_total: formVal.priceTotal,
+        price_words: formVal.priceWords,
         quatation_copy: url,
-        is_10kv: true, // Mark it as 10kv
       };
 
       const { error } = await supabase
-        .from('quatation_create')
+        .from('quatation_10kw')
         .upsert(rowData, { onConflict: 'enquiry_number' });
 
       if (error) {
@@ -531,6 +738,8 @@ console.log(error)
       }
 
       alert("10kv Quotation saved successfully!");
+      setShow10kvModal(false);
+      setViewMode("list");
       fetchFMSData();
     } catch (err) {
       console.error("Error saving 10kv quotation:", err);
@@ -849,6 +1058,8 @@ console.log(error)
             customerMap={customerMap}
             dealerBankMap={dealerBankMap}
             onSave={handleSave10kv}
+            initialFormData={formData}
+            initialProductDetails={productDetails}
           />
         )}
       </div>
