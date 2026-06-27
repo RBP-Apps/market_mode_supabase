@@ -84,6 +84,7 @@ function InstallationPage() {
     repeatedCertificate: { uploading: false, uploaded: false, url: "", error: null, name: "" },
     projectCommissioningCertificate: { uploading: false, uploaded: false, url: "", error: null, name: "" },
   })
+  
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
