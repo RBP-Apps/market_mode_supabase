@@ -30,39 +30,42 @@ export default function ThankYouPage() {
 
       {/* Decorative Circular Outlines (Background Graphic) */}
       <div
-        className="absolute rounded-full border border-white/10"
+        className="absolute rounded-full"
         style={{
           width: "480px",
           height: "480px",
           left: "-120px",
           bottom: "-60px",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
           pointerEvents: "none"
         }}
       />
       <div
-        className="absolute rounded-full border border-white/10"
+        className="absolute rounded-full"
         style={{
           width: "600px",
           height: "600px",
           right: "-150px",
           bottom: "-150px",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
           pointerEvents: "none"
         }}
       />
       <div
-        className="absolute rounded-full border border-white/5"
+        className="absolute rounded-full"
         style={{
           width: "360px",
           height: "360px",
           right: "-50px",
           bottom: "-50px",
+          border: "1px solid rgba(255, 255, 255, 0.05)",
           pointerEvents: "none"
         }}
       />
 
       {/* Main content wrapper */}
       <div className="flex-1 flex flex-col items-center justify-start pt-16 z-10 px-10">
-        
+
         {/* LOGO CARD */}
         <div
           className="bg-white rounded-2xl shadow-xl flex flex-col items-center justify-center p-6 mb-16"
@@ -96,10 +99,10 @@ export default function ThankYouPage() {
         </h2>
 
         {/* DIVIDER */}
-        <div className="w-[80px] h-[1px] bg-white/30 mb-6" />
+        <div className="w-[80px] h-[1px] mb-6" style={{ backgroundColor: "rgba(255, 255, 255, 0.3)" }} />
 
         {/* DESCRIPTION */}
-        <p className="text-[#0D2E27]/80 text-[12px] text-center leading-relaxed mb-16">
+        <p className="text-[12px] text-center leading-relaxed mb-16" style={{ color: "rgba(13, 46, 39, 0.8)" }}>
           We look forward to partnering with you to build<br />
           a sustainable and energy-efficient future.
         </p>
@@ -145,12 +148,12 @@ export default function ThankYouPage() {
         </div>
 
         {/* Registered Office */}
-        <p className="text-white/80 text-[9px] leading-relaxed mb-3">
+        <p className="text-[9px] leading-relaxed mb-3" style={{ color: "rgba(255, 255, 255, 0.8)" }}>
           Registered Office: 303, Guru Ghasidas Plaza, Amapara, G.E. Road, Raipur (C.G.) – 492 001
         </p>
 
         {/* Confidentiality disclaimer */}
-        <div className="text-white/60 text-[9px] font-medium uppercase tracking-wider">
+        <div className="text-[9px] font-medium uppercase tracking-wider" style={{ color: "rgba(255, 255, 255, 0.6)" }}>
           Strictly Private & Confidential
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import emailjs from "@emailjs/browser";
 import QuotationPreview from "../components/layout/QuotationPreview";
 import supabase from "../utils/supabase";
@@ -7,6 +7,240 @@ import QuotationListView from "../components/QuotationCreate/QuotationListView";
 import QuotationFormView from "../components/QuotationCreate/QuotationFormView";
 import SendQuotationModal from "../components/QuotationCreate/SendQuotationModal";
 import Quotation10kvModal from "../components/QuotationCreate/Quotation10kvModal";
+
+const replacePlaceholders = (text, formData = {}, productDetails = {}) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  const rating = formData.rating || "";
+  const match = rating.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
+  const val = match ? parseFloat(match[1]) : 2.5;
+  const isMW = rating.toLowerCase().includes("mw");
+  
+  const extractNum = (str) => {
+    if (!str) return 0;
+    const m = String(str).match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) : 0;
+  };
+
+  const Capacity_MWP = extractNum(formData.capacityMwp) || (isMW ? val : val / 1000);
+  const Capacity_WP = Capacity_MWP * 1000000;
+  const Capacity_kWP = Capacity_MWP * 1000;
+  const Module_Count = Math.round(Capacity_WP / 600);
+  const Land_Acres = Capacity_MWP * 3;
+  const Annual_Generation = Capacity_kWP * 1500;
+  const Annual_Generation_Lakh = Annual_Generation / 100000;
+  const CO2_Tonnes = (Annual_Generation * 0.82) / 1000;
+  
+  const epcRate = parseFloat(productDetails.rate || 0);
+  const Material_Cost = extractNum(formData.priceMaterial) || Math.round(Capacity_WP * epcRate);
+  const GST_Supply = Math.round(Material_Cost * 0.089);
+  const Total_A = Material_Cost + GST_Supply;
+  
+  const OM_Cost = extractNum(formData.priceOm) || Math.round(Capacity_kWP * 2500);
+  const OM_GST = Math.round(OM_Cost * 0.18);
+  const Total_B = OM_Cost + OM_GST;
+  
+  const Total_Project_Cost = Total_A + Total_B;
+  const CAPEX_CR = Total_A / 10000000;
+  
+  const Tariff_Low = parseFloat(formData.tariffLow) || 6.5;
+  const Tariff_High = parseFloat(formData.tariffHigh) || 8.0;
+  const Savings_Low = Annual_Generation * Tariff_Low;
+  const Savings_High = Annual_Generation * Tariff_High;
+  const Payback_Low = Savings_Low > 0 ? Total_A / Savings_Low : 0;
+  const Payback_High = Savings_High > 0 ? Total_A / Savings_High : 0;
+  const Savings_25_Low = Savings_Low * 25;
+  const Savings_25_High = Savings_High * 25;
+  
+  const toWordsIndianLocal = (num) => {
+    const a = [
+      "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+      "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+    ];
+    const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    function numToWords(n) {
+      if (n < 20) return a[n];
+      if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
+      if (n < 1000) return a[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " " + numToWords(n % 100) : "");
+      return "";
+    }
+    let n = Math.round(num);
+    if (n === 0) return "Zero";
+    let str = "";
+    const crore = Math.floor(n / 10000000);
+    n %= 10000000;
+    if (crore > 0) str += numToWords(crore) + " Crore ";
+    const lakh = Math.floor(n / 100000);
+    n %= 100000;
+    if (lakh > 0) str += numToWords(lakh) + " Lakh ";
+    const thousand = Math.floor(n / 1000);
+    n %= 1000;
+    if (thousand > 0) str += numToWords(thousand) + " Thousand ";
+    if (n > 0) str += numToWords(n) + " ";
+    return (str.trim() + " Only.").replace(/\s+/g, " ");
+  };
+  const PRICE_WORDS = toWordsIndianLocal(Total_Project_Cost);
+
+  return text
+    .replace(/\{\{CAPACITY_MWP\}\}/g, Capacity_MWP.toFixed(3).replace(/\.?0+$/, ''))
+    .replace(/\{\{CAPACITY_WP\}\}/g, Capacity_WP.toLocaleString("en-IN"))
+    .replace(/\{\{MODULE_COUNT\}\}/g, Module_Count.toLocaleString("en-IN"))
+    .replace(/\{\{LAND_ACRES\}\}/g, Land_Acres.toFixed(1))
+    .replace(/\{\{ANNUAL_GEN\}\}/g, Annual_Generation.toLocaleString("en-IN"))
+    .replace(/\{\{CO2_TONNES\}\}/g, Math.round(CO2_Tonnes).toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_MATERIAL\}\}/g, Material_Cost.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_GST_SUPPLY\}\}/g, GST_Supply.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_TOTAL_A\}\}/g, Total_A.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_OM\}\}/g, OM_Cost.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_OM_GST\}\}/g, OM_GST.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_TOTAL_B\}\}/g, Total_B.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_TOTAL\}\}/g, Total_Project_Cost.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_WORDS\}\}/g, PRICE_WORDS)
+    .replace(/\{\{CAPEX_CR\}\}/g, CAPEX_CR.toFixed(2))
+    .replace(/\{\{TARIFF_LOW\}\}/g, Tariff_Low.toFixed(2))
+    .replace(/\{\{TARIFF_HIGH\}\}/g, Tariff_High.toFixed(2))
+    .replace(/\{\{SAVINGS_LOW\}\}/g, Savings_Low.toLocaleString("en-IN"))
+    .replace(/\{\{SAVINGS_HIGH\}\}/g, Savings_High.toLocaleString("en-IN"))
+    .replace(/\{\{PAYBACK_LOW\}\}/g, Payback_Low.toFixed(1))
+    .replace(/\{\{PAYBACK_HIGH\}\}/g, Payback_High.toFixed(1))
+    .replace(/\{\{SAVINGS_25_LOW\}\}/g, Savings_25_Low.toLocaleString("en-IN"))
+    .replace(/\{\{SAVINGS_25_HIGH\}\}/g, Savings_25_High.toLocaleString("en-IN"));
+};
+
+// ─── Helper for Excel Wording ────────────────────────────────────────────────
+function convertNumberToWordsExcel(num) {
+  if (!num || isNaN(num)) return "";
+  const total = Math.round(parseFloat(num));
+  if (total === 0) return "Zero Only";
+
+  const ones = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+    "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+  ];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+  function getWords99(n) {
+    if (n === 0) return "";
+    if (n < 20) return ones[n];
+    const t = Math.floor(n / 10);
+    const o = n % 10;
+    return tens[t] + (o ? " " + ones[o] : "");
+  }
+
+  const crore = Math.floor(total / 10000000);
+  const lakh = Math.floor((total % 10000000) / 100000);
+  const thousand = Math.floor((total % 100000) / 1000);
+  const hundred = Math.floor((total % 1000) / 100);
+  const remaining = total % 100;
+
+  const croreHundreds = Math.floor(crore / 100);
+  const croreRemainder = crore % 100;
+
+  let parts = [];
+
+  if (crore > 0) {
+    let croreStr = "";
+    if (croreHundreds > 0) {
+      croreStr += getWords99(croreHundreds) + " Hundred";
+      if (croreRemainder > 0) {
+        croreStr += " " + getWords99(croreRemainder);
+      }
+    } else {
+      croreStr += getWords99(croreRemainder);
+    }
+    parts.push(croreStr + " Crore");
+  }
+
+  if (lakh > 0) {
+    parts.push(getWords99(lakh) + " Lakh");
+  }
+
+  if (thousand > 0) {
+    parts.push(getWords99(thousand) + " Thousand");
+  }
+
+  if (hundred > 0) {
+    parts.push(getWords99(hundred) + " Hundred");
+  }
+
+  if (remaining > 0) {
+    parts.push(getWords99(remaining));
+  }
+
+  return parts.join(" ") + " Only";
+}
+
+function toWordsIndianTokenMap(total) {
+  if (!total || isNaN(total)) return "";
+  const ones = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+    "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+  ];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+  function getWords99Hyphen(n) {
+    if (n === 0) return "";
+    if (n < 20) return ones[n];
+    const t = Math.floor(n / 10);
+    const o = n % 10;
+    return tens[t] + (o ? "-" + ones[o] : "");
+  }
+
+  const crore = Math.floor(total / 10000000);
+  const lakh = Math.floor((total % 10000000) / 100000);
+  const thousand = Math.floor((total % 100000) / 1000);
+  const hundred = Math.floor((total % 1000) / 100);
+  const remaining = total % 100;
+
+  const croreHundreds = Math.floor(crore / 100);
+  const croreRemainder = crore % 100;
+
+  let parts = [];
+
+  if (crore > 0) {
+    let croreStr = "";
+    if (croreHundreds > 0) {
+      croreStr += getWords99Hyphen(croreHundreds) + " Hundred";
+      if (croreRemainder > 0) {
+        croreStr += " " + getWords99Hyphen(croreRemainder);
+      }
+    } else {
+      croreStr += getWords99Hyphen(croreRemainder);
+    }
+    parts.push(croreStr + " Crore");
+  }
+
+  if (lakh > 0) {
+    parts.push(getWords99Hyphen(lakh) + " Lakh");
+  }
+
+  if (thousand > 0) {
+    parts.push(getWords99Hyphen(thousand) + " Thousand");
+  }
+
+  if (hundred > 0) {
+    parts.push(getWords99Hyphen(hundred) + " Hundred");
+  }
+
+  if (remaining > 0) {
+    parts.push(getWords99Hyphen(remaining));
+  }
+
+  return parts.join(" ") + " Only";
+}
+
+const getPartWords = (val) => {
+  if (val === 0) return "Zero";
+  const ones = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+    "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+  ];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  if (val < 20) return ones[val];
+  const t = Math.floor(val / 10);
+  const o = val % 10;
+  return tens[t] + (o ? " " + ones[o] : "");
+};
 
 export default function QuatationCreate() {
   // State for list/view mode
@@ -120,6 +354,20 @@ export default function QuatationCreate() {
     priceTotalB: "",
     priceTotal: "",
     priceWords: "",
+
+    // Manual input fields for MWp
+    generationGuarantee: "",
+    moduleWattage: "",
+    landNeeded: "",
+    gridEmissionFactor: "",
+    effectiveGST: "",
+    gstOnOM: "",
+    plantLife: "",
+    gridTariffConservative: "",
+    gridTariffHigher: "",
+    plantCapacity: "",
+    epcRate: "",
+    comprehensiveOM: "",
   });
 
   const isMoreThan10KW = (rating) => {
@@ -134,141 +382,181 @@ export default function QuatationCreate() {
     return false;
   };
 
+  const getParsedCapacityMwp = (rating) => {
+    if (!rating) return 2.5;
+    const match = rating.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
+    const val = match ? parseFloat(match[1]) : 2.5;
+    const isMW = rating.toLowerCase().includes("mw");
+    return isMW ? val : val / 1000;
+  };
+
   useEffect(() => {
     if (!formData.rating) return;
     if (isMoreThan10KW(formData.rating)) {
-      const match = formData.rating.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
-      const capacityVal = match ? parseFloat(match[1]) : 2.5;
-      const isMWStr = formData.rating.toLowerCase().includes("mw");
-      const isKWStr = formData.rating.toLowerCase().includes("kw") || !isMWStr;
+      const pc = parseFloat(formData.plantCapacity) || 0;
+      const er = parseFloat(formData.epcRate) || 0;
+      const co = parseFloat(formData.comprehensiveOM) || 0;
+      const gtc = parseFloat(formData.gridTariffConservative) || 0;
+      const gth = parseFloat(formData.gridTariffHigher) || 0;
+      const gg = parseFloat(formData.generationGuarantee) || 0;
+      const mw = parseFloat(formData.moduleWattage) || 0;
+      const ln = parseFloat(formData.landNeeded) || 0;
+      const gef = parseFloat(formData.gridEmissionFactor) || 0;
+      const egst = parseFloat(formData.effectiveGST) || 0;
+      const go = parseFloat(formData.gstOnOM) || 0;
+      const pl = parseFloat(formData.plantLife) || 0;
 
-      const capMWp = isMWStr ? capacityVal : capacityVal / 1000;
-      const capKWp = isMWStr ? capacityVal * 1000 : capacityVal;
-      const capWp = capKWp * 1000;
+      const capWp = pc * 1000000;
+      const capKwp = pc * 1000;
+      const modExact = mw > 0 ? Math.round(capWp / mw) : 0;
+      const modRounded = Math.round(modExact / 10) * 10;
+      const annualGen = capKwp * gg;
+      const annualGenLakh = annualGen / 100000;
+      const landRequiredVal = pc * ln;
+      const co2AvoidedVal = (annualGen * gef) / 1000;
 
-      const defaultProposalFor = `${capMWp.toFixed(3)} MWp`.replace(/\.?0+$/, '') + " MWp";
-      const defaultPreparedFor = formData.customer || "";
-      const defaultDated = formData.date ? (() => {
-        const d = new Date(formData.date);
-        const months = [
-          "January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"
-        ];
-        const day = d.getDate();
-        let suffix = "th";
-        if (day === 1 || day === 21 || day === 31) suffix = "st";
-        else if (day === 2 || day === 22) suffix = "nd";
-        else if (day === 3 || day === 23) suffix = "rd";
-        return `Dated: ${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
-      })() : "";
+      const materialCostVal = capWp * er;
+      const gstMaterialVal = (materialCostVal * egst) / 100;
+      const totalAVal = materialCostVal + gstMaterialVal;
+      const omCostVal = co;
+      const gstOMVal = (omCostVal * go) / 100;
+      const totalBVal = omCostVal + gstOMVal;
+      const totalProjectCostVal = totalAVal + totalBVal;
 
-      const defaultCapacityMwp = defaultProposalFor;
-      const defaultModuleCount = String(Math.round(capWp / 600));
-      const defaultLandAcres = isKWStr 
-        ? `~${Math.round(capacityVal * 90).toLocaleString("en-IN")} sq ft of shadow-free rooftop area` 
-        : `~${(capacityVal * 3).toFixed(1)} acres of shadow-free, south-facing land (3 acres per MW)`;
-      
-      const annualGenVal = capKWp * 1500;
-      const defaultAnnualGen = annualGenVal >= 100000 
-        ? `${(annualGenVal / 100000).toFixed(1)} Lakh` 
-        : `${annualGenVal.toLocaleString("en-IN")}`;
-      
-      const defaultCo2Tonnes = String(Math.round(annualGenVal * 0.0008));
-      const defaultCapacityWp = capWp.toLocaleString("en-IN");
+      const savingsConsVal = annualGen * gtc;
+      const savingsHighVal = annualGen * gth;
+      const paybackConsVal = savingsConsVal > 0 ? totalAVal / savingsConsVal : 0;
+      const paybackHighVal = savingsHighVal > 0 ? totalAVal / savingsHighVal : 0;
+      const grossSavingsConsVal = savingsConsVal * pl;
+      const grossSavingsHighVal = savingsHighVal * pl;
 
-      const tariffLowVal = 6.5;
-      const savingsLowVal = annualGenVal * tariffLowVal;
-      const tariffHighVal = 8.0;
-      const savingsHighVal = annualGenVal * tariffHighVal;
+      const croreVal = Math.floor(totalProjectCostVal / 10000000);
+      const lakhVal = Math.floor((totalProjectCostVal % 10000000) / 100000);
+      const thousandVal = Math.floor((totalProjectCostVal % 100000) / 1000);
+      const hundredVal = Math.floor((totalProjectCostVal % 1000) / 100);
+      const remainingValue = Math.round(totalProjectCostVal % 100);
+      const croreHundredsVal = Math.floor(croreVal / 100);
+      const croreRemainderVal = croreVal % 100;
 
-      const defaultTariffLow = String(tariffLowVal);
-      const defaultSavingsLow = Math.round(savingsLowVal).toLocaleString("en-IN");
-      const defaultTariffHigh = String(tariffHighVal);
-      const defaultSavingsHigh = Math.round(savingsHighVal).toLocaleString("en-IN");
+      const newFields = {
+        capacityWp: String(capWp),
+        capacityKwp: String(capKwp),
+        moduleCountExact: String(modExact),
+        moduleCountRounded: String(modRounded),
+        annualGeneration: String(annualGen),
+        annualGenerationLakhUnits: String(annualGenLakh),
+        landRequired: String(landRequiredVal),
+        co2Avoided: String(co2AvoidedVal),
+        materialCost: String(materialCostVal),
+        gstOnMaterial: String(gstMaterialVal),
+        totalASystem: String(totalAVal),
+        omCost: String(omCostVal),
+        gstOnOMAmount: String(gstOMVal),
+        totalBComc: String(totalBVal),
+        totalProjectCost: String(totalProjectCostVal),
+        annualSavingsConservative: String(savingsConsVal),
+        annualSavingsHigher: String(savingsHighVal),
+        simplePaybackConservative: paybackConsVal.toFixed(2),
+        simplePaybackHigher: paybackHighVal.toFixed(2),
+        grossSavings25Conservative: String(grossSavingsConsVal),
+        grossSavings25Higher: String(grossSavingsHighVal),
 
-      const costClean = String(productDetails.amount || "").replace(/,/g, "");
-      const totalAmountA = parseFloat(costClean) || 0;
-      const defaultCapexCr = totalAmountA >= 10000000 
-        ? (totalAmountA / 10000000).toFixed(2) 
-        : (totalAmountA / 100000).toFixed(2) + " Lakh";
+        crore: getPartWords(croreVal),
+        lakh: getPartWords(lakhVal),
+        thousand: getPartWords(thousandVal),
+        hundred: getPartWords(hundredVal),
+        rest: getPartWords(remainingValue),
+        croreHundreds: getPartWords(croreHundredsVal),
+        croreRemainder: getPartWords(croreRemainderVal),
+        amountInWords: convertNumberToWordsExcel(totalProjectCostVal),
 
-      const defaultSavings25Low = Math.round(savingsLowVal * 25).toLocaleString("en-IN");
-      const defaultSavings25High = Math.round(savingsHighVal * 25).toLocaleString("en-IN");
-
-      const defaultPriceMaterial = Math.round(totalAmountA / 1.089);
-      const defaultPriceGstSupply = totalAmountA - defaultPriceMaterial;
-      const defaultPriceTotalA = totalAmountA;
-
-      const defaultPriceOm = Math.round(capKWp * 2500);
-      const defaultPriceOmGst = Math.round(defaultPriceOm * 0.18);
-      const defaultPriceTotalB = defaultPriceOm + defaultPriceOmGst;
-
-      const defaultPriceTotal = defaultPriceTotalA + defaultPriceTotalB;
-
-      const toWordsIndianLocal = (num) => {
-        const a = [
-          "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
-          "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
-        ];
-        const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-        function numToWords(n) {
-          if (n < 20) return a[n];
-          if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
-          if (n < 1000) return a[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " " + numToWords(n % 100) : "");
-          return "";
-        }
-        let n = Math.round(num);
-        if (n === 0) return "Zero";
-        let str = "";
-        const crore = Math.floor(n / 10000000);
-        n %= 10000000;
-        if (crore > 0) str += numToWords(crore) + " Crore ";
-        const lakh = Math.floor(n / 100000);
-        n %= 100000;
-        if (lakh > 0) str += numToWords(lakh) + " Lakh ";
-        const thousand = Math.floor(n / 1000);
-        n %= 1000;
-        if (thousand > 0) str += numToWords(thousand) + " Thousand ";
-        if (n > 0) str += numToWords(n) + " ";
-        return (str.trim() + " Only.").replace(/\s+/g, " ");
+        // Also set the old fields to keep template generation working!
+        proposalFor: `${pc} MWp`,
+        preparedFor: formData.preparedFor || formData.customer || "",
+        dated: formData.dated || formData.date || new Date().toISOString().split("T")[0],
+        capacityMwp: `${pc} MWp`,
+        moduleCount: modRounded.toString(),
+        landAcres: `~${landRequiredVal.toFixed(1)} acres`,
+        annualGen: `${annualGenLakh.toFixed(1)} Lakh`,
+        co2Tonnes: Math.round(co2AvoidedVal).toString(),
+        tariffLow: gtc.toString(),
+        savingsLow: Math.round(savingsConsVal).toLocaleString("en-IN"),
+        tariffHigh: gth.toString(),
+        savingsHigh: Math.round(savingsHighVal).toLocaleString("en-IN"),
+        capexCr: (totalAVal / 10000000).toFixed(2),
+        savings25Low: Math.round(grossSavingsConsVal).toLocaleString("en-IN"),
+        savings25High: Math.round(grossSavingsHighVal).toLocaleString("en-IN"),
+        priceMaterial: Math.round(materialCostVal).toLocaleString("en-IN"),
+        priceGstSupply: Math.round(gstMaterialVal).toLocaleString("en-IN"),
+        priceTotalA: Math.round(totalAVal).toLocaleString("en-IN"),
+        priceOm: Math.round(omCostVal).toLocaleString("en-IN"),
+        priceOmGst: Math.round(gstOMVal).toLocaleString("en-IN"),
+        priceTotalB: Math.round(totalBVal).toLocaleString("en-IN"),
+        priceTotal: Math.round(totalProjectCostVal).toLocaleString("en-IN"),
+        priceWords: toWordsIndianTokenMap(totalProjectCostVal),
       };
 
-      const defaultPriceWords = toWordsIndianLocal(defaultPriceTotal);
-
-      setFormData(prev => {
-        const updates = {};
-        if (!prev.proposalFor) updates.proposalFor = defaultProposalFor;
-        if (!prev.preparedFor) updates.preparedFor = defaultPreparedFor;
-        if (!prev.dated) updates.dated = defaultDated;
-        if (!prev.capacityMwp) updates.capacityMwp = defaultCapacityMwp;
-        if (!prev.moduleCount) updates.moduleCount = defaultModuleCount;
-        if (!prev.landAcres) updates.landAcres = defaultLandAcres;
-        if (!prev.annualGen) updates.annualGen = defaultAnnualGen;
-        if (!prev.co2Tonnes) updates.co2Tonnes = defaultCo2Tonnes;
-        if (!prev.capacityWp) updates.capacityWp = defaultCapacityWp;
-        if (!prev.tariffLow) updates.tariffLow = defaultTariffLow;
-        if (!prev.savingsLow) updates.savingsLow = defaultSavingsLow;
-        if (!prev.tariffHigh) updates.tariffHigh = defaultTariffHigh;
-        if (!prev.savingsHigh) updates.savingsHigh = defaultSavingsHigh;
-        if (!prev.capexCr) updates.capexCr = String(defaultCapexCr);
-        if (!prev.savings25Low) updates.savings25Low = defaultSavings25Low;
-        if (!prev.savings25High) updates.savings25High = defaultSavings25High;
-        if (!prev.priceMaterial) updates.priceMaterial = String(defaultPriceMaterial);
-        if (!prev.priceGstSupply) updates.priceGstSupply = String(defaultPriceGstSupply);
-        if (!prev.priceTotalA) updates.priceTotalA = String(defaultPriceTotalA);
-        if (!prev.priceOm) updates.priceOm = String(defaultPriceOm);
-        if (!prev.priceOmGst) updates.priceOmGst = String(defaultPriceOmGst);
-        if (!prev.priceTotalB) updates.priceTotalB = String(defaultPriceTotalB);
-        if (!prev.priceTotal) updates.priceTotal = String(defaultPriceTotal);
-        if (!prev.priceWords) updates.priceWords = defaultPriceWords;
-
-        if (Object.keys(updates).length > 0) {
-          return { ...prev, ...updates };
+      const bomData = {
+        manualInputs: {
+          customerName: formData.preparedFor || formData.customer || "",
+          proposalDate: formData.dated || formData.date || "",
+          plantCapacity: String(pc),
+          epcRate: String(er),
+          comprehensiveOM: String(co),
+          gridTariffConservative: String(gtc),
+          gridTariffHigher: String(gth),
+          generationGuarantee: String(gg),
+          moduleWattage: String(mw),
+          landNeeded: String(ln),
+          gridEmissionFactor: String(gef),
+          effectiveGST: String(egst),
+          gstOnOM: String(go),
+          plantLife: String(pl),
         }
-        return prev;
-      });
+      };
+      const bomStr = JSON.stringify(bomData);
+
+      const hasChanged = Object.keys(newFields).some(
+        key => String(formData[key]) !== String(newFields[key])
+      );
+
+      if (hasChanged) {
+        setFormData(prev => ({ ...prev, ...newFields }));
+      }
+
+      if (
+        String(productDetails.rate) !== String(er) || 
+        String(productDetails.amount) !== String(totalAVal) ||
+        productDetails.bom !== bomStr
+      ) {
+        setProductDetails(prev => ({
+          ...prev,
+          rate: String(er),
+          amount: String(totalAVal),
+          bom: bomStr
+        }));
+      }
     }
-  }, [formData.rating, formData.customer, formData.date, productDetails.amount]);
+  }, [
+    formData.rating,
+    formData.customer,
+    formData.date,
+    formData.plantCapacity,
+    formData.epcRate,
+    formData.comprehensiveOM,
+    formData.gridTariffConservative,
+    formData.gridTariffHigher,
+    formData.generationGuarantee,
+    formData.moduleWattage,
+    formData.landNeeded,
+    formData.gridEmissionFactor,
+    formData.effectiveGST,
+    formData.gstOnOM,
+    formData.plantLife,
+    productMap,
+    productDetails.rate,
+    productDetails.amount
+  ]);
 
   // Helpers
   const getCurrentDate = () => {
@@ -547,7 +835,6 @@ console.log(error)
     setSelectedQuotation(row);
     setShowSendModal(true);
   };
-
   const submitToSheet = async (formDataToSubmit, quotationCopyUrl = null) => {
     if (isMoreThan10KW(formDataToSubmit.rating)) {
       const rowData = {
@@ -579,10 +866,52 @@ console.log(error)
         quatation_copy: quotationCopyUrl,
       };
 
-      const { error } = await supabase
-        .from('quatation_10kw')
-        .upsert(rowData, { onConflict: 'enquiry_number' });
-      if (error) throw error;
+      // Also upsert to quatation_create to maintain FMS pipeline compatibility
+      const totalCostNum = parseFloat(formDataToSubmit.priceTotal?.replace(/,/g, '')) || parseFloat(productDetails.amount) || null;
+      const rateNum = parseFloat(productDetails.rate) || null;
+      const amountNum = parseFloat(productDetails.amount) || null;
+
+      const quatationCreateRow = {
+        actual_2: new Date().toISOString(),
+        quotation_date: formDataToSubmit.date || new Date().toISOString().split('T')[0],
+        salesperson: formDataToSubmit.salesperson,
+        customer: formDataToSubmit.customer,
+        contact_no: formDataToSubmit.contactNo,
+        email: formDataToSubmit.email,
+        dealer: formDataToSubmit.dealer,
+        alternative_phone_no: formDataToSubmit.phoneNo,
+        structure_type: formDataToSubmit.structureType || "Roof Top",
+        place_of_installation: formDataToSubmit.placeOfInstallation,
+        terms_conditions: replacePlaceholders(formDataToSubmit.termsConditions || "", formDataToSubmit, productDetails),
+        product: formDataToSubmit.rating,
+        qty: 1,
+        need_type: formDataToSubmit.needType,
+        reference_by: formDataToSubmit.referenceBy,
+        bank_name: formDataToSubmit.bankAccount,
+        account_no: formDataToSubmit.accountNo,
+        ifsc_code: formDataToSubmit.ifscCode,
+        branch: formDataToSubmit.branch,
+        general_terms_conditions: replacePlaceholders(formDataToSubmit.generalTerms || "", formDataToSubmit, productDetails),
+        hours_of_failures: formDataToSubmit.failureHours,
+        load_details: formDataToSubmit.loadDetails,
+        product_name: productDetails.productName || formDataToSubmit.rating,
+        bill_of_material: productDetails.bom,
+        size: productDetails.size || `${formDataToSubmit.plantCapacity} MWp`,
+        rate: rateNum,
+        amount: amountNum,
+        enquiry_number: formDataToSubmit.enquiryNumber,
+        net_cost: totalCostNum,
+        quatation_copy: quotationCopyUrl,
+        is_10kv: true,
+      };
+
+      const [res1, res2] = await Promise.all([
+        supabase.from('quatation_10kw').upsert(rowData, { onConflict: 'enquiry_number' }),
+        supabase.from('quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
+      ]);
+
+      if (res1.error) throw res1.error;
+      if (res2.error) throw res2.error;
     } else {
       const currentTimestamp = new Date();
       const amount = parseFloat(productDetails.amount || 0);
@@ -608,7 +937,7 @@ console.log(error)
         alternative_phone_no: formDataToSubmit.phoneNo,
         structure_type: formDataToSubmit.structureType,
         place_of_installation: formDataToSubmit.placeOfInstallation,
-        terms_conditions: formDataToSubmit.termsConditions,
+        terms_conditions: replacePlaceholders(formDataToSubmit.termsConditions, formDataToSubmit, productDetails),
         product: formDataToSubmit.rating,
         qty: parseFloat(formDataToSubmit.qty) || null,
         central_subsidy: central || null,
@@ -620,7 +949,7 @@ console.log(error)
         account_no: formDataToSubmit.accountNo,
         ifsc_code: formDataToSubmit.ifscCode,
         branch: formDataToSubmit.branch,
-        general_terms_conditions: formDataToSubmit.generalTerms,
+        general_terms_conditions: replacePlaceholders(formDataToSubmit.generalTerms, formDataToSubmit, productDetails),
         hours_of_failures: formDataToSubmit.failureHours,
         load_details: formDataToSubmit.loadDetails,
         product_name: productDetails.productName,
@@ -643,14 +972,18 @@ console.log(error)
 
   const handlePreview = (e) => {
     e.preventDefault();
-    const required = ["salesperson", "customer", "contactNo", "structureType", "rating", "qty"];
+    const is10kw = isMoreThan10KW(formData.rating);
+    const required = is10kw
+      ? ["salesperson", "customer", "contactNo", "rating"]
+      : ["salesperson", "customer", "contactNo", "structureType", "rating", "qty"];
+
     for (const f of required) {
       if (!formData[f]) {
         alert(`Please fill in ${f.replace(/([A-Z])/g, " $1").toLowerCase()}`);
         return;
       }
     }
-    if (isMoreThan10KW(formData.rating)) {
+    if (is10kw) {
       setShow10kvModal(true);
     } else {
       setShowPreview(true);
@@ -678,7 +1011,19 @@ console.log(error)
         phoneNo: "",
         rating: "",
         qty: "",
-        enquiryNumber: ""
+        enquiryNumber: "",
+        generationGuarantee: "",
+        moduleWattage: "",
+        landNeeded: "",
+        gridEmissionFactor: "",
+        effectiveGST: "",
+        gstOnOM: "",
+        plantLife: "",
+        gridTariffConservative: "",
+        gridTariffHigher: "",
+        plantCapacity: "",
+        epcRate: "",
+        comprehensiveOM: "",
       }));
 
       setShowPreview(false);
@@ -893,10 +1238,8 @@ console.log(error)
     let filtered = fmsData.filter(item => {
       if (activeTab === "pending") {
         return item.planned2 && !item.actual2;
-      } else if (activeTab === "10kv_history") {
-        return item.planned2 && item.actual2 && item.is10kv;
       } else {
-        return item.planned2 && item.actual2 && !item.is10kv;
+        return item.planned2 && item.actual2;
       }
     });
 
@@ -926,7 +1269,19 @@ console.log(error)
         failureHours: selectedEnquiry.hoursOfFailure, 
         needType: selectedEnquiry.needType, 
         qty: selectedEnquiry.qty,
-        enquiryNumber: selectedEnquiry.enquiryNumber
+        enquiryNumber: selectedEnquiry.enquiryNumber,
+        generationGuarantee: "",
+        moduleWattage: "",
+        landNeeded: "",
+        gridEmissionFactor: "",
+        effectiveGST: "",
+        gstOnOM: "",
+        plantLife: "",
+        gridTariffConservative: "",
+        gridTariffHigher: "",
+        plantCapacity: "",
+        epcRate: "",
+        comprehensiveOM: "",
       }));
     }
   }, [selectedEnquiry, viewMode]);
@@ -972,7 +1327,19 @@ console.log(error)
       rating: d.rating || "", 
       qty: d.qty || "", 
       structureType: d.structureType || "", 
-      needType: d.needType || "" 
+      needType: d.needType || "",
+      generationGuarantee: "",
+      moduleWattage: "",
+      landNeeded: "",
+      gridEmissionFactor: "",
+      effectiveGST: "",
+      gstOnOM: "",
+      plantLife: "",
+      gridTariffConservative: "",
+      gridTariffHigher: "",
+      plantCapacity: "",
+      epcRate: "",
+      comprehensiveOM: "",
     }));
   };
 

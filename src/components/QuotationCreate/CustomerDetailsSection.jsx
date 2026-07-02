@@ -17,7 +17,7 @@ export default function CustomerDetailsSection({
 }) {
   return (
     <div className={sectionClass}>
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 rounded-t-xl">
         <h2 className={sectionTitleClass}>
           <User className="h-5 w-5 mr-2" />
           Customer Details

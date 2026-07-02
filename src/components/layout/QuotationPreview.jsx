@@ -29,6 +29,105 @@ function toWords(num) {
   return "Rupees " + result.trim() + " Only";
 }
 
+const replacePlaceholders = (text, formData = {}, productDetails = {}) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  const rating = formData.rating || "";
+  const match = rating.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
+  const val = match ? parseFloat(match[1]) : 2.5;
+  const isMW = rating.toLowerCase().includes("mw");
+  
+  const extractNum = (str) => {
+    if (!str) return 0;
+    const m = String(str).match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) : 0;
+  };
+
+  const Capacity_MWP = extractNum(formData.capacityMwp) || (isMW ? val : val / 1000);
+  const Capacity_WP = Capacity_MWP * 1000000;
+  const Capacity_kWP = Capacity_MWP * 1000;
+  const Module_Count = Math.round(Capacity_WP / 600);
+  const Land_Acres = Capacity_MWP * 3;
+  const Annual_Generation = Capacity_kWP * 1500;
+  const Annual_Generation_Lakh = Annual_Generation / 100000;
+  const CO2_Tonnes = (Annual_Generation * 0.82) / 1000;
+  
+  const epcRate = parseFloat(productDetails.rate || 0);
+  const Material_Cost = extractNum(formData.priceMaterial) || Math.round(Capacity_WP * epcRate);
+  const GST_Supply = Math.round(Material_Cost * 0.089);
+  const Total_A = Material_Cost + GST_Supply;
+  
+  const OM_Cost = extractNum(formData.priceOm) || Math.round(Capacity_kWP * 2500);
+  const OM_GST = Math.round(OM_Cost * 0.18);
+  const Total_B = OM_Cost + OM_GST;
+  
+  const Total_Project_Cost = Total_A + Total_B;
+  const CAPEX_CR = Total_A / 10000000;
+  
+  const Tariff_Low = parseFloat(formData.tariffLow) || 6.5;
+  const Tariff_High = parseFloat(formData.tariffHigh) || 8.0;
+  const Savings_Low = Annual_Generation * Tariff_Low;
+  const Savings_High = Annual_Generation * Tariff_High;
+  const Payback_Low = Savings_Low > 0 ? Total_A / Savings_Low : 0;
+  const Payback_High = Savings_High > 0 ? Total_A / Savings_High : 0;
+  const Savings_25_Low = Savings_Low * 25;
+  const Savings_25_High = Savings_High * 25;
+  
+  const toWordsIndianLocal = (num) => {
+    const a = [
+      "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+      "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+    ];
+    const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    function numToWords(n) {
+      if (n < 20) return a[n];
+      if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
+      if (n < 1000) return a[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " " + numToWords(n % 100) : "");
+      return "";
+    }
+    let n = Math.round(num);
+    if (n === 0) return "Zero";
+    let str = "";
+    const crore = Math.floor(n / 10000000);
+    n %= 10000000;
+    if (crore > 0) str += numToWords(crore) + " Crore ";
+    const lakh = Math.floor(n / 100000);
+    n %= 100000;
+    if (lakh > 0) str += numToWords(lakh) + " Lakh ";
+    const thousand = Math.floor(n / 1000);
+    n %= 1000;
+    if (thousand > 0) str += numToWords(thousand) + " Thousand ";
+    if (n > 0) str += numToWords(n) + " ";
+    return (str.trim() + " Only.").replace(/\s+/g, " ");
+  };
+  const PRICE_WORDS = toWordsIndianLocal(Total_Project_Cost);
+
+  return text
+    .replace(/\{\{CAPACITY_MWP\}\}/g, Capacity_MWP.toFixed(3).replace(/\.?0+$/, ''))
+    .replace(/\{\{CAPACITY_WP\}\}/g, Capacity_WP.toLocaleString("en-IN"))
+    .replace(/\{\{MODULE_COUNT\}\}/g, Module_Count.toLocaleString("en-IN"))
+    .replace(/\{\{LAND_ACRES\}\}/g, Land_Acres.toFixed(1))
+    .replace(/\{\{ANNUAL_GEN\}\}/g, Annual_Generation.toLocaleString("en-IN"))
+    .replace(/\{\{CO2_TONNES\}\}/g, Math.round(CO2_Tonnes).toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_MATERIAL\}\}/g, Material_Cost.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_GST_SUPPLY\}\}/g, GST_Supply.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_TOTAL_A\}\}/g, Total_A.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_OM\}\}/g, OM_Cost.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_OM_GST\}\}/g, OM_GST.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_TOTAL_B\}\}/g, Total_B.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_TOTAL\}\}/g, Total_Project_Cost.toLocaleString("en-IN"))
+    .replace(/\{\{PRICE_WORDS\}\}/g, PRICE_WORDS)
+    .replace(/\{\{CAPEX_CR\}\}/g, CAPEX_CR.toFixed(2))
+    .replace(/\{\{TARIFF_LOW\}\}/g, Tariff_Low.toFixed(2))
+    .replace(/\{\{TARIFF_HIGH\}\}/g, Tariff_High.toFixed(2))
+    .replace(/\{\{SAVINGS_LOW\}\}/g, Savings_Low.toLocaleString("en-IN"))
+    .replace(/\{\{SAVINGS_HIGH\}\}/g, Savings_High.toLocaleString("en-IN"))
+    .replace(/\{\{PAYBACK_LOW\}\}/g, Payback_Low.toFixed(1))
+    .replace(/\{\{PAYBACK_HIGH\}\}/g, Payback_High.toFixed(1))
+    .replace(/\{\{SAVINGS_25_LOW\}\}/g, Savings_25_Low.toLocaleString("en-IN"))
+    .replace(/\{\{SAVINGS_25_HIGH\}\}/g, Savings_25_High.toLocaleString("en-IN"));
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function QuotationPreview({ formData, productDetails, onClose, onSubmit, isSubmitting }) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -65,7 +164,38 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
     const element = previewRef.current;
     if (!element) throw new Error("Preview element not found");
 
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = function (el, pseudoElt) {
+      const style = originalGetComputedStyle(el, pseudoElt);
+      if (!el || el.ownerDocument === document) {
+        return style;
+      }
+      const cleanValue = (val) => {
+        if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
+          return val
+            .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
+            .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
+        }
+        return val;
+      };
+      return new Proxy(style, {
+        get(target, prop) {
+          if (prop === 'getPropertyValue') {
+            return function(name) {
+              return cleanValue(target.getPropertyValue(name));
+            };
+          }
+          const val = target[prop];
+          if (typeof val === 'function') {
+            return val.bind(target);
+          }
+          return cleanValue(val);
+        }
+      });
+    };
+
     try {
+      await document.fonts.ready;
       // Capture at exactly A4 Portrait dimensions
       const canvas = await html2canvas(element, {
         scale: 2,
@@ -124,6 +254,9 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
     } catch (err) {
       console.error("Critical PDF Gen Error:", err);
       throw err;
+    } finally {
+      // Restore window.getComputedStyle
+      window.getComputedStyle = originalGetComputedStyle;
     }
   };
 
@@ -139,8 +272,8 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
     }
   };
 
-  const gtLines = (formData.generalTerms || "").split("\n").filter(l => l.trim());
-  const tcLines = (formData.termsConditions || "").split("\n").filter(l => l.trim());
+  const gtLines = replacePlaceholders(formData.generalTerms || "", formData, productDetails).split("\n").filter(l => l.trim());
+  const tcLines = replacePlaceholders(formData.termsConditions || "", formData, productDetails).split("\n").filter(l => l.trim());
 
   const colors = {
     teal: "#00506b",
@@ -227,9 +360,9 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
             style={{
               background: "#fff",
               border: `1px solid ${colors.border}`,
-              width: "210mm",
-              height: "297mm",
-              padding: "6mm",
+              width: "794px",
+              height: "1123px",
+              padding: "23px",
               boxSizing: "border-box",
               fontFamily: "Arial, sans-serif",
               fontSize: "8px",

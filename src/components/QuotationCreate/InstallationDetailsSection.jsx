@@ -14,7 +14,7 @@ export default function InstallationDetailsSection({
 }) {
   return (
     <div className={sectionClass}>
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 rounded-t-xl">
         <h2 className={sectionTitleClass}>
           <Home className="h-5 w-5 mr-2" />
           Installation Details

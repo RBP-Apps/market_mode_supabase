@@ -28,9 +28,9 @@ export default function QuotationFormView({
 }) {
   // Enhanced styling classes
   const sectionClass =
-    "bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-shadow duration-300";
+    "bg-white rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300 relative";
   const sectionHeaderClass =
-    "bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4";
+    "bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 rounded-t-xl";
   const sectionTitleClass =
     "text-white font-semibold flex items-center text-lg";
   const labelClass = "block text-sm font-medium text-gray-600 mb-1.5";
@@ -88,8 +88,8 @@ export default function QuotationFormView({
 
       <form className="space-y-6">
         {/* Product Selection */}
-        <div className={sectionClass}>
-          <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
+        <div className={`${sectionClass} z-[25]`}>
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 rounded-t-xl">
             <h2 className={sectionTitleClass}>
               <Zap className="h-5 w-5 mr-2" />
               Product Selection
@@ -120,7 +120,7 @@ export default function QuotationFormView({
           handleDealerChange={handleDealerChange}
           salespersons={salespersons}
           dropdownOptions={dropdownOptions}
-          sectionClass={sectionClass}
+          sectionClass={`${sectionClass} z-[24]`}
           sectionTitleClass={sectionTitleClass}
           labelClass={labelClass}
           inputClass={inputClass}
@@ -145,25 +145,15 @@ export default function QuotationFormView({
             return (
               <>
                 {/* Card 1: General Proposal Metadata */}
-                <div className={sectionClass}>
-                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                {/* <div className={`${sectionClass} z-[23]`}>
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 rounded-t-xl">
                     <h2 className={sectionTitleClass}>
                       <FileText className="h-5 w-5 mr-2" />
-                      General Proposal Metadata (10kW+)
+                      PRIMARY INPUTS  (edit every proposal)
                     </h2>
                   </div>
                   <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className={labelClass}>Proposal For</label>
-                      <input
-                        type="text"
-                        name="proposalFor"
-                        value={formData.proposalFor || ""}
-                        onChange={handleChange}
-                        placeholder="e.g. 2.5 MWp"
-                        className={inputClass}
-                      />
-                    </div>
+                   
                     <div>
                       <label className={labelClass}>Prepared For</label>
                       <input
@@ -176,25 +166,129 @@ export default function QuotationFormView({
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>Proposal Date (Text)</label>
+                      <label className={labelClass}>Proposal Date</label>
                       <input
-                        type="text"
+                        type="date"
                         name="dated"
                         value={formData.dated || ""}
                         onChange={handleChange}
-                        placeholder="e.g. Dated: 9th June 2026"
                         className={inputClass}
                       />
                     </div>
                   </div>
-                </div>
+                </div> */}
+                <div className={`${sectionClass} z-[23]`}>
+  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 rounded-t-xl">
+    <h2 className={sectionTitleClass}>
+      <FileText className="h-5 w-5 mr-2" />
+      PRIMARY INPUTS (Edit Every Proposal)
+    </h2>
+  </div>
+
+  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    {/* Prepared For */}
+    <div>
+      <label className={labelClass}>Prepared For</label>
+      <input
+        type="text"
+        name="preparedFor"
+        value={formData.preparedFor || ""}
+        onChange={handleChange}
+        placeholder="e.g. Mr. Subham Singhal"
+        className={inputClass}
+      />
+    </div>
+
+    {/* Proposal Date */}
+    <div>
+      <label className={labelClass}>Proposal Date</label>
+      <input
+        type="date"
+        name="dated"
+        value={formData.dated || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    {/* Plant Capacity */}
+    <div>
+      <label className={labelClass}>Plant Capacity (MWp)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="plantCapacity"
+        value={formData.plantCapacity || ""}
+        onChange={handleChange}
+        placeholder="e.g. 1.5"
+        className={inputClass}
+      />
+    </div>
+
+    {/* EPC Rate */}
+    <div>
+      <label className={labelClass}>EPC Rate (₹ per Wp)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="epcRate"
+        value={formData.epcRate || ""}
+        onChange={handleChange}
+        placeholder="e.g. 32"
+        className={inputClass}
+      />
+    </div>
+
+    {/* Comprehensive O&M */}
+    <div>
+      <label className={labelClass}>Comprehensive O&M – Lump Sum (₹)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="comprehensiveOM"
+        value={formData.comprehensiveOM || ""}
+        onChange={handleChange}
+        placeholder="e.g. 500000"
+        className={inputClass}
+      />
+    </div>
+
+    {/* Grid Tariff Conservative */}
+    <div>
+      <label className={labelClass}>Grid Tariff – Conservative (₹/unit)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="gridTariffConservative"
+        value={formData.gridTariffConservative || ""}
+        onChange={handleChange}
+        placeholder="e.g. 7.50"
+        className={inputClass}
+      />
+    </div>
+
+    {/* Grid Tariff Higher */}
+    <div>
+      <label className={labelClass}>Grid Tariff – Higher (₹/unit)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="gridTariffHigher"
+        value={formData.gridTariffHigher || ""}
+        onChange={handleChange}
+        placeholder="e.g. 9.00"
+        className={inputClass}
+      />
+    </div>
+  </div>
+</div>
 
                 {/* Card 2: Project Specifications & Projections */}
-                <div className={sectionClass}>
-                  <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4">
+                {/* <div className={`${sectionClass} z-[22]`}>
+                  <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4 rounded-t-xl">
                     <h2 className={sectionTitleClass}>
                       <Zap className="h-5 w-5 mr-2" />
-                      Technical Specifications (10kW+)
+                      Assumptions
                     </h2>
                   </div>
                   <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -265,14 +359,130 @@ export default function QuotationFormView({
                       />
                     </div>
                   </div>
-                </div>
+                </div> */}
+                <div className={`${sectionClass} z-[22]`}>
+  <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4 rounded-t-xl">
+    <h2 className={sectionTitleClass}>
+      <Zap className="h-5 w-5 mr-2" />
+      Assumptions
+    </h2>
+  </div>
+
+  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    {/* Generation Guarantee */}
+    <div>
+      <label className={labelClass}>
+        Generation Guarantee (kWh per kWp / yr)
+      </label>
+      <input
+        type="number"
+        step="0.01"
+        name="generationGuarantee"
+        value={formData.generationGuarantee || ""}
+        onChange={handleChange}
+        placeholder="e.g. 1500"
+        className={inputClass}
+      />
+    </div>
+
+    {/* Module Wattage */}
+    <div>
+      <label className={labelClass}>Module Wattage (Wp)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="moduleWattage"
+        value={formData.moduleWattage || ""}
+        onChange={handleChange}
+        placeholder="e.g. 600"
+        className={inputClass}
+      />
+    </div>
+
+    {/* Land Needed */}
+    <div>
+      <label className={labelClass}>Land Needed (Acres per MW)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="landNeeded"
+        value={formData.landNeeded || ""}
+        onChange={handleChange}
+        placeholder="e.g. 4.5"
+        className={inputClass}
+      />
+    </div>
+
+    {/* Grid Emission Factor */}
+    <div>
+      <label className={labelClass}>
+        Grid Emission Factor (kg CO₂ / kWh)
+      </label>
+      <input
+        type="number"
+        step="0.001"
+        name="gridEmissionFactor"
+        value={formData.gridEmissionFactor || ""}
+        onChange={handleChange}
+        placeholder="e.g. 0.716"
+        className={inputClass}
+      />
+    </div>
+
+    {/* Effective GST */}
+    <div>
+      <label className={labelClass}>
+        Effective GST on Supply & Install (%)
+      </label>
+      <input
+        type="number"
+        step="0.01"
+        name="effectiveGST"
+        value={formData.effectiveGST || ""}
+        onChange={handleChange}
+        placeholder="e.g. 13.8"
+        className={inputClass}
+      />
+    </div>
+
+    {/* GST on O&M */}
+    <div>
+      <label className={labelClass}>GST on O&M (%)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="gstOnOM"
+        value={formData.gstOnOM || ""}
+        onChange={handleChange}
+        placeholder="e.g. 18"
+        className={inputClass}
+      />
+    </div>
+
+    {/* Plant Life */}
+    <div>
+      <label className={labelClass}>
+        Plant Life for Savings (Years)
+      </label>
+      <input
+        type="number"
+        name="plantLife"
+        value={formData.plantLife || ""}
+        onChange={handleChange}
+        placeholder="e.g. 25"
+        className={inputClass}
+      />
+    </div>
+  </div>
+</div>
 
                 {/* Card 3: Indicative Savings & Tariffs */}
-                <div className={sectionClass}>
-                  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-4">
+                {/* <div className={`${sectionClass} z-[21]`}>
+                  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-4 rounded-t-xl">
                     <h2 className={sectionTitleClass}>
                       <TrendingUp className="h-5 w-5 mr-2" />
-                      Savings & Payback (10kW+)
+                      CALCULATED OUTPUTS
+
                     </h2>
                   </div>
                   <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -354,106 +564,353 @@ export default function QuotationFormView({
                       />
                     </div>
                   </div>
-                </div>
+                </div> */}
+                <div className={`${sectionClass} z-[21]`}>
+  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-4 rounded-t-xl">
+    <h2 className={sectionTitleClass}>
+      <TrendingUp className="h-5 w-5 mr-2" />
+      CALCULATED OUTPUTS
+    </h2>
+  </div>
+
+  <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+
+    <div>
+      <label className={labelClass}>Capacity (Wp)</label>
+      <input
+        type="number"
+        name="capacityWp"
+        value={formData.capacityWp || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Capacity (kWp)</label>
+      <input
+        type="number"
+        name="capacityKwp"
+        value={formData.capacityKwp || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Module Count (Exact)</label>
+      <input
+        type="number"
+        name="moduleCountExact"
+        value={formData.moduleCountExact || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Module Count (Rounded)</label>
+      <input
+        type="number"
+        name="moduleCountRounded"
+        value={formData.moduleCountRounded || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Annual Generation (kWh)</label>
+      <input
+        type="number"
+        name="annualGeneration"
+        value={formData.annualGeneration || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Annual Generation (Lakh Units)</label>
+      <input
+        type="number"
+        name="annualGenerationLakhUnits"
+        value={formData.annualGenerationLakhUnits || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Land Required (Acres)</label>
+      <input
+        type="number"
+        name="landRequired"
+        value={formData.landRequired || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>CO₂ Avoided (Tonnes / Yr)</label>
+      <input
+        type="number"
+        name="co2Avoided"
+        value={formData.co2Avoided || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Material Cost (₹)</label>
+      <input
+        type="number"
+        name="materialCost"
+        value={formData.materialCost || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>GST on Material (₹)</label>
+      <input
+        type="number"
+        name="gstOnMaterial"
+        value={formData.gstOnMaterial || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Total A – System (₹)</label>
+      <input
+        type="number"
+        name="totalASystem"
+        value={formData.totalASystem || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>O&M (₹)</label>
+      <input
+        type="number"
+        name="omCost"
+        value={formData.omCost || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>GST on O&M (₹)</label>
+      <input
+        type="number"
+        name="gstOnOMAmount"
+        value={formData.gstOnOMAmount || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Total B – COMC (₹)</label>
+      <input
+        type="number"
+        name="totalBComc"
+        value={formData.totalBComc || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div className="md:col-span-2">
+      <label className={labelClass}>TOTAL PROJECT COST A+B (₹)</label>
+      <input
+        type="number"
+        name="totalProjectCost"
+        value={formData.totalProjectCost || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Annual Savings – Conservative (₹)</label>
+      <input
+        type="number"
+        name="annualSavingsConservative"
+        value={formData.annualSavingsConservative || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Annual Savings – Higher (₹)</label>
+      <input
+        type="number"
+        name="annualSavingsHigher"
+        value={formData.annualSavingsHigher || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Simple Payback – Conservative (Yrs)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="simplePaybackConservative"
+        value={formData.simplePaybackConservative || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Simple Payback – Higher (Yrs)</label>
+      <input
+        type="number"
+        step="0.01"
+        name="simplePaybackHigher"
+        value={formData.simplePaybackHigher || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div className="md:col-span-2">
+      <label className={labelClass}>25-Year Gross Savings – Conservative (₹)</label>
+      <input
+        type="number"
+        name="grossSavings25Conservative"
+        value={formData.grossSavings25Conservative || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div className="md:col-span-2">
+      <label className={labelClass}>25-Year Gross Savings – Higher (₹)</label>
+      <input
+        type="number"
+        name="grossSavings25Higher"
+        value={formData.grossSavings25Higher || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+  </div>
+</div>
 
                 {/* Card 4: Pricing Schedule */}
-                <div className={sectionClass}>
-                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
-                    <h2 className={sectionTitleClass}>
-                      <Coins className="h-5 w-5 mr-2" />
-                      Price Schedule (10kW+)
-                    </h2>
-                  </div>
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className={labelClass}>Material Price (₹)</label>
-                      <input
-                        type="text"
-                        name="priceMaterial"
-                        value={formData.priceMaterial || ""}
-                        onChange={handleChange}
-                        placeholder="e.g. 9,45,00,000"
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>GST on Supply (₹)</label>
-                      <input
-                        type="text"
-                        name="priceGstSupply"
-                        value={formData.priceGstSupply || ""}
-                        onChange={handleChange}
-                        placeholder="e.g. 84,10,500"
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Total Price A (Supply) (₹)</label>
-                      <input
-                        type="text"
-                        name="priceTotalA"
-                        value={formData.priceTotalA || ""}
-                        onChange={handleChange}
-                        placeholder="e.g. 10,29,10,500"
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>O&M Price (₹)</label>
-                      <input
-                        type="text"
-                        name="priceOm"
-                        value={formData.priceOm || ""}
-                        onChange={handleChange}
-                        placeholder="e.g. 62,50,000"
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>GST on O&M (₹)</label>
-                      <input
-                        type="text"
-                        name="priceOmGst"
-                        value={formData.priceOmGst || ""}
-                        onChange={handleChange}
-                        placeholder="e.g. 11,25,000"
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Total Price B (O&M) (₹)</label>
-                      <input
-                        type="text"
-                        name="priceTotalB"
-                        value={formData.priceTotalB || ""}
-                        onChange={handleChange}
-                        placeholder="e.g. 73,75,000"
-                        className={inputClass}
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className={labelClass}>Grand Total Price (₹)</label>
-                      <input
-                        type="text"
-                        name="priceTotal"
-                        value={formData.priceTotal || ""}
-                        onChange={handleChange}
-                        placeholder="e.g. 11,02,85,500"
-                        className={inputClass}
-                      />
-                    </div>
-                    <div className="md:col-span-3">
-                      <label className={labelClass}>Price in Words</label>
-                      <textarea
-                        name="priceWords"
-                        value={formData.priceWords || ""}
-                        onChange={handleChange}
-                        placeholder="e.g. Eleven Crore Two Lakh Eighty Five Thousand Five Hundred Only."
-                        className={`${inputClass} h-20 resize-none`}
-                      />
-                    </div>
-                  </div>
-                </div>
+              <div className={`${sectionClass} z-[20]`}>
+  <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 rounded-t-xl">
+    <h2 className={sectionTitleClass}>
+      <Coins className="h-5 w-5 mr-2" />
+      Amount in words — helper
+    </h2>
+  </div>
+
+  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <div>
+      <label className={labelClass}>Crore</label>
+      <input
+        type="text"
+        name="crore"
+        value={formData.crore || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Lakh</label>
+      <input
+        type="text"
+        name="lakh"
+        value={formData.lakh || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Thousand</label>
+      <input
+        type="text"
+        name="thousand"
+        value={formData.thousand || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Hundred</label>
+      <input
+        type="text"
+        name="hundred"
+        value={formData.hundred || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Rest</label>
+      <input
+        type="text"
+        name="rest"
+        value={formData.rest || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className={labelClass}>Crore Hundreds</label>
+      <input
+        type="text"
+        name="croreHundreds"
+        value={formData.croreHundreds || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div className="md:col-span-2">
+      <label className={labelClass}>Crore Remainder</label>
+      <input
+        type="text"
+        name="croreRemainder"
+        value={formData.croreRemainder || ""}
+        onChange={handleChange}
+        className={inputClass}
+      />
+    </div>
+
+    <div className="md:col-span-3">
+      <label className={labelClass}>Amount in Words</label>
+      <textarea
+        name="amountInWords"
+        value={formData.amountInWords || ""}
+        onChange={handleChange}
+        className={`${inputClass} h-20 resize-none`}
+      />
+    </div>
+
+  </div>
+</div>
               </>
             );
           } else {
@@ -462,7 +919,7 @@ export default function QuotationFormView({
                 <QuotationInfoSection
                   formData={formData}
                   handleChange={handleChange}
-                  sectionClass={sectionClass}
+                  sectionClass={`${sectionClass} z-[23]`}
                   sectionHeaderClass={sectionHeaderClass}
                   sectionTitleClass={sectionTitleClass}
                   labelClass={labelClass}
@@ -473,7 +930,7 @@ export default function QuotationFormView({
                   formData={formData}
                   handleChange={handleChange}
                   dropdownOptions={dropdownOptions}
-                  sectionClass={sectionClass}
+                  sectionClass={`${sectionClass} z-[22]`}
                   sectionTitleClass={sectionTitleClass}
                   labelClass={labelClass}
                   inputClass={inputClass}
@@ -488,7 +945,7 @@ export default function QuotationFormView({
                   productDetails={productDetails}
                   handleProductDetailsChange={handleProductDetailsChange}
                   dropdownOptions={dropdownOptions}
-                  sectionClass={sectionClass}
+                  sectionClass={`${sectionClass} z-[21]`}
                   sectionTitleClass={sectionTitleClass}
                   labelClass={labelClass}
                   inputClass={inputClass}
@@ -498,7 +955,7 @@ export default function QuotationFormView({
                 <CostCalculationSection
                   formData={formData}
                   productDetails={productDetails}
-                  sectionClass={sectionClass}
+                  sectionClass={`${sectionClass} z-[20]`}
                   sectionTitleClass={sectionTitleClass}
                 />
               </>

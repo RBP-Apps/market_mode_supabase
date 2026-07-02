@@ -4,23 +4,26 @@ export default function CoverPage({ formData }) {
   // Extract values from formData or use defaults
   const clientName = formData.preparedFor || formData.customer || "Mr. Subham Singhal";
   const capacity = formData.proposalFor || formData.capacity || "2.5 MWp";
-  const proposalDate = formData.dated || (formData.date
-    ? (() => {
-        const d = new Date(formData.date);
-        const months = [
-          "January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"
-        ];
-        // Format day suffix (e.g., 9th)
-        const day = d.getDate();
-        let suffix = "th";
-        if (day === 1 || day === 21 || day === 31) suffix = "st";
-        else if (day === 2 || day === 22) suffix = "nd";
-        else if (day === 3 || day === 23) suffix = "rd";
+  const formatDateString = (dateInput) => {
+    if (!dateInput) return "";
+    if (String(dateInput).startsWith("Dated:") || isNaN(Date.parse(dateInput))) {
+      return dateInput;
+    }
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return dateInput;
+    const months = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const day = d.getDate();
+    let suffix = "th";
+    if (day === 1 || day === 21 || day === 31) suffix = "st";
+    else if (day === 2 || day === 22) suffix = "nd";
+    else if (day === 3 || day === 23) suffix = "rd";
+    return `Dated: ${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  };
 
-        return `Dated: ${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
-      })()
-    : "Dated: 9th June 2026");
+  const proposalDate = formatDateString(formData.dated) || (formData.date ? formatDateString(formData.date) : "Dated: 9th June 2026");
 
   const stats = [
     { number: "121+ MW", label: "Installed" },
@@ -229,11 +232,12 @@ export default function CoverPage({ formData }) {
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="flex flex-col items-center justify-center rounded-[12px] border border-white/20 shadow-sm"
+              className="flex flex-col items-center justify-center rounded-[12px] shadow-sm"
               style={{
                 width: "140px",
                 height: "82px",
                 backgroundColor: "rgba(255, 255, 255, 0.10)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
                 backdropFilter: "blur(6px)",
                 WebkitBackdropFilter: "blur(6px)",
                 boxSizing: "border-box"
@@ -242,7 +246,7 @@ export default function CoverPage({ formData }) {
               <div className="text-[24px] font-bold text-white leading-tight">
                 {stat.number}
               </div>
-              <div className="text-[11px] text-white/90 font-medium">
+              <div className="text-[11px] font-medium" style={{ color: "rgba(255, 255, 255, 0.9)" }}>
                 {stat.label}
               </div>
             </div>
@@ -270,14 +274,14 @@ export default function CoverPage({ formData }) {
             <div className="text-[13px] font-bold text-white tracking-wide">
               RBP ENERGY (INDIA) PVT. LTD.
             </div>
-            <div className="text-[9.5px] text-white/90 font-medium mt-0.5">
+            <div className="text-[9.5px] font-medium mt-0.5" style={{ color: "rgba(255, 255, 255, 0.9)" }}>
               303 Guru Ghasidas Plaza, Ampara, G.E Road, Raipur (C.G.) - 492 001
             </div>
           </div>
         </div>
 
         {/* Contact Numbers, Email & Website Line */}
-        <div className="text-center text-[9px] text-white/90 border-t border-white/10 pt-1.5 flex justify-center gap-1.5 font-medium">
+        <div className="text-center text-[9px] pt-1.5 flex justify-center gap-1.5 font-medium" style={{ color: "rgba(255, 255, 255, 0.9)", borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
           <span>Sales: +91 92000 12500</span>
           <span className="opacity-40">|</span>
           <span>Service: +91 92000 12400</span>

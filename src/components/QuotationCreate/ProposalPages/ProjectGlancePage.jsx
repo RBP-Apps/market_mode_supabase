@@ -50,7 +50,7 @@ function SpecificationTable({ data }) {
 }
 
 export default function ProjectGlancePage({ formData = {} }) {
-  const capacityStr = formData.proposalFor || formData.capacity || "2.5 MWp";
+  const capacityStr = formData.proposalFor || formData.capacity ;
   const capacityMwp = formData.capacityMwp || capacityStr;
   
   // Extract number and unit to make page calculations dynamic
@@ -85,7 +85,7 @@ export default function ProjectGlancePage({ formData = {} }) {
   const specs = [
     {
       label: "System type",
-      value: `${capacityMwp} grid-connected solar PV plant (without battery bank)`
+      value: `${capacityStr} grid-connected solar PV plant (without battery bank)`
     },
     {
       label: "Module technology",
@@ -93,7 +93,7 @@ export default function ProjectGlancePage({ formData = {} }) {
     },
     {
       label: "Approx. module count",
-      value: approxModuleCount
+      value: `~${approxModuleCount} modules of ~600 Wp`
     },
     {
       label: "Mounting",

@@ -48,6 +48,8 @@ function toWordsIndian(num) {
 
 export default function PriceSchedulePage({ formData = {}, productDetails = {} }) {
   // Parse capacity
+    const capacityStr = formData.proposalFor || formData.capacity ;
+
   const capacity = formData.proposalFor || formData.capacity || "2.5 MWp";
   const capNum = parseFloat(capacity) || 2.5;
   const isKW = capacity.toLowerCase().includes("kw");
@@ -179,7 +181,7 @@ export default function PriceSchedulePage({ formData = {}, productDetails = {} }
                 <tr style={{ borderBottom: "1px solid #CBD5E1" }}>
                   <td className="text-gray-700 text-[10.5px] p-2.5 text-center border-r border-[#CBD5E1] bg-white">1</td>
                   <td className="text-gray-700 text-[10.5px] p-2.5 text-left border-r border-[#CBD5E1] bg-white leading-relaxed">
-                    {capacity} solar power plant material as per the technical specifications above, with installation and commissioning (grid-connected, without battery bank)
+                    {capacityStr} solar power plant material as per the technical specifications above, with installation and commissioning (grid-connected, without battery bank)
                   </td>
                   <td className="text-gray-700 text-[10.5px] p-2.5 text-right border-r border-[#CBD5E1] bg-white font-medium">{formattedPlantCost}</td>
                 </tr>

@@ -344,6 +344,22 @@ export default function Quotation10kvModal({
     }
   };
 
+  // Load specsData & specsDescription from initialProductDetails.bom if available
+  useEffect(() => {
+    if (initialProductDetails?.bom) {
+      try {
+        const parsed = JSON.parse(initialProductDetails.bom);
+        if (parsed.specsData) {
+          setSpecsData(parsed.specsData);
+        }
+        if (parsed.specsDescription) {
+          setSpecsDescription(parsed.specsDescription);
+        }
+      } catch (e) {
+        console.warn("Failed to parse initial BOM JSON", e);
+      }
+    }
+  }, [initialProductDetails]);
 
   // Product Autofill Logic
   useEffect(() => {
@@ -405,19 +421,42 @@ export default function Quotation10kvModal({
     const pages = previewContainer.querySelectorAll("[data-pdf-page]");
     if (pages.length === 0) throw new Error("No pages found to generate PDF");
 
-    try {
-      const pdf = new jsPDF({
-        orientation: "p",
-        unit: "mm",
-        format: "a4",
-        putOnlyUsedFonts: true,
-        floatPrecision: 16,
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = function (el, pseudoElt) {
+      const style = originalGetComputedStyle(el, pseudoElt);
+      if (!el || el.ownerDocument === document) {
+        return style;
+      }
+      const cleanValue = (val) => {
+        if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
+          return val
+            .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
+            .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
+        }
+        return val;
+      };
+      return new Proxy(style, {
+        get(target, prop) {
+          if (prop === 'getPropertyValue') {
+            return function(name) {
+              return cleanValue(target.getPropertyValue(name));
+            };
+          }
+          const val = target[prop];
+          if (typeof val === 'function') {
+            return val.bind(target);
+          }
+          return cleanValue(val);
+        }
       });
+    };
 
-      for (let i = 0; i < pages.length; i++) {
-        const pageEl = pages[i];
+    try {
+      // Ensure all web fonts are loaded before capturing
+      await document.fonts.ready;
 
-        // Render this specific page to canvas
+      // Capture all pages in parallel to maximize speed
+      const pagePromises = Array.from(pages).map(async (pageEl, index) => {
         const canvas = await html2canvas(pageEl, {
           scale: 2,
           useCORS: true,
@@ -430,7 +469,7 @@ export default function Quotation10kvModal({
           windowHeight: 1123,
           onclone: (clonedDoc) => {
             // Find the page in cloned document to reset transforms if any
-            const clonedPage = clonedDoc.querySelector(`[data-pdf-page="${i + 1}"]`);
+            const clonedPage = clonedDoc.querySelector(`[data-pdf-page="${index + 1}"]`);
             if (clonedPage) {
               clonedPage.style.transform = "none";
               clonedPage.style.margin = "0";
@@ -466,23 +505,36 @@ export default function Quotation10kvModal({
             }
           }
         });
+        return canvas.toDataURL("image/jpeg", 1.0);
+      });
 
-        const imgData = canvas.toDataURL("image/jpeg", 1.0);
-        const pdfWidth = 210;
-        const pdfHeight = 297;
+      const imagesData = await Promise.all(pagePromises);
 
-        // If not the first page, add a new page in jsPDF
-        if (i > 0) {
+      const pdf = new jsPDF({
+        orientation: "p",
+        unit: "mm",
+        format: "a4",
+        putOnlyUsedFonts: true,
+        floatPrecision: 16,
+      });
+
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+
+      imagesData.forEach((imgData, idx) => {
+        if (idx > 0) {
           pdf.addPage();
         }
-
         pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
-      }
+      });
 
       return pdf.output("blob");
     } catch (err) {
       console.error("Critical PDF Gen Error:", err);
       throw err;
+    } finally {
+      // Restore window.getComputedStyle
+      window.getComputedStyle = originalGetComputedStyle;
     }
   };
 
@@ -498,9 +550,23 @@ export default function Quotation10kvModal({
     setIsGenerating(true);
     try {
       const pdfBlob = await buildPDFBlob();
+      
+      let existingBom = {};
+      if (productDetails?.bom) {
+        try {
+          existingBom = JSON.parse(productDetails.bom);
+        } catch (e) {
+          console.warn("Failed to parse existing productDetails.bom", e);
+        }
+      }
+
       const updatedProductDetails = {
         ...productDetails,
-        bom: JSON.stringify({ specsData, specsDescription })
+        bom: JSON.stringify({
+          ...existingBom,
+          specsData,
+          specsDescription
+        })
       };
       await onSave(formData, updatedProductDetails, pdfBlob);
       onClose();
@@ -522,8 +588,8 @@ export default function Quotation10kvModal({
           <div className="flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-yellow-300 animate-pulse" />
             <div>
-              <h2 className="text-xl font-bold text-white leading-tight">Create & Edit 10kV Quotation</h2>
-              <p className="text-teal-100 text-xs mt-0.5">Customize details on the left and see the real-time PDF update on the right.</p>
+              <h2 className="text-xl font-bold text-white leading-tight">10kV Quotation Preview</h2>
+              <p className="text-teal-100 text-xs mt-0.5 font-medium">Review the PDF copy of the quotation before final saving and sheet submission.</p>
             </div>
           </div>
           <button
@@ -534,10 +600,10 @@ export default function Quotation10kvModal({
           </button>
         </div>
 
-        {/* Workspace: Split Pane */}
+        {/* Workspace: PDF Preview Pane */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* Right Pane: Live PDF Preview (100% Width) */}
+          {/* Live PDF Preview */}
           <div className="w-full bg-gray-200 overflow-y-auto p-6 flex flex-col items-center gap-6" ref={previewRef}>
 
             {/* Page 1 */}
@@ -545,8 +611,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 1 of 13 (Cover Page)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="1" data-pdf-preview-10kv="true">
-                <CoverPage formData={formData} />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="1" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <CoverPage formData={formData} />
+                </div>
               </div>
             </div>
 
@@ -555,8 +623,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 2 of 13 (About RBP Energy)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="2" data-pdf-preview-10kv="true">
-                <AboutPage />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="2" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <AboutPage />
+                </div>
               </div>
             </div>
 
@@ -565,8 +635,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 3 of 13 (Track Record at a Glance)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="3" data-pdf-preview-10kv="true">
-                <TrackRecordPage />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="3" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <TrackRecordPage />
+                </div>
               </div>
             </div>
 
@@ -575,8 +647,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 4 of 13 (The Boardroom)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="4" data-pdf-preview-10kv="true">
-                <BoardroomPage />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="4" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <BoardroomPage />
+                </div>
               </div>
             </div>
 
@@ -585,8 +659,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 5 of 13 (Your Project at a Glance)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="5" data-pdf-preview-10kv="true">
-                <ProjectGlancePage formData={formData} />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="5" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <ProjectGlancePage formData={formData} />
+                </div>
               </div>
             </div>
 
@@ -595,17 +671,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 6 of 13 (Technical Specifications)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="6" data-pdf-preview-10kv="true">
-                <TechnicalSpecsPage
-                  specsData={specsData}
-                  onUpdateTitle={updateSectionTitle}
-                  onUpdateRow={updateSpecRow}
-                  onDeleteRow={deleteSpecRow}
-                  onMoveRow={moveSpecRow}
-                  onAddRow={addSpecRow}
-                  onDeleteSection={deleteSpecSection}
-                  onMoveSection={moveSpecSection}
-                />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="6" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <TechnicalSpecsPage specsData={specsData} />
+                </div>
               </div>
             </div>
 
@@ -614,20 +683,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 7 of 13 (Technical Specifications Continuation)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="7" data-pdf-preview-10kv="true">
-                <TechnicalSpecsContPage
-                  specsData={specsData}
-                  description={specsDescription}
-                  onUpdateTitle={updateSectionTitle}
-                  onUpdateRow={updateSpecRow}
-                  onDeleteRow={deleteSpecRow}
-                  onMoveRow={moveSpecRow}
-                  onAddRow={addSpecRow}
-                  onDeleteSection={deleteSpecSection}
-                  onMoveSection={moveSpecSection}
-                  onAddSection={addSpecSection}
-                  onUpdateDescription={setSpecsDescription}
-                />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="7" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <TechnicalSpecsContPage specsData={specsData} description={specsDescription} />
+                </div>
               </div>
             </div>
 
@@ -636,8 +695,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 8 of 13 (Scope of Work)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="8" data-pdf-preview-10kv="true">
-                <ScopeOfWorkPage />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="8" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <ScopeOfWorkPage />
+                </div>
               </div>
             </div>
 
@@ -646,8 +707,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 9 of 13 (Indicative Generation, Savings & Payback)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="9" data-pdf-preview-10kv="true">
-                <IndicativeSavingsPage formData={formData} productDetails={productDetails} />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="9" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <IndicativeSavingsPage formData={formData} productDetails={productDetails} />
+                </div>
               </div>
             </div>
 
@@ -656,8 +719,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 10 of 13 (Price Schedule)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="10" data-pdf-preview-10kv="true">
-                <PriceSchedulePage formData={formData} productDetails={productDetails} />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="10" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <PriceSchedulePage formData={formData} productDetails={productDetails} />
+                </div>
               </div>
             </div>
 
@@ -666,8 +731,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 11 of 13 (General & Commercial Terms)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="11" data-pdf-preview-10kv="true">
-                <GeneralTermsPage />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="11" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <GeneralTermsPage />
+                </div>
               </div>
             </div>
 
@@ -676,8 +743,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 12 of 13 (Acceptance)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="12" data-pdf-preview-10kv="true">
-                <AcceptancePage formData={formData} />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="12" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <AcceptancePage formData={formData} />
+                </div>
               </div>
             </div>
 
@@ -686,8 +755,10 @@ export default function Quotation10kvModal({
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Page 13 of 13 (Thank You)
               </div>
-              <div className="shadow-2xl scale-90 origin-top" data-pdf-page="13" data-pdf-preview-10kv="true">
-                <ThankYouPage />
+              <div className="scale-90 origin-top shadow-2xl bg-white">
+                <div data-pdf-page="13" data-pdf-preview-10kv="true" className="w-[794px] h-[1123px] overflow-hidden bg-white">
+                  <ThankYouPage />
+                </div>
               </div>
             </div>
 

@@ -9,7 +9,7 @@ export default function CostCalculationSection({
 }) {
   return (
     <div className={sectionClass}>
-      <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4">
+      <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4 rounded-t-xl">
         <h2 className={sectionTitleClass}>
           <Percent className="h-5 w-5 mr-2" />
           Cost Calculation
