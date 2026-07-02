@@ -298,7 +298,7 @@ export default function QuatationCreate() {
   });
 
   const [productMap, setProductMap] = useState({});
-  const [salespersons, setSalespersons] = useState(["S N Sahu"]);
+  const [salespersons, setSalespersons] = useState(["S N Sahoo"]);
 
   const [formData, setFormData] = useState({
     date: "",

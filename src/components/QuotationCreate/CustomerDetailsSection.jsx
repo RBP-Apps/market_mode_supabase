@@ -29,9 +29,9 @@ export default function CustomerDetailsSection({
          <HybridSelector
   label="Salesperson"
   name="salesperson"
-  value={formData.salesperson ?? "S N Sahu"}  // ✅ default only when null/undefined
+  value={formData.salesperson ?? "S N Sahoo"}  // ✅ default only when null/undefined
   onChange={handleChange} // ✅ allow typing
-  options={["S N Sahu"]}
+  options={["S N Sahoo"]}
   icon={User}
   required={true}
   inputClass={inputClass}

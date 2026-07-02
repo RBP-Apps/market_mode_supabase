@@ -400,10 +400,10 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
                         <tr><td style={labelStyle}>Co.</td><td style={{ ...cellStyle, fontWeight: "bold" }}>: RBP ENERGY INDIA PVT LTD.</td></tr>
                         <tr><td style={labelStyle}>Address</td><td style={cellStyle}>: 303, Guru Ghasidas Plaza, Amapara, G.E. Road</td></tr>
                         <tr><td style={labelStyle}>City/State</td><td style={cellStyle}>: RAIPUR (C.G.) 492 001, India</td></tr>
-                        <tr><td style={labelStyle}>Email ID</td><td style={{ ...cellStyle, color: colors.link, textDecoration: "underline" }}>: enquiry@rbpindia.com</td></tr>
+                        <tr><td style={labelStyle}>Email ID</td><td style={{ ...cellStyle, color: colors.link, textDecoration: "underline" }}>: gmsales@rbpindia.com</td></tr>
                         <tr><td style={labelStyle}>Website</td><td style={{ ...cellStyle, color: colors.link, textDecoration: "underline" }}>: www.rbpindia.com</td></tr>
-                        <tr><td style={labelStyle}>Sales No.</td><td style={cellStyle}>: +91 93000 12300</td></tr>
-                        <tr><td style={labelStyle}>Service No.</td><td style={cellStyle}>: +91 93000 12300</td></tr>
+                        <tr><td style={labelStyle}>Sales No.</td><td style={cellStyle}>: +91 92000 12500</td></tr>
+                        <tr><td style={labelStyle}>Service No.</td><td style={cellStyle}>: +91 92000 12400</td></tr>
                       </tbody>
                     </table>
                   </td>
