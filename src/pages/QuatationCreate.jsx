@@ -313,7 +313,7 @@ export default function QuatationCreate() {
     termsConditions:
       "On Grid:\n1. We will process for approval from competent authority for net metering. Any other approval is in your scope.\n2. Processing fee payable to CREDA/CSPDCL as applicable.\n3. Generation Guarantee of 1.5kWh/W per annum",
     rating: "",
-    qty: "",
+    qty: "1",
     subCentral: "",
     subState: "",
     disc: "",
@@ -991,7 +991,7 @@ console.log(error)
   };
 
 
-  const handleSubmitWithPDF = async (pdfBlob) => {
+  const handleSubmitWithPDF = async (pdfBlob, sendWhatsAppFlag = false) => {
     setIsSubmittingToSheet(true);
 
     try {
@@ -1002,6 +1002,22 @@ console.log(error)
 
       setSuccessMessage("Quotation created successfully!");
 
+      if (sendWhatsAppFlag) {
+        try {
+          const quotationDataForWa = {
+            contactNumber: formData.contactNo,
+            beneficiaryName: formData.customer,
+            quotationCopy: url,
+            enquiryNumber: formData.enquiryNumber
+          };
+          await sendWhatsApp(quotationDataForWa);
+          await updateSendStatus(formData.enquiryNumber, 'whatsapp');
+        } catch (waError) {
+          console.error("Auto WhatsApp Send Error:", waError);
+          alert("Quotation saved, but failed to send WhatsApp automatically: " + waError.message);
+        }
+      }
+
       setFormData(prev => ({
         ...prev,
         customer: "",
@@ -1010,7 +1026,7 @@ console.log(error)
         email: "",
         phoneNo: "",
         rating: "",
-        qty: "",
+        qty: "1",
         enquiryNumber: "",
         generationGuarantee: "",
         moduleWattage: "",
@@ -1037,7 +1053,7 @@ console.log(error)
     }
   };
 
-  const handleSave10kv = async (formVal, productVal, pdfBlob) => {
+  const handleSave10kv = async (formVal, productVal, pdfBlob, sendWhatsAppFlag = false) => {
     try {
       const fileName = `Quotation_10kv_${formVal.preparedFor || formVal.customer || "Customer"}.pdf`;
       const url = await uploadPDFToDrive(pdfBlob, fileName);
@@ -1082,6 +1098,22 @@ console.log(error)
         throw error;
       }
 
+      if (sendWhatsAppFlag) {
+        try {
+          const quotationDataForWa = {
+            contactNumber: formVal.contactNo,
+            beneficiaryName: formVal.preparedFor || formVal.customer,
+            quotationCopy: url,
+            enquiryNumber: formVal.enquiryNumber
+          };
+          await sendWhatsApp(quotationDataForWa);
+          await updateSendStatus(formVal.enquiryNumber, 'whatsapp');
+        } catch (waError) {
+          console.error("Auto WhatsApp Send Error:", waError);
+          alert("10kv Quotation saved, but failed to send WhatsApp automatically: " + waError.message);
+        }
+      }
+
       alert("10kv Quotation saved successfully!");
       setShow10kvModal(false);
       setViewMode("list");
@@ -1108,7 +1140,9 @@ console.log(error)
             bom: row.bill_of_material || "",
             size: row.size || "",
             rate: row.selling_price || 0,
-            gst: row.tax_percent || 0
+            gst: row.tax_percent || 0,
+            centerSubsidy: row.center_subsidy || 0,
+            stateSubsidy: row.state_subsidy || 0
           };
         }
       });
@@ -1268,7 +1302,7 @@ console.log(error)
         loadDetails: selectedEnquiry.loadDetails, 
         failureHours: selectedEnquiry.hoursOfFailure, 
         needType: selectedEnquiry.needType, 
-        qty: selectedEnquiry.qty,
+        qty: selectedEnquiry.qty || "1",
         enquiryNumber: selectedEnquiry.enquiryNumber,
         generationGuarantee: "",
         moduleWattage: "",
@@ -1297,6 +1331,11 @@ console.log(error)
         rate: 0,
         amount: "0.00",
       });
+      setFormData(prev => ({
+        ...prev,
+        subCentral: "",
+        subState: ""
+      }));
       return;
     }
 
@@ -1312,6 +1351,12 @@ console.log(error)
       rate: rate || 0,
       amount: (qty * rate).toFixed(2),
     });
+
+    setFormData(prev => ({
+      ...prev,
+      subCentral: p.centerSubsidy !== undefined && p.centerSubsidy !== null ? String(p.centerSubsidy) : "",
+      subState: p.stateSubsidy !== undefined && p.stateSubsidy !== null ? String(p.stateSubsidy) : ""
+    }));
   }, [formData.rating, productMap]); // Removed formData.qty to prevent overwriting manual edits on qty change
 
   const handleCustomerChange = (e) => {

@@ -29,7 +29,7 @@ export default function QuotationListView({
 }) {
   const [sheetData, setSheetData] = React.useState({});
 
-  
+
 
   const tableColumns = [
     { key: "enquiryNumber", label: "Enquiry No.", icon: FileText },
@@ -142,40 +142,40 @@ export default function QuotationListView({
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gradient-to-r from-gray-50 to-blue-50 sticky top-0 z-10 text-center text-nowrap">
+            <thead className="bg-gradient-to-r from-gray-50 to-blue-50 sticky top-0 z-10 text-center">
               <tr>
                 {/* Pending tab Action column */}
                 {activeTab === "pending" && (
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20 bg-gradient-to-r from-gray-50 to-blue-50">
+                  <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20 bg-gradient-to-r from-gray-50 to-blue-50 whitespace-normal min-w-[100px]">
                     Action
                   </th>
                 )}
 
                 {/* History tab Action column */}
                 {(activeTab === "history" || activeTab === "10kv_history") && (
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28 bg-gradient-to-r from-gray-50 to-blue-50">
+                  <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28 bg-gradient-to-r from-gray-50 to-blue-50 whitespace-normal min-w-[100px]">
                     Action
                   </th>
                 )}
 
-               
+
 
                 {(activeTab === "history" || activeTab === "10kv_history") && (
-                  <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gradient-to-r from-gray-50 to-blue-50">
-  <div className="flex items-center justify-center gap-1">
-    <FileText className="h-3 w-3" />
-    PDF Generate From Sheet
-  </div>
-</th>
+                  <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gradient-to-r from-gray-50 to-blue-50 whitespace-normal min-w-[120px]">
+                    <div className="flex items-center justify-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      PDF Generate From Sheet
+                    </div>
+                  </th>
                 )}
 
                 {/* Baaki saare columns */}
                 {tableColumns.map((column) => (
                   <th
                     key={column.key}
-                    className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gradient-to-r from-gray-50 to-blue-50"
+                    className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal min-w-[150px] bg-gradient-to-r from-gray-50 to-blue-50"
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-center gap-1">
                       <column.icon className="h-3 w-3" />
                       {column.label}
                     </div>
@@ -189,11 +189,11 @@ export default function QuotationListView({
                 <tr>
                   <td
                     colSpan={
-                      activeTab === "pending" 
-                        ? tableColumns.length + 1 
+                      activeTab === "pending"
+                        ? tableColumns.length + 1
                         : (activeTab === "history" || activeTab === "10kv_history")
-                        ? tableColumns.length + 3
-                        : tableColumns.length
+                          ? tableColumns.length + 3
+                          : tableColumns.length
                     }
                     className="px-6 py-12"
                   >
@@ -209,11 +209,11 @@ export default function QuotationListView({
                 <tr>
                   <td
                     colSpan={
-                      activeTab === "pending" 
-                        ? tableColumns.length + 1 
+                      activeTab === "pending"
+                        ? tableColumns.length + 1
                         : (activeTab === "history" || activeTab === "10kv_history")
-                        ? tableColumns.length + 3
-                        : tableColumns.length
+                          ? tableColumns.length + 3
+                          : tableColumns.length
                     }
                     className="px-6 py-12"
                   >
@@ -238,7 +238,7 @@ export default function QuotationListView({
                   >
                     {/* Pending tab ka Action button */}
                     {activeTab === "pending" && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-normal text-center min-w-[100px]">
                         <button
                           onClick={() => handleViewClick(row)}
                           className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors duration-200 text-sm font-medium"
@@ -252,7 +252,7 @@ export default function QuotationListView({
 
                     {/* History or 10kv History tab ka Action button */}
                     {(activeTab === "history" || activeTab === "10kv_history") && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-normal text-center min-w-[100px]">
                         <button
                           onClick={() => handleViewQuotation(row)}
                           className="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors duration-200 text-sm font-medium"
@@ -263,16 +263,16 @@ export default function QuotationListView({
                         </button>
                       </td>
                     )}
- 
+
                     {(activeTab === "history" || activeTab === "10kv_history") && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[120px]">
                         {row.quotationCopy &&
                           row.quotationCopy !== "Not Generated" ? (
                           <a
                             href={row.quotationCopy}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                            className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1 justify-center"
                           >
                             <Copy className="h-4 w-4" />
                             View Quotation
@@ -284,34 +284,34 @@ export default function QuotationListView({
                     )}
 
                     {/* Baaki ke columns */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-900 min-w-[150px]">
                       {row.enquiryNumber || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-900 min-w-[150px]">
                       {row.beneficiaryName || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.address || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.villageBlock || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.district || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.contactNumber || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.presentLoad || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.bpNumber || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.cspdclContractDemand || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.avgElectricityBill ? (
                         <button
                           onClick={() => window.open(row.avgElectricityBill, "_blank")}
@@ -323,28 +323,28 @@ export default function QuotationListView({
                         "N/A"
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.futureLoadRequirement || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.loadDetails || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.hoursOfFailure || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.structureType || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.roofType || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.systemType || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.needType || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
                       {row.projectMode || "N/A"}
                     </td>
                   </tr>
@@ -362,9 +362,9 @@ export default function QuotationListView({
               {activeTab === "pending"
                 ? fmsData.filter((item) => item.planned2 && !item.actual2).length
                 : activeTab === "history"
-                ? fmsData.filter((item) => item.planned2 && item.actual2 && !item.is10kv).length
-                : fmsData.filter((item) => item.planned2 && item.actual2 && item.is10kv).length}{" "}
- 
+                  ? fmsData.filter((item) => item.planned2 && item.actual2 && !item.is10kv).length
+                  : fmsData.filter((item) => item.planned2 && item.actual2 && item.is10kv).length}{" "}
+
               records
             </span>
             <div className="flex items-center gap-4">

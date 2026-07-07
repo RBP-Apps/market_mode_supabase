@@ -57,6 +57,7 @@ export default function Quotation10kvModal({
 }) {
   const previewRef = useRef(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [sendWhatsApp, setSendWhatsApp] = useState(false);
 
   // Pending enquiries for dropdown selection
   const pendingEnquiries = fmsData.filter((item) => item.planned2 && !item.actual2);
@@ -568,7 +569,7 @@ export default function Quotation10kvModal({
           specsDescription
         })
       };
-      await onSave(formData, updatedProductDetails, pdfBlob);
+      await onSave(formData, updatedProductDetails, pdfBlob, sendWhatsApp);
       onClose();
     } catch (err) {
       alert("Error generating and saving 10kv Quotation: " + err.message);
@@ -767,7 +768,16 @@ export default function Quotation10kvModal({
         </div>
 
         {/* Footer actions */}
-        <div className="bg-gray-50 px-6 py-4 rounded-b-2xl border-t flex justify-end gap-3 shrink-0">
+        <div className="bg-gray-50 px-6 py-4 rounded-b-2xl border-t flex items-center justify-end gap-4 shrink-0">
+          <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-750">
+            <input
+              type="checkbox"
+              checked={sendWhatsApp}
+              onChange={(e) => setSendWhatsApp(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            />
+            <span className="font-semibold text-red-500">WhatsApp Send</span>
+          </label>
           <button
             onClick={onClose}
             className="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors text-sm font-medium flex items-center gap-1.5"

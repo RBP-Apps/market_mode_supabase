@@ -29,9 +29,15 @@ import WeeklyPerformanceReport from "./pages/graph/WeeklyPerformanceReport"
 import MonthlyPerformanceReport from "./pages/graph/MonthlyPerformanceReport"
 import InsurancePage from "./pages/Insurance"
 import ModuleEntryPage from "./pages/ModuleEntry"
+import ProductListPage from "./pages/ProductList"
+import DispatchApprovalPage from "./pages/DispatchApproval"
+import PaymentConfirmationPage from "./pages/PaymentConfirmation"
+import BankProcessPage from "./pages/BankProcess"
 
 import QuotationCreatePage from "./pages/QuatationCreate"
 import AddUser from "./pages/AddUser"
+import QCPage from "./pages/QC"
+import IpPayment from "./pages/IpPayment"
 
 import "./index.css"
 
@@ -261,6 +267,54 @@ function App() {
             element={
               <ProtectedRoute>
                 <ModuleEntryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/ProductList"
+            element={
+              <ProtectedRoute>
+                <ProductListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/DispatchApproval"
+            element={
+              <ProtectedRoute>
+                <DispatchApprovalPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/PaymentConfirmation"
+            element={
+              <ProtectedRoute>
+                <PaymentConfirmationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/BankProcess"
+            element={
+              <ProtectedRoute>
+                <BankProcessPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/QCPage"
+            element={
+              <ProtectedRoute>
+                <QCPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/IpPayment"
+            element={
+              <ProtectedRoute>
+                <IpPayment />
               </ProtectedRoute>
             }
           />

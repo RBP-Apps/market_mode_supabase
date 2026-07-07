@@ -41,6 +41,7 @@ export default function BeneficiaryForm() {
 
   const [formData, setFormData] = useState({
     beneficiaryName: "",
+    beneficiaryNumber: "",
     address: "",
     villageBlock: "",
     district: "",
@@ -56,7 +57,9 @@ export default function BeneficiaryForm() {
     systemType: "",
     needType: "",
     projectMode: "",
-    vendorName: ""
+    vendorName: "",
+    assignedBy: "",
+    reference: ""
   });
 
   const handleChange = (e) => {
@@ -149,6 +152,7 @@ export default function BeneficiaryForm() {
           timestamp: formatDateTime(row.timestamp),
           enquiryNumber: row.enquiry_number || "",
           beneficiaryName: row.beneficiary_name || "",
+          beneficiaryNumber: row.beneficiary_number || "",
           address: row.address || "",
           villageBlock: row.village_block || "",
           district: row.district || "",
@@ -165,7 +169,9 @@ export default function BeneficiaryForm() {
           systemType: row.system_type || "",
           needType: row.need_type || "",
           projectMode: row.project_mode || "",
-          vendorName: row.vendor_name || ""
+          vendorName: row.vendor_name || "",
+          assignedBy: row.assigned_by || "",
+          reference: row.reference || ""
         };
       });
 
@@ -186,6 +192,7 @@ export default function BeneficiaryForm() {
       timestamp: rowData.timestamp,
       enquiryNumber: rowData.enquiryNumber,
       beneficiaryName: rowData.beneficiaryName,
+      beneficiaryNumber: rowData.beneficiaryNumber,
       address: rowData.address,
       villageBlock: rowData.villageBlock,
       district: rowData.district,
@@ -202,7 +209,9 @@ export default function BeneficiaryForm() {
       systemType: rowData.systemType,
       needType: rowData.needType,
       projectMode: rowData.projectMode,
-      vendorName: rowData.vendorName
+      vendorName: rowData.vendorName,
+      assignedBy: rowData.assignedBy,
+      reference: rowData.reference
     });
     setEditSelectedImage(null);
     setEditImagePreview(null);
@@ -239,6 +248,7 @@ export default function BeneficiaryForm() {
         .update({
           enquiry_number: editFormData.enquiryNumber,
           beneficiary_name: editFormData.beneficiaryName,
+          beneficiary_number: editFormData.beneficiaryNumber,
           address: editFormData.address,
           village_block: editFormData.villageBlock,
           district: editFormData.district,
@@ -255,7 +265,9 @@ export default function BeneficiaryForm() {
           system_type: editFormData.systemType,
           need_type: editFormData.needType,
           project_mode: editFormData.projectMode,
-          vendor_name: editFormData.vendorName
+          vendor_name: editFormData.vendorName,
+          assigned_by: editFormData.assignedBy,
+          reference: editFormData.reference
         })
         .eq("id", rowIndex);
 
@@ -287,6 +299,10 @@ export default function BeneficiaryForm() {
 
   useEffect(() => {
     fetchDropdownOptions();
+    const user = sessionStorage.getItem("username");
+    if (user) {
+      setFormData((prev) => ({ ...prev, assignedBy: user }));
+    }
   }, []);
 
   useEffect(() => {
@@ -363,6 +379,7 @@ export default function BeneficiaryForm() {
         {
           timestamp: new Date(),
           beneficiary_name: formData.beneficiaryName,
+          beneficiary_number: formData.beneficiaryNumber,
           address: formData.address,
           village_block: formData.villageBlock,
           district: formData.district,
@@ -379,7 +396,9 @@ export default function BeneficiaryForm() {
           system_type: formData.systemType,
           need_type: formData.needType,
           project_mode: formData.projectMode,
-          vendor_name: formData.vendorName
+          vendor_name: formData.vendorName,
+          assigned_by: formData.assignedBy,
+          reference: formData.reference
         }
       ]);
 
@@ -390,6 +409,7 @@ export default function BeneficiaryForm() {
       // reset form
       setFormData({
         beneficiaryName: "",
+        beneficiaryNumber: "",
         address: "",
         villageBlock: "",
         district: "",
@@ -405,7 +425,9 @@ export default function BeneficiaryForm() {
         systemType: "",
         needType: "",
         projectMode: "",
-        vendorName: ""
+        vendorName: "",
+        assignedBy: sessionStorage.getItem("username") || "",
+        reference: ""
       });
 
       setSelectedImage(null);
@@ -419,7 +441,7 @@ export default function BeneficiaryForm() {
     }
   };
 
-  
+
 
   return (
     <AdminLayout>
@@ -466,7 +488,7 @@ export default function BeneficiaryForm() {
                     Basic Information
                   </h3>
 
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-4">
                     <div className="space-y-1">
                       <label htmlFor="beneficiaryName" className="block text-xs font-medium text-purple-700">
                         Beneficiary Name
@@ -476,6 +498,20 @@ export default function BeneficiaryForm() {
                         id="beneficiaryName"
                         name="beneficiaryName"
                         value={formData.beneficiaryName}
+                        onChange={handleChange}
+                        className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="beneficiaryNumber" className="block text-xs font-medium text-purple-700">
+                        Beneficiary Number
+                      </label>
+                      <input
+                        type="text"
+                        id="beneficiaryNumber"
+                        name="beneficiaryNumber"
+                        value={formData.beneficiaryNumber || ""}
                         onChange={handleChange}
                         className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                       />
@@ -776,7 +812,7 @@ export default function BeneficiaryForm() {
                     {/* Vendor Name dropdown */}
                     <div className="space-y-1">
                       <label htmlFor="vendorName" className="block text-xs font-medium text-purple-700">
-                        Vendor Name
+                        Firm Name
                       </label>
                       <select
                         id="vendorName"
@@ -785,13 +821,43 @@ export default function BeneficiaryForm() {
                         onChange={handleChange}
                         className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                       >
-                        <option value="">Select Vendor</option>
+                        <option value="">Select Firm</option>
                         {vendorNameOptions.map((option, index) => (
                           <option key={index} value={option}>
                             {option}
                           </option>
                         ))}
                       </select>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 mt-3">
+                    <div className="space-y-1">
+                      <label htmlFor="assignedBy" className="block text-xs font-medium text-purple-700">
+                        Assigned By
+                      </label>
+                      <input
+                        type="text"
+                        id="assignedBy"
+                        name="assignedBy"
+                        value={formData.assignedBy || ""}
+                        disabled
+                        className="w-full rounded-md border border-purple-200 bg-purple-50/50 p-1.5 text-sm text-gray-500 cursor-not-allowed focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="reference" className="block text-xs font-medium text-purple-700">
+                        Reference
+                      </label>
+                      <input
+                        type="text"
+                        id="reference"
+                        name="reference"
+                        value={formData.reference || ""}
+                        onChange={handleChange}
+                        className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      />
                     </div>
                   </div>
                 </div>
@@ -802,6 +868,7 @@ export default function BeneficiaryForm() {
                     onClick={() => {
                       setFormData({
                         beneficiaryName: "",
+                        beneficiaryNumber: "",
                         address: "",
                         villageBlock: "",
                         district: "",
@@ -817,7 +884,9 @@ export default function BeneficiaryForm() {
                         systemType: "",
                         needType: "",
                         projectMode: "",
-                        vendorName: ""
+                        vendorName: "",
+                        assignedBy: sessionStorage.getItem("username") || "",
+                        reference: ""
                       });
                       setSelectedImage(null);
                       setImagePreview(null);
@@ -878,74 +947,155 @@ export default function BeneficiaryForm() {
                       />
                     </div>
                     <div className="overflow-x-auto h-[60vh]">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-purple-50 text-wrap sticky top-0 z-10  text-nowrap text-center">
-                          <tr>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Actions</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Number</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Created Date</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Name</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Vender Name</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Address</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Village/Block</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">District</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Contact Number</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Present Load</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">BP Number</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">CSPDCL Contract Demand</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Electricity Bill</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Future Load Requirement</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Load Details/Application</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Hours Of Failure</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Structure Type</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Roof Type</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">System Type</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Need Type</th>
-                            <th className="px-2 py-2  text-xs font-medium text-purple-700 uppercase tracking-wider">Project Mode</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {filteredHistoryData.map((row, index) => (
-                            <tr key={`${row.enquiryNumber}-${index}`} className="hover:bg-purple-50">
-                              <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">
-                                <button
-                                  onClick={() => startEdit(row)}
-                                  className="text-purple-600 hover:text-purple-700"
-                                  title="Edit"
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </button>
-                              </td>
-                              <td className="px-2 py-2  text-xs font-medium text-purple-600">{row.enquiryNumber}</td>
-                              <td className="px-2 py-2  text-xs font-medium text-purple-600">{row.timestamp}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.beneficiaryName}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.vendorName}</td>
-                              <td className="px-2 py-2 text-xs text-gray-900 max-w-xs truncate">{row.address}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.villageBlock}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.district}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.contactNumber}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.presentLoad}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.bpNumber}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.cspdclContractDemand}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">
-                                {row.electricityBillUrl && (
-                                  <a href={row.electricityBillUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
-                                    View
-                                  </a>
-                                )}
-                              </td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.futureLoadRequirement}</td>
-                              <td className="px-2 py-2 text-xs text-gray-900 max-w-xs truncate">{row.loadDetailsApplication}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.noOfHoursOfFailure}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.structureType}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.roofType}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.systemType}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.needType}</td>
-                              <td className="px-2 py-2  text-xs text-gray-900">{row.projectMode}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <table className="min-w-full divide-y divide-gray-200 text-center">
+  <thead className="bg-purple-50 sticky top-0 z-10">
+    <tr>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Actions</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Number</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Created Date</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Name</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Number</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Firm Name</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Assigned By</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Address</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Village/Block</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">District</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Contact Number</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Present Load</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">BP Number</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">CSPDCL Contract Demand</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Electricity Bill</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Future Load Requirement</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Load Details/Application</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Hours Of Failure</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Structure Type</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Roof Type</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">System Type</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Need Type</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Project Mode</th>
+      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Reference</th>
+    </tr>
+  </thead>
+
+  <tbody className="bg-white divide-y divide-gray-200">
+    {filteredHistoryData.map((row, index) => (
+      <tr key={`${row.enquiryNumber}-${index}`} className="hover:bg-purple-50">
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          <button
+            onClick={() => startEdit(row)}
+            className="text-purple-600 hover:text-purple-700 flex justify-center items-center w-full"
+            title="Edit"
+          >
+            <Edit2 className="h-4 w-4" />
+          </button>
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs font-medium text-purple-600">
+          {row.enquiryNumber}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs font-medium text-purple-600">
+          {row.timestamp}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.beneficiaryName}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.beneficiaryNumber}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.vendorName}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.assignedBy}
+        </td>
+
+        {/* Address Wrap */}
+        <td className="px-2 py-2 text-center text-xs text-gray-900 max-w-xs whitespace-normal break-words">
+          {row.address}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.villageBlock}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.district}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.contactNumber}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.presentLoad}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.bpNumber}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.cspdclContractDemand}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.electricityBillUrl && (
+            <a
+              href={row.electricityBillUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800"
+            >
+              View
+            </a>
+          )}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.futureLoadRequirement}
+        </td>
+
+        {/* Load Details Wrap */}
+        <td className="px-2 py-2 text-center text-xs text-gray-900 max-w-xs whitespace-normal break-words">
+          {row.loadDetailsApplication}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.noOfHoursOfFailure}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.structureType}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.roofType}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.systemType}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.needType}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.projectMode}
+        </td>
+
+        <td className="px-2 py-2 text-center text-xs text-gray-900">
+          {row.reference}
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
                     </div>
                   </div>
                 )}
@@ -977,13 +1127,23 @@ export default function BeneficiaryForm() {
                         Basic Information
                       </h4>
 
-                      <div className="grid gap-3 md:grid-cols-3">
+                      <div className="grid gap-3 md:grid-cols-4">
                         <div className="space-y-1">
                           <label className="block text-xs font-medium text-purple-700">Beneficiary Name</label>
                           <input
                             type="text"
                             name="beneficiaryName"
                             value={editFormData.beneficiaryName || ""}
+                            onChange={handleEditChange}
+                            className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-purple-700">Beneficiary Number</label>
+                          <input
+                            type="text"
+                            name="beneficiaryNumber"
+                            value={editFormData.beneficiaryNumber || ""}
                             onChange={handleEditChange}
                             className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                           />
@@ -1287,20 +1447,44 @@ export default function BeneficiaryForm() {
 
                         {/* Vendor Name Field in Edit Modal */}
                         <div className="space-y-1">
-                          <label className="block text-xs font-medium text-purple-700">Vendor Name</label>
+                          <label className="block text-xs font-medium text-purple-700">Firm Name</label>
                           <select
                             name="vendorName"
                             value={editFormData.vendorName || ""}
                             onChange={handleEditChange}
                             className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                           >
-                            <option value="">Select Vendor</option>
+                            <option value="">Select Firm</option>
                             {vendorNameOptions.map((option, index) => (
                               <option key={index} value={option}>
                                 {option}
                               </option>
                             ))}
                           </select>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2 mt-3">
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-purple-700">Assigned By</label>
+                          <input
+                            type="text"
+                            name="assignedBy"
+                            value={editFormData.assignedBy || ""}
+                            disabled
+                            className="w-full rounded-md border border-purple-200 bg-purple-50/50 p-1.5 text-sm text-gray-500 cursor-not-allowed focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-purple-700">Reference</label>
+                          <input
+                            type="text"
+                            name="reference"
+                            value={editFormData.reference || ""}
+                            onChange={handleEditChange}
+                            className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          />
                         </div>
                       </div>
                     </div>

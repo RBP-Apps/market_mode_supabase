@@ -543,112 +543,112 @@ function FMSDataPage() {
             /* Table with Fixed Height and Scrolling */
             <div className="overflow-auto" style={{ maxHeight: '60vh' }}>
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10 text-nowrap text-center">
+                <thead className="bg-gray-50 sticky top-0 z-10 text-center align-middle whitespace-normal break-words">
                   <tr>
                     {showHistory && (
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
 
                       </th>
                     )}
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                       Action
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                       Enquiry Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                       Beneficiary Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                       Address
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                       Village/Block
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                       Dist.
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                       Contact Number
                     </th>
                     {showHistory ? (
                       <>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Status
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Survey Report
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Geotag Photo
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Electricity Bill
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Aadhar
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           PAN
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Address Proof
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Surveyor
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Contact
                         </th>
                       </>
                     ) : (
                       <>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Present Load
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           BP Number
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           CSPDCL Contract Demand
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Last 6 Months Avg Bill
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Future Load Requirement
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Load Details/Application
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           No Of Hours Of Failure
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Structure Type
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Roof Type
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           System Type
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Need Type
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Project Mode
                         </th>
                       </>
                     )}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200 text-center">
+                <tbody className="bg-white divide-y divide-gray-200 text-center align-middle">
                   {showHistory ? (
                     filteredHistoryData.length > 0 ? (
                       filteredHistoryData.map((record) => (
                         <tr key={record._id} className="hover:bg-gray-50">
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <button
                               onClick={() => handleDeleteClick(record)}
                               className="inline-flex items-center justify-center p-1.5 border border-transparent rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
@@ -657,7 +657,7 @@ function FMSDataPage() {
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <button
                               onClick={() => handleSurveyClick(record)}
                               className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -666,38 +666,38 @@ function FMSDataPage() {
                               Edit
                             </button>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs font-medium text-gray-900">{record.col1 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col2 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 max-w-xs">
-                            <div className="text-xs text-gray-900 truncate" title={record.col3}>
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words max-w-xs">
+                            <div className="text-xs text-gray-900 whitespace-normal break-words" title={record.col3}>
                               {record.col3 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col4 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col5 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col6 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                               {record.col22 || "—"}
                             </span>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             {record.col23 ? (
                               <a
                                 href={record.col23}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 inline-flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -706,13 +706,13 @@ function FMSDataPage() {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             {record.col24 ? (
                               <a
                                 href={record.col24}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 inline-flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -721,13 +721,13 @@ function FMSDataPage() {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             {record.col25 ? (
                               <a
                                 href={record.col25}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 inline-flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -736,19 +736,19 @@ function FMSDataPage() {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col26 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col27 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             {record.col28 ? (
                               <a
                                 href={record.col28}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 inline-flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -757,10 +757,10 @@ function FMSDataPage() {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col29 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col30 || "—"}</div>
                           </td>
                         </tr>
@@ -778,7 +778,7 @@ function FMSDataPage() {
                     filteredPendingData.length > 0 ? (
                       filteredPendingData.map((record) => (
                         <tr key={record._id} className="hover:bg-gray-50">
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <button
                               onClick={() => handleSurveyClick(record)}
                               className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
@@ -787,55 +787,55 @@ function FMSDataPage() {
                               Survey
                             </button>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs font-medium text-blue-900">{record.col1 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900 flex items-center">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center">
                               <Users className="h-3 w-3 mr-1 text-gray-400" />
                               {record.col2 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 max-w-xs">
-                            <div className="text-xs text-gray-900 truncate flex items-center" title={record.col3}>
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words max-w-xs">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center whitespace-normal break-words" title={record.col3}>
                               <MapPin className="h-3 w-3 mr-1 text-gray-400" />
                               {record.col3 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col4 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col5 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900 flex items-center">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center">
                               <Phone className="h-3 w-3 mr-1 text-gray-400" />
                               {record.col6 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900 flex items-center">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center">
                               <Zap className="h-3 w-3 mr-1 text-yellow-500" />
                               {record.col7 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col8 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900 flex items-center">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center">
                               <Building className="h-3 w-3 mr-1 text-gray-400" />
                               {record.col9 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             {record.col10 ? (
                               <a
                                 href={record.col10}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 inline-flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -844,45 +844,45 @@ function FMSDataPage() {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900 flex items-center">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center">
                               <Zap className="h-3 w-3 mr-1 text-blue-500" />
                               {record.col11 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 max-w-xs">
-                            <div className="text-xs text-gray-900 truncate" title={record.col12}>
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words max-w-xs">
+                            <div className="text-xs text-gray-900 whitespace-normal break-words" title={record.col12}>
                               {record.col12 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900 flex items-center">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center">
                               <Clock className="h-3 w-3 mr-1 text-red-500" />
                               {record.col13 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900 flex items-center">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center">
                               <Building className="h-3 w-3 mr-1 text-gray-400" />
                               {record.col14 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900 flex items-center">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center">
                               <Home className="h-3 w-3 mr-1 text-brown-500" />
                               {record.col15 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900 flex items-center">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900 inline-flex items-center justify-center">
                               <Wrench className="h-3 w-3 mr-1 text-purple-500" />
                               {record.col16 || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col17 || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col18 || "—"}</div>
                           </td>
                         </tr>

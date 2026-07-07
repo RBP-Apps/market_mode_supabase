@@ -131,6 +131,7 @@ const replacePlaceholders = (text, formData = {}, productDetails = {}) => {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function QuotationPreview({ formData, productDetails, onClose, onSubmit, isSubmitting }) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const previewRef = useRef(null);
 
   const amount = parseFloat(productDetails.amount || 0);
@@ -264,7 +265,7 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
     setIsGeneratingPDF(true);
     try {
       const pdfBlob = await buildPDF();
-      await onSubmit(pdfBlob);
+      await onSubmit(pdfBlob, sendWhatsApp);
     } catch (err) {
       alert("Error generating PDF: " + err.message);
     } finally {
@@ -618,7 +619,16 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
         </div>
 
         {/* Footer Buttons */}
-        <div className="bg-gray-50 px-6 py-3 rounded-b-xl border-t flex justify-end gap-3 mt-auto shrink-0">
+        <div className="bg-gray-50 px-6 py-3 rounded-b-xl border-t flex items-center justify-end gap-4 mt-auto shrink-0">
+          <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={sendWhatsApp}
+              onChange={(e) => setSendWhatsApp(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="font-medium text-red-500">WhatsApp Send</span>
+          </label>
           <button onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2 text-sm"><XCircle className="h-4 w-4" /> Cancel</button>
           <button onClick={handleSubmit} disabled={isSubmitting || isGeneratingPDF} className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-colors flex items-center gap-2 disabled:opacity-50 text-sm font-bold shadow-lg">
             {isSubmitting || isGeneratingPDF ? <>Processing...</> : <><Save className="h-4 w-4" /> Finalize & Save Quotation</>}

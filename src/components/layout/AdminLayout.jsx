@@ -148,6 +148,20 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       showFor: ["admin", "user"]
     },
     {
+      href: "/dashboard/QCPage",
+      label: "QC",
+      icon: Wrench,
+      active: location.pathname === "/dashboard/QCPage",
+      showFor: ["admin", "user"]
+    },
+    {
+      href: "/dashboard/IpPayment",
+      label: "IP Payment",
+      icon: Wrench,
+      active: location.pathname === "/dashboard/IpPayment",
+      showFor: ["admin", "user"]
+    },
+    {
       href: "/dashboard/Billing",
       label: "Billings and Payment Details",
       icon: Receipt,
@@ -189,13 +203,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/SubsidyDisbursal",
       showFor: ["admin", "user"]
     },
-    // {
-    //   href: "/dashboard/Payment",
-    //   label: "Payment",
-    //   icon: CreditCard,
-    //   active: location.pathname === "/dashboard/Payment",
-    //   showFor: ["admin", "user"]
-    // },
+    
     {
       href: "/dashboard/Insurance",
       label: "Insurance",
@@ -210,6 +218,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/ModuleEntry",
       showFor: ["admin", "user"]
     },
+   
     {
       href: "/dashboard/analysis-graph",
       label: "Analysis Graph",
@@ -243,6 +252,35 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       label: "Add User",
       icon: BarChart3,
       active: location.pathname === "/dashboard/AddUser",
+      showFor: ["admin", "user"]
+    },
+     {
+      href: "/dashboard/ProductList",
+      label: "Product List",
+      icon: ClipboardList,
+      active: location.pathname === "/dashboard/ProductList",
+      showFor: ["admin", "user"]
+    },
+    {
+      href: "/dashboard/PaymentConfirmation",
+      label: "Payment Confirmation",
+      icon: DollarSign,
+      active: location.pathname === "/dashboard/PaymentConfirmation",
+      showFor: ["admin", "user"]
+    },
+    {
+      href: "/dashboard/DispatchApproval",
+      label: "Dispatch Approval",
+      icon: CheckSquare,
+      active: location.pathname === "/dashboard/DispatchApproval",
+      showFor: ["admin", "user"]
+    },
+    
+    {
+      href: "/dashboard/BankProcess",
+      label: "Bank Process",
+      icon: CreditCard,
+      active: location.pathname === "/dashboard/BankProcess",
       showFor: ["admin", "user"]
     }
   ]
