@@ -9,5 +9,11 @@
       "path": "/api/sync-monthly-report",
       "schedule": "30 3 31 * *"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
