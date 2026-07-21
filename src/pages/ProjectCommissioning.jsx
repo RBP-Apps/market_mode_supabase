@@ -9,10 +9,10 @@ const CONFIG = {
 
   // Updated page configuration
   PAGE_CONFIG: {
-    title: "Project Commission",
-    historyTitle: "Project Commission History",
-    description: "Manage pending project commission records",
-    historyDescription: "View completed project commission records",
+    title: "Project Synchronisation",
+    historyTitle: "Project Synchronisation History",
+    description: "Manage pending project synchronisation records",
+    historyDescription: "View completed project synchronisation records",
   },
 }
 
@@ -216,7 +216,7 @@ const fetchSheetData = useCallback(async () => {
 
   } catch (error) {
     console.error("Error fetching data:", error)
-    setError("Failed to load Project Commission data: " + error.message)
+    setError("Failed to load Project synchronisation data: " + error.message)
     setLoading(false)
   }
 }, [isEmpty, fetchDropdownOptions, formatDate])
@@ -538,7 +538,7 @@ const handleSubmit = async () => {
           {loading ? (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-              <p className="text-blue-600 text-sm">Loading project commission data...</p>
+              <p className="text-blue-600 text-sm">Loading project synchronisation data...</p>
             </div>
           ) : error ? (
             <div className="bg-red-50 p-4 rounded-md text-red-800 text-center text-sm">
@@ -718,7 +718,7 @@ const handleSubmit = async () => {
                         <td colSpan={14} className="px-4 py-8 text-center text-gray-500 text-sm">
                           {searchTerm
                             ? "No history records matching your search"
-                            : "No completed project commission found"}
+                            : "No completed project synchronisation found"}
                         </td>
                       </tr>
                     )
@@ -832,8 +832,8 @@ const handleSubmit = async () => {
                     <tr>
                       <td colSpan={16} className="px-4 py-8 text-center text-gray-500 text-sm">
                         {searchTerm
-                          ? "No pending project commission matching your search"
-                          : "No pending project commission found"}
+                          ? "No pending project synchronisation matching your search"
+                          : "No pending project synchronisation found"}
                       </td>
                     </tr>
                   )}
@@ -864,7 +864,7 @@ const handleSubmit = async () => {
                     <div className="mt-4 space-y-4">
                       {/* Status Dropdown */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Project Commission Status</label>
+                        <label className="block text-sm font-medium text-gray-700">Project synchronisation Status</label>
                         <select
                           value={commissionForm.projectCommission}
                           onChange={(e) => setCommissionForm({ ...commissionForm, projectCommission: e.target.value })}

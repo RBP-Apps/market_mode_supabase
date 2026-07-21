@@ -334,10 +334,10 @@ function ModuleEntryPage() {
                     </div>
                 )}
 
-                <div className="bg-white border border-blue-100 rounded-lg shadow-sm overflow-hidden min-h-[400px]">
-                    <div className="overflow-x-auto">
+                <div className="bg-white border border-blue-100 rounded-lg shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50/80 text-gray-700 uppercase text-[11px] tracking-wider font-black border-b">
+                            <thead className="bg-gray-50 text-gray-700 uppercase text-[11px] tracking-wider font-black border-b sticky top-0 z-10">
                                 <tr>
                                     <th className="px-3 py-4">Action</th>
                                     <th className="px-3 py-4 font-bold">Enquiry No</th>

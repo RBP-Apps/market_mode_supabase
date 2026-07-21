@@ -10,12 +10,12 @@ import Quotation10kvModal from "../components/QuotationCreate/Quotation10kvModal
 
 const replacePlaceholders = (text, formData = {}, productDetails = {}) => {
   if (!text || typeof text !== 'string') return text;
-  
+
   const rating = formData.rating || "";
   const match = rating.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
   const val = match ? parseFloat(match[1]) : 2.5;
   const isMW = rating.toLowerCase().includes("mw");
-  
+
   const extractNum = (str) => {
     if (!str) return 0;
     const m = String(str).match(/(\d+(?:\.\d+)?)/);
@@ -30,19 +30,19 @@ const replacePlaceholders = (text, formData = {}, productDetails = {}) => {
   const Annual_Generation = Capacity_kWP * 1500;
   const Annual_Generation_Lakh = Annual_Generation / 100000;
   const CO2_Tonnes = (Annual_Generation * 0.82) / 1000;
-  
+
   const epcRate = parseFloat(productDetails.rate || 0);
   const Material_Cost = extractNum(formData.priceMaterial) || Math.round(Capacity_WP * epcRate);
   const GST_Supply = Math.round(Material_Cost * 0.089);
   const Total_A = Material_Cost + GST_Supply;
-  
+
   const OM_Cost = extractNum(formData.priceOm) || Math.round(Capacity_kWP * 2500);
   const OM_GST = Math.round(OM_Cost * 0.18);
   const Total_B = OM_Cost + OM_GST;
-  
+
   const Total_Project_Cost = Total_A + Total_B;
   const CAPEX_CR = Total_A / 10000000;
-  
+
   const Tariff_Low = parseFloat(formData.tariffLow) || 6.5;
   const Tariff_High = parseFloat(formData.tariffHigh) || 8.0;
   const Savings_Low = Annual_Generation * Tariff_Low;
@@ -51,7 +51,7 @@ const replacePlaceholders = (text, formData = {}, productDetails = {}) => {
   const Payback_High = Savings_High > 0 ? Total_A / Savings_High : 0;
   const Savings_25_Low = Savings_Low * 25;
   const Savings_25_High = Savings_High * 25;
-  
+
   const toWordsIndianLocal = (num) => {
     const a = [
       "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
@@ -328,7 +328,7 @@ export default function QuatationCreate() {
     enquiryNumber: "",
     generalTerms:
       "1. Power output from Control Panel will be in customers scope.\n2. Civil work other than Module Mounting Structure will be in customer's scope.\n3. Our offer is valid for 15 Days. Any custom specifications will be charged extra.\n4. Regular cleaning of Modules with plain water (soft) for desired generation guarantee in customer's scope.\n5. Detailed Quotation with engineering document will be provided on finalisation, for systems above 10KW.\n6. Subsidy (if any) is subject to government approval and will be directly credited in customer's account.\n7. Transportation inclusive. Insurance inclusive upto site and thereafter in customer's scope.\n8. Payment 50% advance on booking, Balance 50% against PI before dispatch of material.\n9. Delivery within 2 weeks from sanction and installation immediately thereafter.\n10. AMC inclusive for 5 years and chargeable thereafter.\n11. Structure height consider 5 feet, for additional height should charge extra.\n12. DC, AC, Earthing cable length considered 30 meter, for additional length should charge extra.",
-    
+
     // 10 kW+ specific fields
     proposalFor: "",
     preparedFor: "",
@@ -525,7 +525,7 @@ export default function QuatationCreate() {
       }
 
       if (
-        String(productDetails.rate) !== String(er) || 
+        String(productDetails.rate) !== String(er) ||
         String(productDetails.amount) !== String(totalAVal) ||
         productDetails.bom !== bomStr
       ) {
@@ -572,36 +572,48 @@ export default function QuatationCreate() {
     try {
       let quotationMap = {};
 
-      // 1. Fetch from quatation_create
+      // 1. Fetch from new_quatation_create
       const { data, error } = await supabase
-        .from('quatation_create')
-        .select('enquiry_number, planned_2, actual_2, quatation_copy, is_10kv');
+        .from('new_quatation_create')
+        .select('enquiry_number, planned, actual, quatation_copy, is_10kv, status, bill_of_material, salesperson, customer, quotation_date, product');
 
       if (error) {
-        console.warn("is_10kv column query failed, falling back without is_10kv:", error);
+        console.warn("is_10kv column query failed, falling back without new columns:", error);
         const { data: fbData, error: fbError } = await supabase
-          .from('quatation_create')
-          .select('enquiry_number, planned_2, actual_2, quatation_copy');
-        
+          .from('new_quatation_create')
+          .select('enquiry_number, planned, actual, quatation_copy');
+
         if (fbError) throw fbError;
 
         if (fbData) {
           fbData.forEach(row => {
             quotationMap[row.enquiry_number] = {
-              planned2: row.planned_2,
-              actual2: row.actual_2,
+              planned2: row.planned,
+              actual2: row.actual,
               quotationCopy: row.quatation_copy,
-              is10kv: false
+              is10kv: false,
+              status: 'Approved',
+              billOfMaterial: null,
+              salesperson: "",
+              customer: "",
+              quotationDate: row.planned,
+              product: ""
             };
           });
         }
       } else if (data) {
         data.forEach(row => {
           quotationMap[row.enquiry_number] = {
-            planned2: row.planned_2,
-            actual2: row.actual_2,
+            planned2: row.planned,
+            actual2: row.actual,
             quotationCopy: row.quatation_copy,
-            is10kv: row.is_10kv || false
+            is10kv: row.is_10kv || false,
+            status: row.status || 'Approved',
+            billOfMaterial: row.bill_of_material,
+            salesperson: row.salesperson || "",
+            customer: row.customer || "",
+            quotationDate: row.quotation_date || row.planned,
+            product: row.product || ""
           };
         });
       }
@@ -609,16 +621,29 @@ export default function QuatationCreate() {
       // 2. Fetch from quatation_10kw
       const { data: q10Data, error: q10Error } = await supabase
         .from('quatation_10kw')
-        .select('enquiry_number, created_at, dated, quatation_copy');
+        .select('enquiry_number, created_at, dated, quatation_copy, status, prepared_for, proposal_for');
 
       if (!q10Error && q10Data) {
         q10Data.forEach(row => {
-          quotationMap[row.enquiry_number] = {
-            planned2: row.dated || row.created_at,
-            actual2: row.created_at,
-            quotationCopy: row.quatation_copy,
-            is10kv: true
-          };
+          if (!quotationMap[row.enquiry_number]) {
+            quotationMap[row.enquiry_number] = {
+              planned2: row.dated || row.created_at,
+              actual2: row.created_at,
+              quotationCopy: row.quatation_copy,
+              is10kv: true,
+              status: row.status || 'Approved',
+              billOfMaterial: null,
+              salesperson: "",
+              customer: row.prepared_for || "",
+              quotationDate: row.dated || row.created_at,
+              product: row.proposal_for || ""
+            };
+          } else {
+            quotationMap[row.enquiry_number].is10kv = true;
+            if (row.status) {
+              quotationMap[row.enquiry_number].status = row.status;
+            }
+          }
         });
       }
 
@@ -632,64 +657,86 @@ export default function QuatationCreate() {
 
 
   const fetchFMSData = async () => {
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const quotationMap = await fetchQuotationCopyData();
+    try {
+      const { data: rows, error: fmsError } = await supabase
+        .from("new_quatation_create")
+        .select(`
+          *,
+          enquiries!left (
+            beneficiary_name,
+            beneficiary_number,
+            address,
+            village_block,
+            district,
+            contact_number,
+            present_load,
+            bp_number,
+            cspdcl_contract_demand,
+            avg_electricity_bill,
+            future_load_requirement,
+            roof_type,
+            system_type,
+            project_mode,
+            structure_type,
+            load_details,
+            need_type
+          )
+        `)
+        .not('planned', 'is', null);
 
-    const { data: fmsRows, error: fmsError } = await supabase
-      .from("fms")
-      .select("*")
-      .not('planned_1', 'is', null);
+      if (fmsError) throw fmsError;
 
-    if (fmsError) throw fmsError;
+      const formattedData = (rows || []).map((row) => {
+        const enq = row.enquiries || {};
 
-    const formattedData = fmsRows.map((row) => {
-      const qData = quotationMap[row.enquiry_number] || {};
+        return {
+          id: row.id,
+          enquiryNumber: row.enquiry_number || "",
+          beneficiaryName: enq.beneficiary_name || row.customer || "",
+          address: enq.address || row.place_of_installation || "",
+          villageBlock: enq.village_block || "",
+          district: enq.district || "",
+          beneficiaryNumber: enq.beneficiary_number || "",
+          contactNumber: enq.beneficiary_number || enq.contact_number || row.contact_no || "",
+          presentLoad: enq.present_load || row.product || "",
+          structureType: row.structure_type || enq.structure_type || "",
+          loadDetails: row.load_details || enq.load_details || "",
+          hoursOfFailure: "",
+          needType: row.need_type || enq.need_type || "",
+          qty: row.qty || enq.cspdcl_contract_demand || "",
+          projectMode: enq.project_mode || "",
+          systemType: enq.system_type || "",
+          roofType: enq.roof_type || "",
+          futureLoadRequirement: enq.future_load_requirement || "",
+          avgElectricityBill: enq.avg_electricity_bill || "",
+          cspdclContractDemand: enq.cspdcl_contract_demand || "",
+          bpNumber: enq.bp_number || "",
 
-      return {
-        id: row.id,
-        enquiryNumber: row.enquiry_number || "",
-        beneficiaryName: row.beneficiary_name || "",
-        address: row.address || "",
-        villageBlock: row.village_block || "",
-        district: row.district || "",
-        contactNumber: row.contact_number || "",
-        presentLoad: row.present_load || "",
-        structureType: row.structure_type || "",
-        loadDetails: row.load_details || "",
-        hoursOfFailure: row.failure_hours || "",
-        needType: row.need_type || "",
-        qty: row.cspdcl_contract_demand || "",
-        projectMode: row.project_mode || "",
-        systemType: row.system_type || "",
-        roofType:  row.roof_type || "",
-        futureLoadRequirement: row.future_load_requirement || "",
-        avgElectricityBill: row.avg_electricity_bill || "",
-        cspdclContractDemand: row.cspdcl_contract_demand || "",
-        bpNumber : row.bp_number || "",
-        
+          planned2: row.planned || null,
+          actual2: row.actual || null,
+          quotationCopy: row.quatation_copy || null,
+          is10kv: row.is_10kv || false,
+          status: row.status || null,
+          billOfMaterial: row.bill_of_material || null,
+          salesperson: row.salesperson || "",
+          quotationDate: row.quotation_date || "",
+          product: row.product || "",
 
-        // 🔥 IMPORTANT (NEW)
-        planned2: qData.planned2 || null,
-        actual2: qData.actual2 || null,
-        quotationCopy: qData.quotationCopy || null,
-        is10kv: qData.is10kv || false,
+          planned1: "",
+          actual1: "",
+        };
+      });
 
-        // old fields
-        planned1: row.planned_1 || "",
-        actual1: row.actual_1 || "",
-      };
-    });
+      setFmsData(formattedData);
 
-    setFmsData(formattedData);
-
-  } catch (err) {
-    console.error("❌ Error fetching FMS data:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (err) {
+      console.error("❌ Error fetching FMS data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
 
@@ -709,40 +756,40 @@ export default function QuatationCreate() {
     }
   };
 
-const updateSendStatus = async (enquiryNumber, sendType) => {
-  try {
-    const { data, error: fetchError } = await supabase
-      .from('quatation_create')
-      .select('id, send_status')
-      .eq('enquiry_number', enquiryNumber)
-      .single();
-        
-    if (fetchError) return;
+  const updateSendStatus = async (enquiryNumber, sendType) => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('new_quatation_create')
+        .select('id, send_status')
+        .eq('enquiry_number', enquiryNumber)
+        .single();
 
-    const currentStatus = data.send_status || "";
-    let newStatus = currentStatus;
+      if (fetchError) return;
 
-    if (sendType === 'whatsapp') 
-      newStatus = currentStatus ? `${currentStatus}, WhatsApp` : 'WhatsApp';
-    else if (sendType === 'email') 
-      newStatus = currentStatus ? `${currentStatus}, Email` : 'Email';
+      const currentStatus = data.send_status || "";
+      let newStatus = currentStatus;
 
-    const { error: updateError } = await supabase
-      .from('quatation_create')
-      .update({ 
-        send_status: newStatus,
-        send_status_time: new Date().toISOString().split('T')[0]   // ✅ added
-      })
-      .eq('id', data.id);
+      if (sendType === 'whatsapp')
+        newStatus = currentStatus ? `${currentStatus}, WhatsApp` : 'WhatsApp';
+      else if (sendType === 'email')
+        newStatus = currentStatus ? `${currentStatus}, Email` : 'Email';
 
-    if (updateError) throw updateError;
+      const { error: updateError } = await supabase
+        .from('new_quatation_create')
+        .update({
+          send_status: newStatus,
+          send_status_time: new Date().toISOString().split('T')[0]   // ✅ added
+        })
+        .eq('id', data.id);
 
-    fetchFMSData();
+      if (updateError) throw updateError;
 
-  } catch (error) {
-    console.error("Error updating send status:", error);
-  }
-};
+      fetchFMSData();
+
+    } catch (error) {
+      console.error("Error updating send status:", error);
+    }
+  };
 
   const sendWhatsApp = async (quotationData) => {
     try {
@@ -755,7 +802,7 @@ const updateSendStatus = async (enquiryNumber, sendType) => {
       });
 
       console.log(data)
-console.log(error)
+      console.log(error)
       if (error) throw error;
       return data;
     } catch (error) {
@@ -791,7 +838,7 @@ console.log(error)
   const handleSend = async (sendType, quotationData) => {
     if (sendType === 'whatsapp') setSendingWhatsApp(true);
     else if (sendType === 'email') setSendingEmail(true);
-    
+
     try {
       if (sendType === 'whatsapp') {
         await sendWhatsApp(quotationData);
@@ -817,7 +864,7 @@ console.log(error)
     try {
       const waPromise = sendWhatsApp(quotationData).then(() => updateSendStatus(quotationData.enquiryNumber, "whatsapp"));
       const mailPromise = sendEmail(quotationData).then(() => updateSendStatus(quotationData.enquiryNumber, "email"));
-      
+
       await Promise.all([waPromise, mailPromise]);
 
       setShowSendModal(false);
@@ -835,7 +882,7 @@ console.log(error)
     setSelectedQuotation(row);
     setShowSendModal(true);
   };
-  const submitToSheet = async (formDataToSubmit, quotationCopyUrl = null) => {
+  const submitToSheet = async (formDataToSubmit, quotationCopyUrl = null, statusVal = 'Approved') => {
     if (isMoreThan10KW(formDataToSubmit.rating)) {
       const rowData = {
         enquiry_number: formDataToSubmit.enquiryNumber,
@@ -864,15 +911,16 @@ console.log(error)
         price_total: formDataToSubmit.priceTotal,
         price_words: formDataToSubmit.priceWords,
         quatation_copy: quotationCopyUrl,
+        status: statusVal,
       };
 
-      // Also upsert to quatation_create to maintain FMS pipeline compatibility
+      // Also upsert to new_quatation_create to maintain FMS pipeline compatibility
       const totalCostNum = parseFloat(formDataToSubmit.priceTotal?.replace(/,/g, '')) || parseFloat(productDetails.amount) || null;
       const rateNum = parseFloat(productDetails.rate) || null;
       const amountNum = parseFloat(productDetails.amount) || null;
 
       const quatationCreateRow = {
-        actual_2: new Date().toISOString(),
+        actual: new Date().toISOString(),
         quotation_date: formDataToSubmit.date || new Date().toISOString().split('T')[0],
         salesperson: formDataToSubmit.salesperson,
         customer: formDataToSubmit.customer,
@@ -892,7 +940,7 @@ console.log(error)
         ifsc_code: formDataToSubmit.ifscCode,
         branch: formDataToSubmit.branch,
         general_terms_conditions: replacePlaceholders(formDataToSubmit.generalTerms || "", formDataToSubmit, productDetails),
-        hours_of_failures: formDataToSubmit.failureHours,
+        // hours_of_failures: formDataToSubmit.failureHours,
         load_details: formDataToSubmit.loadDetails,
         product_name: productDetails.productName || formDataToSubmit.rating,
         bill_of_material: productDetails.bom,
@@ -903,11 +951,12 @@ console.log(error)
         net_cost: totalCostNum,
         quatation_copy: quotationCopyUrl,
         is_10kv: true,
+        status: statusVal,
       };
 
       const [res1, res2] = await Promise.all([
         supabase.from('quatation_10kw').upsert(rowData, { onConflict: 'enquiry_number' }),
-        supabase.from('quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
+        supabase.from('new_quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
       ]);
 
       if (res1.error) throw res1.error;
@@ -927,7 +976,7 @@ console.log(error)
 
       const rowData = {
         // quatation_no: formDataToSubmit.quotationNo,
-        actual_2: new Date().toISOString(),
+        actual: new Date().toISOString(),
         quotation_date: formDataToSubmit.date,
         salesperson: formDataToSubmit.salesperson,
         customer: formDataToSubmit.customer,
@@ -950,7 +999,7 @@ console.log(error)
         ifsc_code: formDataToSubmit.ifscCode,
         branch: formDataToSubmit.branch,
         general_terms_conditions: replacePlaceholders(formDataToSubmit.generalTerms, formDataToSubmit, productDetails),
-        hours_of_failures: formDataToSubmit.failureHours,
+        // hours_of_failures: formDataToSubmit.failureHours,
         load_details: formDataToSubmit.loadDetails,
         product_name: productDetails.productName,
         bill_of_material: productDetails.bom,
@@ -961,10 +1010,11 @@ console.log(error)
         enquiry_number: formDataToSubmit.enquiryNumber,
         net_cost: netCost,
         quatation_copy: quotationCopyUrl,
+        status: statusVal,
       };
 
       const { error } = await supabase
-        .from('quatation_create')
+        .from('new_quatation_create')
         .upsert(rowData, { onConflict: 'enquiry_number' });
       if (error) throw error;
     }
@@ -998,7 +1048,11 @@ console.log(error)
       const fileName = `Quotation_${formData.customer || "Customer"}.pdf`;
       const url = await uploadPDFToDrive(pdfBlob, fileName);
 
-      await submitToSheet(formData, url);
+      const originalBOM = productMap[formData.rating]?.bom || "";
+      const isBOMModified = productDetails.bom && productDetails.bom !== originalBOM;
+      const statusVal = isBOMModified ? 'Pending' : 'Approved';
+
+      await submitToSheet(formData, url, statusVal);
 
       setSuccessMessage("Quotation created successfully!");
 
@@ -1061,6 +1115,10 @@ console.log(error)
         throw new Error("Failed to upload PDF");
       }
 
+      const originalBOM = productMap[formVal.rating]?.bom || "";
+      const isBOMModified = productVal.bom && productVal.bom !== originalBOM;
+      const statusVal = isBOMModified ? 'Pending' : 'Approved';
+
       const rowData = {
         enquiry_number: formVal.enquiryNumber,
         proposal_for: formVal.proposalFor || formVal.capacity || formVal.rating,
@@ -1088,15 +1146,56 @@ console.log(error)
         price_total: formVal.priceTotal,
         price_words: formVal.priceWords,
         quatation_copy: url,
+        status: statusVal,
       };
 
-      const { error } = await supabase
-        .from('quatation_10kw')
-        .upsert(rowData, { onConflict: 'enquiry_number' });
+      // Also upsert to new_quatation_create to maintain FMS pipeline compatibility and status/BOM details
+      const totalCostNum = parseFloat(formVal.priceTotal?.replace(/,/g, '')) || parseFloat(productVal.amount) || null;
+      const rateNum = parseFloat(productVal.rate) || null;
+      const amountNum = parseFloat(productVal.amount) || null;
 
-      if (error) {
-        throw error;
-      }
+      const quatationCreateRow = {
+        actual: new Date().toISOString(),
+        quotation_date: formVal.date || new Date().toISOString().split('T')[0],
+        salesperson: formVal.salesperson,
+        customer: formVal.preparedFor || formVal.customer,
+        contact_no: formVal.contactNo,
+        email: formVal.email,
+        dealer: formVal.dealer,
+        alternative_phone_no: formVal.phoneNo,
+        structure_type: formVal.structureType || "Roof Top",
+        place_of_installation: formVal.placeOfInstallation,
+        terms_conditions: replacePlaceholders(formVal.termsConditions || "", formVal, productVal),
+        product: formVal.rating,
+        qty: 1,
+        need_type: formVal.needType,
+        reference_by: formVal.referenceBy,
+        bank_name: formVal.bankAccount,
+        account_no: formVal.accountNo,
+        ifsc_code: formVal.ifscCode,
+        branch: formVal.branch,
+        general_terms_conditions: replacePlaceholders(formVal.generalTerms || "", formVal, productVal),
+        // hours_of_failures: formVal.failureHours,
+        load_details: formVal.loadDetails,
+        product_name: productVal.productName || formVal.rating,
+        bill_of_material: productVal.bom,
+        size: productVal.size || `${formVal.plantCapacity} MWp`,
+        rate: rateNum,
+        amount: amountNum,
+        enquiry_number: formVal.enquiryNumber,
+        net_cost: totalCostNum,
+        quatation_copy: url,
+        is_10kv: true,
+        status: statusVal,
+      };
+
+      const [res1, res2] = await Promise.all([
+        supabase.from('quatation_10kw').upsert(rowData, { onConflict: 'enquiry_number' }),
+        supabase.from('new_quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
+      ]);
+
+      if (res1.error) throw res1.error;
+      if (res2.error) throw res2.error;
 
       if (sendWhatsAppFlag) {
         try {
@@ -1128,10 +1227,10 @@ console.log(error)
     try {
       const { data, error } = await supabase.from('product_list').select('*');
       if (error) throw error;
-      
+
       const products = [];
       const pMap = {};
-      
+
       data.forEach(row => {
         if (row.product_code) {
           products.push(row.product_code);
@@ -1146,11 +1245,11 @@ console.log(error)
           };
         }
       });
-      
+
       setDropdownOptions(prev => ({ ...prev, rating: products }));
       setProductMap(pMap);
-    } catch (err) { 
-      console.error("❌ Error fetching product data:", err); 
+    } catch (err) {
+      console.error("❌ Error fetching product data:", err);
     }
   };
 
@@ -1170,8 +1269,8 @@ console.log(error)
         const statuses = [...new Set(data.map(item => item.status).filter(Boolean))];
         const vendors = [...new Set(data.map(item => item.vendor_name).filter(Boolean))];
 
-        setDropdownOptions(prev => ({ 
-          ...prev, 
+        setDropdownOptions(prev => ({
+          ...prev,
           structureType: structureTypes,
           roofType: roofTypes,
           systemType: systemTypes,
@@ -1201,14 +1300,18 @@ console.log(error)
         if (row.beneficiary_name) {
           customers.push(row.beneficiary_name);
           cMap[row.beneficiary_name] = {
-            contactNo: row.contact_number, 
-            phoneNo: row.contact_number, 
-            dealer: row.address, 
-            email: row.bp_number, 
-            rating: row.present_load, 
-            qty: row.cspdcl_contract_demand, 
-            structureType: row.structure_type, 
-            needType: row.need_type 
+            contactNo: row.beneficiary_number || row.contact_number || "",
+            phoneNo: row.contact_number || "",
+            dealer: row.address,
+            email: row.bp_number,
+            rating: row.present_load,
+            qty: row.cspdcl_contract_demand,
+            structureType: row.structure_type,
+            needType: row.need_type,
+            loadDetails: row.load_details,
+            failureHours: row.failure_hours,
+            placeOfInstallation: row.address,
+            enquiryNumber: row.enquiry_number
           };
         }
         if (row.failure_hours) failureHours.add(row.failure_hours);
@@ -1216,8 +1319,8 @@ console.log(error)
         if (row.address) places.add(row.address);
       });
 
-      setDropdownOptions(prev => ({ 
-        ...prev, 
+      setDropdownOptions(prev => ({
+        ...prev,
         customer: customers,
         failureHours: [...failureHours],
         loadDetails: [...loadDetails],
@@ -1236,11 +1339,11 @@ console.log(error)
       data.forEach(row => {
         if (row.dealer) {
           dealers.push(row.dealer);
-          dMap[row.dealer] = { 
-            bankAccount: row.our_bank_name || "", 
-            accountNo: row.account_no || "", 
-            ifscCode: row.ifsc_code || "", 
-            branch: row.branch || "" 
+          dMap[row.dealer] = {
+            bankAccount: row.our_bank_name || "",
+            accountNo: row.account_no || "",
+            ifscCode: row.ifsc_code || "",
+            branch: row.branch || ""
           };
         }
       });
@@ -1272,8 +1375,10 @@ console.log(error)
     let filtered = fmsData.filter(item => {
       if (activeTab === "pending") {
         return item.planned2 && !item.actual2;
+      } else if (activeTab === "bom_approval") {
+        return item.planned2 && item.actual2 && item.status === "Pending";
       } else {
-        return item.planned2 && item.actual2;
+        return item.planned2 && item.actual2 && item.status !== "Pending";
       }
     });
 
@@ -1294,14 +1399,14 @@ console.log(error)
     if (selectedEnquiry && viewMode === "form") {
       setFormData(prev => ({
         ...prev,
-        customer: selectedEnquiry.beneficiaryName, 
-        contactNo: selectedEnquiry.contactNumber, 
-        structureType: selectedEnquiry.structureType, 
-        placeOfInstallation: selectedEnquiry.address, 
-        rating: selectedEnquiry.presentLoad, 
-        loadDetails: selectedEnquiry.loadDetails, 
-        failureHours: selectedEnquiry.hoursOfFailure, 
-        needType: selectedEnquiry.needType, 
+        customer: selectedEnquiry.beneficiaryName,
+        contactNo: selectedEnquiry.beneficiaryNumber || selectedEnquiry.contactNumber || "",
+        structureType: selectedEnquiry.structureType,
+        placeOfInstallation: selectedEnquiry.address,
+        rating: "",
+        loadDetails: selectedEnquiry.loadDetails,
+        failureHours: selectedEnquiry.hoursOfFailure,
+        needType: selectedEnquiry.needType,
         qty: selectedEnquiry.qty || "1",
         enquiryNumber: selectedEnquiry.enquiryNumber,
         generationGuarantee: "",
@@ -1362,17 +1467,21 @@ console.log(error)
   const handleCustomerChange = (e) => {
     const v = e.target.value;
     const d = customerMap[v] || {};
-    setFormData(prev => ({ 
-      ...prev, 
-      customer: v, 
-      contactNo: d.contactNo || "", 
-      phoneNo: d.phoneNo || "", 
-      dealer: d.dealer || "", 
-      email: d.email || "", 
-      rating: d.rating || "", 
-      qty: d.qty || "", 
-      structureType: d.structureType || "", 
+    setFormData(prev => ({
+      ...prev,
+      customer: v,
+      contactNo: d.contactNo || "",
+      phoneNo: d.phoneNo || "",
+      dealer: d.dealer || "",
+      email: d.email || "",
+      rating: "",
+      qty: d.qty || "",
+      structureType: d.structureType || "",
       needType: d.needType || "",
+      loadDetails: d.loadDetails || "",
+      failureHours: d.failureHours || "",
+      placeOfInstallation: d.placeOfInstallation || "",
+      enquiryNumber: d.enquiryNumber || "",
       generationGuarantee: "",
       moduleWattage: "",
       landNeeded: "",
@@ -1391,13 +1500,13 @@ console.log(error)
   const handleDealerChange = (e) => {
     const v = e.target.value;
     const d = dealerBankMap[v] || {};
-    setFormData(prev => ({ 
-      ...prev, 
-      dealer: v, 
-      bankAccount: d.bankAccount || "", 
-      accountNo: d.accountNo || "", 
-      ifscCode: d.ifscCode || "", 
-      branch: d.branch || "" 
+    setFormData(prev => ({
+      ...prev,
+      dealer: v,
+      bankAccount: d.bankAccount || "",
+      accountNo: d.accountNo || "",
+      ifscCode: d.ifscCode || "",
+      branch: d.branch || ""
     }));
   };
 
@@ -1438,13 +1547,45 @@ console.log(error)
   const handleBackToList = () => { setViewMode("list"); setSelectedEnquiry(null); };
   const handleRefresh = () => fetchFMSData();
 
+  const handleApproveBOM = async (enquiryNumber, is10kv) => {
+    try {
+      const confirmApproval = window.confirm(`Are you sure you want to approve the modified BOM for Enquiry No. ${enquiryNumber}?`);
+      if (!confirmApproval) return;
+
+      const [res1, res2] = await Promise.all([
+        supabase.from('new_quatation_create').update({ status: 'Approved' }).eq('enquiry_number', enquiryNumber),
+        supabase.from('quatation_10kw').update({ status: 'Approved' }).eq('enquiry_number', enquiryNumber)
+      ]);
+
+      if (res1.error) throw res1.error;
+
+      alert(`BOM for Enquiry No. ${enquiryNumber} approved successfully.`);
+      fetchFMSData();
+    } catch (err) {
+      console.error("Error approving BOM:", err);
+      alert("Failed to approve BOM: " + err.message);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           {viewMode === "list" ? (
             <QuotationListView
-              activeTab={activeTab} setActiveTab={setActiveTab} fmsData={fmsData} filteredData={filteredData} loading={loading} searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleRefresh={handleRefresh} handleViewClick={handleViewClick} handleViewQuotation={handleViewQuotation} onOpen10kv={() => setShow10kvModal(true)}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              fmsData={fmsData}
+              filteredData={filteredData}
+              loading={loading}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              handleRefresh={handleRefresh}
+              handleViewClick={handleViewClick}
+              handleViewQuotation={handleViewQuotation}
+              onOpen10kv={() => setShow10kvModal(true)}
+              productMap={productMap}
+              handleApproveBOM={handleApproveBOM}
             />
           ) : (
             <QuotationFormView

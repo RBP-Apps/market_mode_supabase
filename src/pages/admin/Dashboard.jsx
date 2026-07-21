@@ -80,7 +80,7 @@ export default function FMSDashboard() {
     setFmsData((prev) => ({ ...prev, loading: true, error: null }));
 
     const { data, error } = await supabase
-      .from("fms")
+      .from("enquiries")
       .select("*");
 
     if (error) throw error;
@@ -111,7 +111,7 @@ export default function FMSDashboard() {
       const bcValue = row.status_6;
 
       const projectType = row.need_type;
-      const fmsUserName = row.vendor_name;
+      const fmsUserName = row.firm_name || row.vendor_name;
       const subsidyDisbursalValue = row.status_17;
 
       // counters (same logic)

@@ -26,22 +26,22 @@ export default function CustomerDetailsSection({
       <div className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
           {/* Salesperson */}
-         <HybridSelector
-  label="Salesperson"
-  name="salesperson"
-  value={formData.salesperson ?? "S N Sahoo"}  // ✅ default only when null/undefined
-  onChange={handleChange} // ✅ allow typing
-  options={["S N Sahoo"]}
-  icon={User}
-  required={true}
-  inputClass={inputClass}
-  selectClass={selectClass}
-  labelClass={labelClass}
-/>
+          <HybridSelector
+            label="Salesperson"
+            name="salesperson"
+            value={formData.salesperson ?? "S N Sahoo"}  
+            onChange={handleChange} 
+            options={["S N Sahoo"]}
+            icon={User}
+            required={true}
+            inputClass={inputClass}
+            selectClass={selectClass}
+            labelClass={labelClass}
+          />
 
           {/* Customer */}
           <HybridSelector
-            label="Customer Name"
+            label="Beneficiary Name"
             name="customer"
             value={formData.customer}
             onChange={handleCustomerChange}
@@ -57,15 +57,16 @@ export default function CustomerDetailsSection({
           <div className="space-y-1">
             <label className={labelClass}>
               <Phone className="inline h-4 w-4 mr-1 text-indigo-500" />
-              Contact Number *
+              Beneficiary Number *
             </label>
             <input
               type="tel"
               name="contactNo"
-              value={formData.contactNo}
+              value={formData.contactNo || ""}
               onChange={handleChange}
-              className={inputClass}
-              placeholder="Enter contact number"
+              className={`${inputClass} bg-gray-100 cursor-not-allowed`}
+              placeholder="Beneficiary number"
+              readOnly
               required
             />
           </div>

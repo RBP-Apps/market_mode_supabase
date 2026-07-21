@@ -301,7 +301,7 @@ export default function ProductListPage() {
           ) : (
             <div className="overflow-x-auto max-h-[70vh]">
               <table className="min-w-full divide-y divide-gray-100 text-center">
-                <thead className="bg-purple-50/50 sticky top-0 z-10 text-nowrap">
+                <thead className="bg-purple-50/50 sticky top-0 z-10 whitespace-normal text-center">
                   <tr>
                     <th className="px-4 py-3 text-xs font-semibold text-purple-700 uppercase">Actions</th>
                     <th className="px-4 py-3 text-xs font-semibold text-purple-700 uppercase">S.No</th>
@@ -320,10 +320,10 @@ export default function ProductListPage() {
                     <th className="px-4 py-3 text-xs font-semibold text-purple-700 uppercase">BOM</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-100 text-sm">
+                <tbody className="bg-white divide-y divide-gray-100 text-sm text-center">
                   {filteredProducts.map((p) => (
                     <tr key={p.id} className="hover:bg-purple-50/30 transition">
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-normal">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => openEditModal(p)}
@@ -341,34 +341,34 @@ export default function ProductListPage() {
                           </button>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-700 font-medium">{p.serial_no ?? "—"}</td>
-                      <td className="px-4 py-3 whitespace-nowrap font-medium text-purple-700">{p.product_code ?? "—"}</td>
-                      <td className="px-4 py-3 whitespace-normal max-w-xs text-gray-900 font-medium text-left">{p.product_name ?? "—"}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-700">{p.size ?? "—"}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-900 font-semibold">
+                      <td className="px-4 py-3 whitespace-normal text-gray-770 font-medium">{p.serial_no ?? "—"}</td>
+                      <td className="px-4 py-3 whitespace-normal font-medium text-purple-700">{p.product_code ?? "—"}</td>
+                      <td className="px-4 py-3 whitespace-normal max-w-xs text-gray-900 font-medium text-center">{p.product_name ?? "—"}</td>
+                      <td className="px-4 py-3 whitespace-normal text-gray-700">{p.size ?? "—"}</td>
+                      <td className="px-4 py-3 whitespace-normal text-gray-900 font-semibold">
                         {p.selling_price ? `₹${p.selling_price.toLocaleString()}` : "—"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-600">{p.units ?? "—"}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-700">{p.tax_percent ? `${p.tax_percent}%` : "—"}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-900">
+                      <td className="px-4 py-3 whitespace-normal text-gray-600">{p.units ?? "—"}</td>
+                      <td className="px-4 py-3 whitespace-normal text-gray-700">{p.tax_percent ? `${p.tax_percent}%` : "—"}</td>
+                      <td className="px-4 py-3 whitespace-normal text-gray-900">
                         {p.creda_rate ? `₹${p.creda_rate.toLocaleString()}` : "—"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-amber-600 font-medium">
+                      <td className="px-4 py-3 whitespace-normal text-amber-600 font-medium">
                         {p.gold ? `₹${p.gold.toLocaleString()}` : "—"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-slate-600 font-medium">
+                      <td className="px-4 py-3 whitespace-normal text-slate-600 font-medium">
                         {p.platinum ? `₹${p.platinum.toLocaleString()}` : "—"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-750">
+                      <td className="px-4 py-3 whitespace-normal text-gray-750">
                         {p.subsidy ? `₹${p.subsidy.toLocaleString()}` : "—"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-750">
+                      <td className="px-4 py-3 whitespace-normal text-gray-750">
                         {p.center_subsidy ? `₹${p.center_subsidy.toLocaleString()}` : "—"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-750">
+                      <td className="px-4 py-3 whitespace-normal text-gray-750">
                         {p.state_subsidy ? `₹${p.state_subsidy.toLocaleString()}` : "—"}
                       </td>
-                      <td className="px-4 py-3 max-w-xs truncate text-left text-gray-500" title={p.bill_of_material}>
+                      <td className="px-4 py-3 max-w-xs whitespace-normal break-words text-center text-gray-500" title={p.bill_of_material}>
                         {p.bill_of_material ?? "—"}
                       </td>
                     </tr>

@@ -110,9 +110,16 @@ function InsurancePage() {
             await fetchDropdownOptions()
 
             const { data, error } = await supabase
-                .from("fms")
-                .select("*")
-                .not("enquiry_number", "is", null)
+                .from("project_insurance")
+                .select(`
+                    *,
+                    enquiries!left (
+                        beneficiary_name,
+                        address,
+                        contact_number
+                    )
+                `)
+                .not("planned", "is", null)
 
             if (error) throw error
 
@@ -120,39 +127,40 @@ function InsurancePage() {
             const history = []
 
             data.forEach((row) => {
+                const enq = row.enquiries || {}
                 const rowData = {
-                    _id: `enquiry_${row.enquiry_number}`,
+                    _id: row.id,
                     _enquiryNumber: row.enquiry_number,
 
                     enquiryNumber: row.enquiry_number || "",
-                    beneficiaryName: row.beneficiary_name || "",
-                    address: row.address || "",
-                    contactNumber: row.contact_number || "",
+                    beneficiaryName: enq.beneficiary_name || "",
+                    address: enq.address || "",
+                    contactNumber: enq.contact_number || "",
 
-                    insuranceStatus: row.status_17 || "",
-                    insuranceDate: formatDate(row.actual_17 || ""),
-                    remarks: row.delay_17 || "",
+                    insuranceStatus: row.status || "",
+                    insuranceDate: formatDate(row.policy_date || ""),
+                    remarks: row.delay || "",
 
-                    fieldName: row.field_name_insurance || "",
+                    fieldName: "",
                     companyName: row.company_name || "",
                     premiumAmount: row.premium_amount || "",
                     policyNo: row.policy_number || "",
                     policyPeriod: row.policy_period || "",
 
-                    aadharCard: !!row.aadhar_card_insurance,
-                    taxInvoice: !!row.tax_invoice,
-                    addressProof: !!row.address_proof_insurance,
-                    commission: !!row.commission,
-                    certificate: !!row.certificate,
+                    aadharCard: row.aadhar_card_insurance === "OK",
+                    taxInvoice: row.tax_invoice === "OK",
+                    addressProof: row.address_proof_insurance === "OK",
+                    commission: row.commission === "OK",
+                    certificate: row.certificate === "OK",
 
-                    planned: formatDate(row.planned_17 || ""),
-                    actual: row.actual_17 || "",
+                    planned: formatDate(row.planned || ""),
+                    actual: row.actual || "",
                 }
 
                 console.log("All value",rowData)
 
                 // ✅ SAME LOGIC
-                if (isEmpty(row.actual_17)) {
+                if (isEmpty(row.actual)) {
                     pending.push(rowData)
                 } else {
                     history.push(rowData)
@@ -223,11 +231,11 @@ function InsurancePage() {
                         : null
 
                 return supabase
-                    .from("fms")
+                    .from("project_insurance")
                     .update({
-                        status_17: status,
-                        actual_17: actualDate,
-                        delay_17: remarksValues[id] || "",
+                        status: status,
+                        actual: actualDate,
+                        delay: remarksValues[id] || "",
                     })
                     .eq("enquiry_number", rec._enquiryNumber)
             })
@@ -278,14 +286,13 @@ function InsurancePage() {
             const status = "Done"
 
             const { error } = await supabase
-                .from("fms")
+                .from("project_insurance")
                 .update({
-                    status_17: status,
-                    actual_17: new Date().toISOString(),
+                    status: status,
+                    actual: new Date().toISOString(),
 
-                    field_name_insurance: form.fieldName || "",
                     company_name: form.companyName || "",
-                    premium_amount: form.premiumAmount || "",
+                    premium_amount: form.premiumAmount || null,
                     policy_number: form.policyNo || "",
                     policy_date: form.date || null,
                     policy_period: form.policyPeriod || "",
@@ -293,7 +300,7 @@ function InsurancePage() {
                     aadhar_card_insurance: form.aadharCard ? "OK" : "",
                     tax_invoice: form.taxInvoice ? "OK" : "",
                     address_proof_insurance: form.addressProof ? "OK" : "",
-                    commission: form.commission ? 1 : 0,
+                    commission: form.commission ? "OK" : "",
                     certificate: form.certificate ? "OK" : "",
                 })
                 .eq("enquiry_number", selectedRecord._enquiryNumber)
@@ -436,7 +443,6 @@ function InsurancePage() {
                                             </td>
                                             <td className="px-3 py-4 font-bold text-blue-800 whitespace-nowrap text-xs">{r.enquiryNumber}</td>
                                             <td className="px-3 py-4 text-gray-900 font-bold text-xs whitespace-nowrap">{r.beneficiaryName}</td>
-                                            <td className="px-3 py-4 text-gray-800 font-bold text-xs whitespace-nowrap">{r.fieldName || "---"}</td>
                                             <td className="px-3 py-4 text-gray-800 font-bold text-xs whitespace-nowrap">{r.companyName || "---"}</td>
                                             <td className="px-3 py-4 text-gray-900 font-bold text-xs font-mono text-right whitespace-nowrap">
                                                 {r.premiumAmount ? `₹${parseFloat(r.premiumAmount).toLocaleString()}` : "---"}

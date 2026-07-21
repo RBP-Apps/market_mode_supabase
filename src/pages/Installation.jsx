@@ -180,34 +180,42 @@ const fetchSheetData = useCallback(async () => {
     setError(null)
 
     const { data, error } = await supabase
-      .from("fms")
-      .select("*")
+      .from("installations")
+      .select(`
+        *,
+        enquiries!left (
+          beneficiary_name,
+          address,
+          contact_number
+        )
+      `)
+      .not("planned", "is", null)
 
     if (error) throw error
 
     const pending = []
-    const history = []
+    const history = [];
 
-    data.forEach((row) => {
-      const hasEnquiry = row.enquiry_number && row.enquiry_number.trim() !== ""
-      if (!hasEnquiry) return
+    (data || []).forEach((row) => {
+      const enquiryNumber = row.enquiry_number || ""
+      const enq = row.enquiries || {}
 
       const rowData = {
         _id: row.id,
-        enquiryNumber: row.enquiry_number || "",
-        beneficiaryName: row.beneficiary_name || "",
-        address: row.address || "",
-        contactNumber: row.contact_number || "",
-        surveyorName: row.surveyor_name || "",
-        surveyorContact: row.surveyor_contact || "",
-        orderCopy: row.order_copy || "",
-        ipName: row.ip_name || "",
-        ipContact: row.ip_contact || "",
+        enquiryNumber: enquiryNumber,
+        beneficiaryName: enq.beneficiary_name || "",
+        address: enq.address || "",
+        contactNumber: enq.contact_number || "",
+        surveyorName: "",
+        surveyorContact: "",
+        orderCopy: "",
+        ipName: "",
+        ipContact: "",
 
-        copyOfReceipt: row.receipt_copy || "",
-        dateOfReceipt: row.receipt_date || "",
+        copyOfReceipt: "",
+        dateOfReceipt: "",
 
-        actual: row.actual_9 || "",
+        actual: row.actual || "",
         dateOfInstallation: row.installation_date || "",
         routing: row.phase || "",
         earthing: row.earthing || "",
@@ -227,15 +235,15 @@ const fetchSheetData = useCallback(async () => {
         structureMake: row.structure_make || "",
 
         investorId: row.inverter_id || "",
-        repeatedCertificate: row.repeated_certificate || "",
-        projectCommissioningCertificate: row.commissioning_certificate || "",
-        dataLoggerType: row.data_logger_type || "",
-        simNumber: row.sim_number || "",
-        mobileNumber: row.mobile_number || "",
-        dataPlan: row.data_plan || "",
+        repeatedCertificate: "",
+        projectCommissioningCertificate: "",
+        dataLoggerType: "",
+        simNumber: "",
+        mobileNumber: "",
+        dataPlan: "",
       }
 
-      if (!row.actual_9) {
+      if (!row.actual) {
         pending.push(rowData)
       } else {
         history.push(rowData)
@@ -697,9 +705,9 @@ const handleInstallSubmit = async () => {
     }
 
     const { error } = await supabase
-      .from("fms")
+      .from("installations")
       .update({
-        actual_9: actualDate,
+        actual: actualDate,
         installation_date: installForm.dateOfInstallation,
         phase: installForm.routing,
         earthing: installForm.earthing,
@@ -719,15 +727,8 @@ const handleInstallSubmit = async () => {
         structure_make: installForm.structureMake,
 
         inverter_id: installForm.inverterId,
-        repeated_certificate: currentFileUploads.repeatedCertificate?.url,
-        commissioning_certificate: currentFileUploads.projectCommissioningCertificate?.url,
-
-        data_logger_type: installForm.dataLoggerType,
-        sim_number: installForm.simNumber,
-        mobile_number: installForm.mobileNumber,
-        data_plan: installForm.dataPlan,
       })
-      .eq("id", Number(selectedRecord._id))
+      .eq("enquiry_number", selectedRecord.enquiryNumber)
 
     if (error) throw error
 
@@ -904,159 +905,159 @@ const handleInstallSubmit = async () => {
             /* Table with Fixed Height and Scrolling */
             <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10 text-nowrap">
+                <thead className="bg-gray-50 sticky top-0 z-10 whitespace-normal text-center">
                   <tr>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Action
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Enquiry Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Beneficiary Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Address
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number Of Beneficiary
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Surveyor Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number
                     </th>
                     {!showHistory && (
                       <>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Order Copy
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           IP Name
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Contact Number Of IP
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           GST Number
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Aadhar Card
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Pan Card
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Work Order Number
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Work Order Copy
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Dispatch Material
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Inform To Customer
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Copy Of Receipt
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Date Of Receipt
                         </th>
                       </>
                     )}
                     {showHistory && (
                       <>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Dispatch Material
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Inform To Customer
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Copy Of Receipt
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Date Of Receipt
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Date Of Installation
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Routing
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Earthing
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Base Foundation
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Wiring
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Plant Photo
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           DCR Certificate
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Module Warranty certificate
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Complete Installation Photo
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Repeated Certificate
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Project Commissioning Certificate
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Inverter Make
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Inverter Capacity
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Module Make
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Module Capacity
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Module Type
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Structure Make
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Inverter ID
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Data Logger Type
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           SIM Number
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Mobile Number
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Data Plan
                         </th>
                       </>
                     )}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-200 text-center">
                   {showHistory ? (
                     filteredHistoryData.length > 0 ? (
                       filteredHistoryData.map((record) => (
                         <tr key={record._id} className="hover:bg-gray-50">
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <button
                               onClick={() => handleInstallClick(record)}
                               className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -1065,39 +1066,39 @@ const handleInstallSubmit = async () => {
                               Edit
                             </button>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs font-medium text-gray-900">{record.enquiryNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.beneficiaryName || "—"}</div>
                           </td>
                           <td className="px-2 py-3 max-w-xs">
-                            <div className="text-xs text-gray-900 truncate" title={record.address}>
+                            <div className="text-xs text-gray-900 whitespace-normal break-words" title={record.address}>
                               {record.address || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.contactNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.dispatchMaterial || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.informToCustomer || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.copyOfReceipt ? (
                               <a
                                 href={record.copyOfReceipt}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -1106,33 +1107,33 @@ const handleInstallSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.dateOfReceipt || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900 font-medium text-green-600">
                               {record.dateOfInstallation || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.routing || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.earthing || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.baseFoundation || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.wiring || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.foundationPhoto ? (
                               <a
                                 href={record.foundationPhoto}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -1141,13 +1142,13 @@ const handleInstallSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.afterInstallationPhoto ? (
                               <a
                                 href={record.afterInstallationPhoto}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -1156,13 +1157,13 @@ const handleInstallSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.photoWithCustomer ? (
                               <a
                                 href={record.photoWithCustomer}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -1171,13 +1172,13 @@ const handleInstallSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.completeInstallationPhoto ? (
                               <a
                                 href={record.completeInstallationPhoto}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -1186,13 +1187,13 @@ const handleInstallSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.repeatedCertificate ? (
                               <a
                                 href={record.repeatedCertificate}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -1201,13 +1202,13 @@ const handleInstallSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.projectCommissioningCertificate ? (
                               <a
                                 href={record.projectCommissioningCertificate}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -1216,37 +1217,37 @@ const handleInstallSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.inverterMake || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.inverterCapacity || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.moduleMake || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.moduleCapacity || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.moduleType || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.structureMake || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.investorId || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.dataLoggerType || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.simNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.mobileNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.dataPlan || "—"}</div>
                           </td>
                         </tr>
@@ -1261,49 +1262,49 @@ const handleInstallSubmit = async () => {
                   ) : filteredPendingData.length > 0 ? (
                     filteredPendingData.map((record) => (
                       <tr key={record._id} className="hover:bg-gray-50">
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <button
                             onClick={() => handleInstallClick(record)}
-                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-linear-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-sm transition-all hover:scale-105 active:scale-95"
+                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-linear-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-sm transition-all hover:scale-105 active:scale-95 justify-center"
                           >
                             <Wrench className="h-3 w-3 mr-1" />
                             Install
                           </button>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs font-medium text-blue-900">{record.enquiryNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Users className="h-3 w-3 mr-1 text-gray-400" />
                             {record.beneficiaryName || "—"}
                           </div>
                         </td>
                         <td className="px-2 py-3 max-w-xs">
-                          <div className="text-xs text-gray-900 truncate flex items-center" title={record.address}>
+                          <div className="text-xs text-gray-900 whitespace-normal break-words flex items-center justify-center" title={record.address}>
                             <MapPin className="h-3 w-3 mr-1 text-gray-400" />
                             {record.address || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Phone className="h-3 w-3 mr-1 text-gray-400" />
                             {record.contactNumber || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.orderCopy ? (
                             <a
                               href={record.orderCopy}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -1312,22 +1313,22 @@ const handleInstallSubmit = async () => {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.ipName || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.ipContact || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.gstNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.aadharCard ? (
                             <a
                               href={record.aadharCard}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -1336,13 +1337,13 @@ const handleInstallSubmit = async () => {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.panCard ? (
                             <a
                               href={record.panCard}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -1351,16 +1352,16 @@ const handleInstallSubmit = async () => {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.workOrderNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.workOrderCopy ? (
                             <a
                               href={record.workOrderCopy}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -1369,19 +1370,19 @@ const handleInstallSubmit = async () => {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.dispatchMaterial || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.informToCustomer || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.copyOfReceipt ? (
                             <a
                               href={record.copyOfReceipt}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -1390,7 +1391,7 @@ const handleInstallSubmit = async () => {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.dateOfReceipt || "—"}</div>
                         </td>
                       </tr>

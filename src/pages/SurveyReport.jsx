@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { CheckCircle2, Upload, X, Search, History, ArrowLeft, FileText, MapPin, Users, Phone, Zap, Building, Eye, DollarSign, Clock, Home, Wrench, Trash2 } from "lucide-react"
+import { CheckCircle2, Upload, X, Search, History, ArrowLeft, FileText, MapPin, Users, Phone, Zap, Building, Eye, DollarSign, Clock, Home, Wrench } from "lucide-react"
 import AdminLayout from "../components/layout/AdminLayout"
 import supabase from "../utils/supabase"
 
@@ -8,7 +8,7 @@ import supabase from "../utils/supabase"
 const CONFIG = {
 
   PAGE_CONFIG: {
-    title: "Site Survey",
+    title: "Site Survey  + IP Assignment ",
     historyTitle: "FMS Survey History",
     description: "Manage pending survey tasks",
     historyDescription: "View completed survey records",
@@ -46,9 +46,6 @@ function FMSDataPage() {
   const [successMessage, setSuccessMessage] = useState("")
   const [userRole, setUserRole] = useState("")
   const [username, setUsername] = useState("")
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [recordToDelete, setRecordToDelete] = useState(null)
-  const [isDeleting, setIsDeleting] = useState(false)
 
   // Survey form state
   const [surveyForm, setSurveyForm] = useState({
@@ -60,7 +57,12 @@ function FMSDataPage() {
     panNumber: "",
     addressProof: null,
     surveyorName: "",
-    contactNumber: ""
+    contactNumber: "",
+    ipName: "",
+    ipContact: "",
+    plant: null,        // NEW
+    inverter: null,     // NEW
+    earthing: null      // NEW
   })
 
   // Debounced search term for better performance
@@ -125,8 +127,11 @@ function FMSDataPage() {
       await fetchDropdownValues();
 
       const { data, error } = await supabase
-        .from("fms")
-        .select("*")
+        .from("site_surveys")
+        .select(`
+          *,
+          enquiries:enquiry_number (*)
+        `)
         .order("id", { ascending: true });
 
       if (error) throw error;
@@ -135,10 +140,11 @@ function FMSDataPage() {
       const history = [];
 
       data.forEach((row, index) => {
+        const enq = row.enquiries || {};
         const enquiryNumber = row.enquiry_number || "";
 
-        const columnT = row.planned_1;
-        const columnU = row.actual_1;
+        const columnT = row.planned;
+        const columnU = row.actual;
 
         const hasColumnT = !isEmpty(columnT);
         const hasColumnU = !isEmpty(columnU);
@@ -146,7 +152,7 @@ function FMSDataPage() {
         if (!hasColumnT) return;
 
         const stableId = enquiryNumber
-          ? `enquiry_${enquiryNumber}_${row.id}`
+          ? `survey_${enquiryNumber}_${row.id}`
           : `row_${row.id}`;
 
         const rowData = {
@@ -155,30 +161,30 @@ function FMSDataPage() {
           _enquiryNumber: enquiryNumber,
 
           col1: row.enquiry_number,
-          col2: row.beneficiary_name,
-          col3: row.address,
-          col4: row.village_block,
-          col5: row.district,
-          col6: row.contact_number,
+          col2: enq.beneficiary_name,
+          col3: enq.address,
+          col4: enq.village_block,
+          col5: enq.district,
+          col6: enq.contact_number,
 
           // ✅ ADD THIS PART
-          col7: row.present_load,
-          col8: row.bp_number,
-          col9: row.cspdcl_contract_demand,
-          col10: row.avg_electricity_bill,
-          col11: row.future_load_requirement,
-          col12: row.load_details,
-          col13: row.failure_hours,
+          col7: enq.present_load,
+          col8: enq.bp_number,
+          col9: enq.cspdcl_contract_demand,
+          col10: enq.avg_electricity_bill,
+          col11: enq.future_load_requirement,
+          col12: enq.load_details,
+          col13: enq.failure_hours,
 
-          col14: row.structure_type,
-          col15: row.roof_type,
-          col16: row.system_type,
-          col17: row.need_type,
-          col18: row.project_mode,
+          col14: enq.structure_type,
+          col15: enq.roof_type,
+          col16: enq.system_type,
+          col17: enq.need_type,
+          col18: enq.project_mode,
 
-          col19: row.planned_1,
-          col20: formatDateTime(row.actual_1),
-          col22: row.status_1,
+          col19: row.planned,
+          col20: formatDateTime(row.actual),
+          col22: row.status,
 
           col23: row.survey_report,
           col24: row.geotag_photo,
@@ -188,6 +194,11 @@ function FMSDataPage() {
           col28: row.address_proof,
           col29: row.surveyor_name,
           col30: row.surveyor_contact,
+          col31: row.ip_name,
+          col32: row.ip_contact,
+          plant: row.plant,          // NEW
+          inverter: row.inverter,    // NEW
+          earthing: row.earthing     // NEW
         };
 
         if (!hasColumnU) {
@@ -202,7 +213,7 @@ function FMSDataPage() {
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
-      setError("Failed to load FMS data: " + error.message);
+      setError("Failed to load site surveys data: " + error.message);
       setLoading(false);
     }
   }, [fetchDropdownValues, isEmpty]);
@@ -245,7 +256,13 @@ function FMSDataPage() {
       panNumber: record.col27 || "",
       addressProof: null,
       surveyorName: record.col29 || "",
-      contactNumber: record.col30 || ""
+      contactNumber: record.col30 || "",
+      ipName: record.col31 || "",
+      ipContact: record.col32 || "",
+      plant: null,           // NEW
+      inverter: null,        // NEW
+      earthing: null         // NEW
+
     })
     setShowSurveyModal(true)
   }, [])
@@ -282,6 +299,7 @@ function FMSDataPage() {
     }
   }, [selectedRecord]);
 
+
   const handleSurveySubmit = async () => {
     if (!surveyForm.status) {
       alert("Please select a status");
@@ -296,6 +314,11 @@ function FMSDataPage() {
       let electricityBillUrl = selectedRecord.col25 || "";
       let addressProofUrl = selectedRecord.col28 || "";
 
+      // NEW: Initialize the 3 new fields
+      let plantUrl = selectedRecord.plant || "";
+      let inverterUrl = selectedRecord.inverter || "";
+      let earthingUrl = selectedRecord.earthing || "";
+
       if (surveyForm.copySurveyReport) {
         copySurveyReportUrl = await uploadImageToDrive(surveyForm.copySurveyReport);
       }
@@ -309,13 +332,24 @@ function FMSDataPage() {
         addressProofUrl = await uploadImageToDrive(surveyForm.addressProof);
       }
 
+      // NEW: Upload the 3 new files
+      if (surveyForm.plant) {
+        plantUrl = await uploadImageToDrive(surveyForm.plant);
+      }
+      if (surveyForm.inverter) {
+        inverterUrl = await uploadImageToDrive(surveyForm.inverter);
+      }
+      if (surveyForm.earthing) {
+        earthingUrl = await uploadImageToDrive(surveyForm.earthing);
+      }
+
       const isEdit = !isEmpty(selectedRecord.col20);
 
       const now = new Date();
       const currentTimestamp = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
 
       const updatePayload = {
-        status_1: surveyForm.status,
+        status: surveyForm.status,
         survey_report: copySurveyReportUrl,
         geotag_photo: geotagPhotoUrl,
         bill_copy: electricityBillUrl,
@@ -324,15 +358,20 @@ function FMSDataPage() {
         address_proof: addressProofUrl,
         surveyor_name: surveyForm.surveyorName,
         surveyor_contact: surveyForm.contactNumber,
+        ip_name: surveyForm.ipName,
+        ip_contact: surveyForm.ipContact,
+        plant: plantUrl,           // NEW
+        inverter: inverterUrl,     // NEW
+        earthing: earthingUrl      // NEW
       };
 
-      // only set actual_1 if new entry
+      // only set actual if new entry
       if (!isEdit) {
-        updatePayload.actual_1 = new Date().toISOString();
+        updatePayload.actual = new Date().toISOString();
       }
 
       const { error } = await supabase
-        .from("fms")
+        .from("site_surveys")
         .update(updatePayload)
         .eq("id", selectedRecord._rowIndex);
 
@@ -350,6 +389,11 @@ function FMSDataPage() {
         col28: addressProofUrl,
         col29: surveyForm.surveyorName,
         col30: surveyForm.contactNumber,
+        col31: surveyForm.ipName,
+        col32: surveyForm.ipContact,
+        plant: plantUrl,           // NEW
+        inverter: inverterUrl,     // NEW
+        earthing: earthingUrl      // NEW
       };
 
       if (isEdit) {
@@ -376,53 +420,13 @@ function FMSDataPage() {
     }
   };
 
+
+
+
   const toggleSection = useCallback((section) => {
     setShowHistory(section === 'history')
     setSearchTerm("")
   }, [])
-
-  // Delete functionality
-  const handleDeleteClick = useCallback((record) => {
-    setRecordToDelete(record)
-    setShowDeleteModal(true)
-  }, [])
-
-  const closeDeleteModal = useCallback(() => {
-    setShowDeleteModal(false)
-    setRecordToDelete(null)
-  }, [])
-
-  const handleDeleteConfirm = async () => {
-    if (!recordToDelete) return;
-
-    setIsDeleting(true);
-
-    try {
-      const { error } = await supabase
-        .from("fms")
-        .delete()
-        .eq("id", recordToDelete._rowIndex);
-
-      if (error) throw error;
-
-      setHistoryData(prev =>
-        prev.filter(record => record._id !== recordToDelete._id)
-      );
-
-      setSuccessMessage(`Deleted Enquiry: ${recordToDelete._enquiryNumber}`);
-
-      setTimeout(() => setSuccessMessage(""), 3000);
-
-      setShowDeleteModal(false);
-      setRecordToDelete(null);
-
-    } catch (error) {
-      console.error("Delete error:", error);
-      alert("Failed to delete: " + error.message);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   const closeSurveyModal = useCallback(() => {
     setShowSurveyModal(false)
@@ -436,7 +440,9 @@ function FMSDataPage() {
       panNumber: "",
       addressProof: null,
       surveyorName: "",
-      contactNumber: ""
+      contactNumber: "",
+      ipName: "",
+      ipContact: ""
     })
   }, [])
 
@@ -545,11 +551,6 @@ function FMSDataPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10 text-center align-middle whitespace-normal break-words">
                   <tr>
-                    {showHistory && (
-                      <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
-
-                      </th>
-                    )}
                     <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                       Action
                     </th>
@@ -600,6 +601,22 @@ function FMSDataPage() {
                         <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
                           Contact
                         </th>
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
+                          IP Name
+                        </th>
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
+                          Contact Number Of IP
+                        </th>
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
+                          Plant
+                        </th>
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
+                          Inverter
+                        </th>
+                        <th className="px-2 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal break-words">
+                          Earthing
+                        </th>
+
                       </>
                     ) : (
                       <>
@@ -648,15 +665,6 @@ function FMSDataPage() {
                     filteredHistoryData.length > 0 ? (
                       filteredHistoryData.map((record) => (
                         <tr key={record._id} className="hover:bg-gray-50">
-                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
-                            <button
-                              onClick={() => handleDeleteClick(record)}
-                              className="inline-flex items-center justify-center p-1.5 border border-transparent rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
                           <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <button
                               onClick={() => handleSurveyClick(record)}
@@ -763,11 +771,62 @@ function FMSDataPage() {
                           <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
                             <div className="text-xs text-gray-900">{record.col30 || "—"}</div>
                           </td>
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900">{record.col31 || "—"}</div>
+                          </td>
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            <div className="text-xs text-gray-900">{record.col32 || "—"}</div>
+                          </td>
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            {record.plant ? (
+                              <a
+                                href={record.plant}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 inline-flex items-center justify-center text-xs"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            {record.inverter ? (
+                              <a
+                                href={record.inverter}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 inline-flex items-center justify-center text-xs"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 text-center align-middle whitespace-normal break-words">
+                            {record.earthing ? (
+                              <a
+                                href={record.earthing}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 inline-flex items-center justify-center text-xs"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={17} className="px-4 py-8 text-center text-gray-500 text-sm">
+                        <td colSpan={19} className="px-4 py-8 text-center text-gray-500 text-sm">
                           {searchTerm
                             ? "No history records matching your search"
                             : "No completed surveys found"}
@@ -957,6 +1016,38 @@ function FMSDataPage() {
                     </select>
                   </div>
 
+                  {/* IP Name */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      IP Name
+                    </label>
+                    <input
+                      type="text"
+                      value={surveyForm.ipName}
+                      onChange={(e) => handleInputChange("ipName", e.target.value)}
+                      placeholder="Enter IP name"
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+                    />
+                  </div>
+
+                  {/* Contact Number Of IP */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Contact Number Of IP
+                    </label>
+                    <input
+                      type="tel"
+                      value={surveyForm.ipContact}
+                      onChange={(e) => {
+                        const cleanVal = e.target.value.replace(/\D/g, "")
+                        handleInputChange("ipContact", cleanVal)
+                      }}
+                      placeholder="Enter IP contact number"
+                      maxLength="10"
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+                    />
+                  </div>
+
                   {/* Copy Survey Report */}
                   <div className="flex gap-4">
                     <div className="flex-1">
@@ -1037,32 +1128,33 @@ function FMSDataPage() {
                     </div>
                   </div>
 
-                  {/* Three Months Electricity Bill Copy */}
+
+                  {/* Plant */}
                   <div className="flex gap-4">
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Three Months Electricity Bill Copy
+                        Plant
                       </label>
                       <input
                         type="file"
-                        accept="image/*"
-                        onChange={(e) => handleFileUpload("electricityBill", e.target.files[0])}
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleFileUpload("plant", e.target.files[0])}
                         className="mt-1 block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                       />
-                      {surveyForm.electricityBill && (
+                      {surveyForm.plant && (
                         <p className="text-xs text-green-600 mt-1">
-                          ✓ New file: {surveyForm.electricityBill.name}
+                          ✓ New file: {surveyForm.plant.name}
                         </p>
                       )}
                     </div>
                     <div className="shrink-0 flex items-center pt-5">
-                      {selectedRecord?.col25 ? (
+                      {selectedRecord?.plant ? (
                         <a
-                          href={selectedRecord.col25}
+                          href={selectedRecord.plant}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 border border-blue-200 rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all shadow-sm"
-                          title="View Previous Electricity Bill"
+                          title="View Previous Plant"
                         >
                           <Eye className="h-5 w-5" />
                         </a>
@@ -1077,63 +1169,32 @@ function FMSDataPage() {
                     </div>
                   </div>
 
-                  {/* Aadhar Card */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Aadhar Card Number
-                    </label>
-                    <input
-                      type="text"
-                      value={surveyForm.aadharNumber}
-                      onChange={(e) => handleInputChange("aadharNumber", e.target.value)}
-                      placeholder="Enter Aadhar number"
-                      maxLength="12"
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                    />
-                  </div>
-
-                  {/* Pan Card */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      PAN Card Number
-                    </label>
-                    <input
-                      type="text"
-                      value={surveyForm.panNumber}
-                      onChange={(e) => handleInputChange("panNumber", e.target.value.toUpperCase())}
-                      placeholder="Enter PAN number"
-                      maxLength="10"
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                    />
-                  </div>
-
-                  {/* Address Proof */}
+                  {/* Inverter */}
                   <div className="flex gap-4">
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Address Proof
-                        <span className="text-gray-500 text-xs ml-1">(Aadhar/PAN image)</span>
+                        Inverter
                       </label>
                       <input
                         type="file"
-                        accept="image/*"
-                        onChange={(e) => handleFileUpload("addressProof", e.target.files[0])}
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleFileUpload("inverter", e.target.files[0])}
                         className="mt-1 block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                       />
-                      {surveyForm.addressProof && (
+                      {surveyForm.inverter && (
                         <p className="text-xs text-green-600 mt-1">
-                          ✓ New file: {surveyForm.addressProof.name}
+                          ✓ New file: {surveyForm.inverter.name}
                         </p>
                       )}
                     </div>
                     <div className="shrink-0 flex items-center pt-5">
-                      {selectedRecord?.col28 ? (
+                      {selectedRecord?.inverter ? (
                         <a
-                          href={selectedRecord.col28}
+                          href={selectedRecord.inverter}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 border border-blue-200 rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all shadow-sm"
-                          title="View Previous Address Proof"
+                          title="View Previous Inverter"
                         >
                           <Eye className="h-5 w-5" />
                         </a>
@@ -1148,33 +1209,44 @@ function FMSDataPage() {
                     </div>
                   </div>
 
-                  {/* Surveyor Name */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Surveyor Name
-                    </label>
-                    <input
-                      type="text"
-                      value={surveyForm.surveyorName}
-                      onChange={(e) => handleInputChange("surveyorName", e.target.value)}
-                      placeholder="Enter surveyor name"
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                    />
-                  </div>
-
-                  {/* Contact Number */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Contact Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={surveyForm.contactNumber}
-                      onChange={(e) => handleInputChange("contactNumber", e.target.value)}
-                      placeholder="Enter contact number"
-                      maxLength="10"
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                    />
+                  {/* Earthing */}
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Earthing
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleFileUpload("earthing", e.target.files[0])}
+                        className="mt-1 block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {surveyForm.earthing && (
+                        <p className="text-xs text-green-600 mt-1">
+                          ✓ New file: {surveyForm.earthing.name}
+                        </p>
+                      )}
+                    </div>
+                    <div className="shrink-0 flex items-center pt-5">
+                      {selectedRecord?.earthing ? (
+                        <a
+                          href={selectedRecord.earthing}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 border border-blue-200 rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all shadow-sm"
+                          title="View Previous Earthing"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </a>
+                      ) : (
+                        <div
+                          className="p-2 border border-gray-200 rounded-md text-gray-300 bg-gray-50 cursor-not-allowed"
+                          title="No previous file"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1199,48 +1271,6 @@ function FMSDataPage() {
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
-        {showDeleteModal && recordToDelete && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-            <div className="relative bg-white border max-w-md w-full shadow-2xl rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-red-100">
-                  <Trash2 className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 text-center mb-2">
-                  Delete Record
-                </h3>
-                <p className="text-sm text-gray-500 text-center mb-4">
-                  Are you sure you want to delete this record? This action cannot be undone.
-                </p>
-                <div className="bg-gray-50 rounded-md p-3 mb-4">
-                  <p className="text-sm text-gray-700">
-                    <span className="font-medium">Enquiry Number:</span> {recordToDelete._enquiryNumber || recordToDelete.col1}
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    <span className="font-medium">Beneficiary:</span> {recordToDelete.col2 || "—"}
-                  </p>
-                </div>
-                <div className="flex justify-end space-x-3">
-                  <button
-                    onClick={closeDeleteModal}
-                    disabled={isDeleting}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDeleteConfirm}
-                    disabled={isDeleting}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                  >
-                    {isDeleting ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </AdminLayout>
   )

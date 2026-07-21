@@ -150,47 +150,93 @@ const fetchSheetData = useCallback(async () => {
 
     await fetchDropdownOptions()
 
-    const { data, error } = await supabase
-      .from("fms")
-      .select("*")
-      .not("enquiry_number", "is", null)
+    const [
+      { data: sdData, error: sdError },
+      { data: fmsData, error: fmsError }
+    ] = await Promise.all([
+      supabase
+        .from("subsidy_disbursals")
+        .select(`
+          *,
+          enquiries!left (
+            beneficiary_name,
+            address,
+            contact_number
+          )
+        `)
+        .not("planned", "is", null),
+      supabase
+        .from("fms")
+        .select("enquiry_number, surveyor_name, power_purchase_agreement, vendor_consumer_agreement, quotation_copy, application_copy, electricity_bill_doc, witness_id_proof, actual_12, status_13")
+    ])
 
-    if (error) throw error
+    if (sdError) throw sdError
+    if (fmsError) throw fmsError
+
+    const fmsMap = {}
+    if (fmsData) {
+      fmsData.forEach(item => {
+        if (item.enquiry_number) {
+          fmsMap[item.enquiry_number] = {
+            surveyorName: item.surveyor_name || "",
+            powerPurchaseAgreement: item.power_purchase_agreement || "",
+            vendorConsumerAgreement: item.vendor_consumer_agreement || "",
+            quotationCopy: item.quotation_copy || "",
+            applicationCopy: item.application_copy || "",
+            electricityBill: item.electricity_bill_doc || "",
+            witnessIdProof: item.witness_id_proof || "",
+            inspection: item.actual_12 || "",
+            projectCommission: item.status_13 || ""
+          }
+        }
+      })
+    }
 
     const pending = []
     const history = []
 
-    data.forEach((row) => {
-      const rowData = {
-        _id: `enquiry_${row.enquiry_number}`,
-        _enquiryNumber: row.enquiry_number,
+    if (sdData) {
+      sdData.forEach((row) => {
+        const enqNum = row.enquiry_number || ""
+        const enq = row.enquiries || {}
+        const fmsRow = fmsMap[enqNum] || {}
 
-        enquiryNumber: row.enquiry_number || "",
-        beneficiaryName: row.beneficiary_name || "",
-        address: row.address || "",
-        contactNumber: row.contact_number || "",
-        surveyorName: row.surveyor_name || "",
+        const rowData = {
+          _id: row.id,
+          _enquiryNumber: enqNum,
 
-        powerPurchaseAgreement: row.power_purchase_agreement || "",
-        vendorConsumerAgreement: row.vendor_consumer_agreement || "",
-        quotationCopy: row.quotation_copy || "",
-        applicationCopy: row.application_copy || "",
-        electricityBill: row.electricity_bill_doc || "",
-        witnessIdProof: row.witness_id_proof || "",
+          enquiryNumber: enqNum,
+          beneficiaryName: enq.beneficiary_name || "",
+          address: enq.address || "",
+          contactNumber: enq.contact_number || "",
+          surveyorName: fmsRow.surveyorName || "",
 
-        subsidyDisbursal: row.status_15 || "",
-        centralSubsidy: row.central_subsidy || "",
-        stateSubsidy: row.state_subsidy || "",
-        actual: row.actual_15 || "",
-      }
+          powerPurchaseAgreement: fmsRow.powerPurchaseAgreement || "",
+          vendorConsumerAgreement: fmsRow.vendorConsumerAgreement || "",
+          quotationCopy: fmsRow.quotationCopy || "",
+          applicationCopy: fmsRow.applicationCopy || "",
+          electricityBill: fmsRow.electricityBill || "",
+          witnessIdProof: fmsRow.witnessIdProof || "",
 
-      // ✅ SAME LOGIC
-      if (isEmpty(row.actual_15)) {
-        pending.push(rowData)
-      } else {
-        history.push(rowData)
-      }
-    })
+          inspection: fmsRow.inspection || "",
+          projectCommission: fmsRow.projectCommission || "",
+
+          subsidyDisbursal: row.status || "",
+          centralSubsidy: row.central_subsidy || "",
+          stateSubsidy: row.state_subsidy || "",
+          planned: row.planned || "",
+          actual: row.actual || "",
+        }
+
+        // pending :- planned not or actual null pending me show krega
+        // history :- planned or actula dono not null rhegaa to show kregaa
+        if (row.planned && !row.actual) {
+          pending.push(rowData)
+        } else if (row.planned && row.actual) {
+          history.push(rowData)
+        }
+      })
+    }
 
     setPendingData(pending)
     setHistoryData(history)
@@ -308,12 +354,12 @@ const handleSubsidySubmit = async () => {
         : null
 
     const { error } = await supabase
-      .from("fms")
+      .from("subsidy_disbursals")
       .update({
-        status_15: status,
-        central_subsidy: subsidyForm.centralSubsidy || "",
-        state_subsidy: subsidyForm.stateSubsidy || "",
-        actual_15: actualDate,
+        status: status,
+        central_subsidy: subsidyForm.centralSubsidy !== "" ? parseFloat(subsidyForm.centralSubsidy) : null,
+        state_subsidy: subsidyForm.stateSubsidy !== "" ? parseFloat(subsidyForm.stateSubsidy) : null,
+        actual: actualDate,
       })
       .eq("enquiry_number", selectedRecord._enquiryNumber)
 
@@ -363,25 +409,28 @@ const handleSubmit = async () => {
   try {
     const updatePromises = selectedRecordIds.map(async (recordId) => {
       const record =
-        pendingData.find(r => r._id === recordId) ||
-        historyData.find(r => r._id === recordId)
+        pendingData.find(r => r._id === Number(recordId)) ||
+        historyData.find(r => r._id === Number(recordId))
 
       if (!record) return
 
-      const status = statusValues[recordId]
+      const status = statusValues[recordId] || record.subsidyDisbursal
 
       const actualDate =
         status === "Done"
           ? new Date().toISOString()
           : null
 
+      const centralVal = centralSubsidyValues[recordId] !== undefined ? centralSubsidyValues[recordId] : record.centralSubsidy
+      const stateVal = stateSubsidyValues[recordId] !== undefined ? stateSubsidyValues[recordId] : record.stateSubsidy
+
       return supabase
-        .from("fms")
+        .from("subsidy_disbursals")
         .update({
-          status_15: status,
-          central_subsidy: centralSubsidyValues[recordId] || "",
-          state_subsidy: stateSubsidyValues[recordId] || "",
-          actual_15: actualDate,
+          status: status,
+          central_subsidy: centralVal !== "" ? parseFloat(centralVal) : null,
+          state_subsidy: stateVal !== "" ? parseFloat(stateVal) : null,
+          actual: actualDate,
         })
         .eq("enquiry_number", record._enquiryNumber)
     })

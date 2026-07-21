@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
   CheckSquare,
@@ -39,6 +39,47 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
   const [username, setUsername] = useState("")
   const [userRole, setUserRole] = useState("")
 
+  const desktopSidebarRef = useRef(null)
+  const mobileSidebarRef = useRef(null)
+
+  // Restore scroll positions on mount or route change
+  useEffect(() => {
+    const restoreScroll = () => {
+      const savedDesktopScroll = sessionStorage.getItem("sidebar_desktop_scroll")
+      if (savedDesktopScroll && desktopSidebarRef.current) {
+        desktopSidebarRef.current.scrollTop = parseInt(savedDesktopScroll, 10)
+      }
+
+      const savedMobileScroll = sessionStorage.getItem("sidebar_mobile_scroll")
+      if (savedMobileScroll && mobileSidebarRef.current) {
+        mobileSidebarRef.current.scrollTop = parseInt(savedMobileScroll, 10)
+      }
+    }
+
+    restoreScroll()
+
+    const rafId = requestAnimationFrame(() => {
+      restoreScroll()
+    })
+
+    const timeoutId = setTimeout(() => {
+      restoreScroll()
+    }, 50)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      clearTimeout(timeoutId)
+    }
+  }, [location.pathname])
+
+  const handleDesktopScroll = (e) => {
+    sessionStorage.setItem("sidebar_desktop_scroll", e.currentTarget.scrollTop)
+  }
+
+  const handleMobileScroll = (e) => {
+    sessionStorage.setItem("sidebar_mobile_scroll", e.currentTarget.scrollTop)
+  }
+
   // Check authentication on component mount
   useEffect(() => {
     const storedUsername = sessionStorage.getItem('username')
@@ -65,7 +106,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
   // Filter dataCategories based on user role
   const dataCategories = [
     { id: "sales", name: "Checklist", link: "/dashboard/data/sales" },
-    
+
   ]
 
   // Update the routes array with unique icons for each section
@@ -85,13 +126,20 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       showFor: ["admin", "user"]
     },
     {
+      href: "/dashboard/AssignServey",
+      label: "Assign Servey",
+      icon: FileText,
+      active: location.pathname === "/dashboard/AssignServey",
+      showFor: ["admin", "user"]
+    },
+    {
       href: "/dashboard/SurveyReport",
       label: "Site Survey",
       icon: Search,
       active: location.pathname === "/dashboard/SurveyReport",
       showFor: ["admin", "user"]
     },
-     {
+    {
       href: "/dashboard/QuotationCreatePage",
       label: "Quotation Create",
       icon: BarChart3,
@@ -100,23 +148,44 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     },
     {
       href: "/dashboard/Followup",
-      label: "Follow Up",
+      label: "Sales Call",
       icon: Phone,
       active: location.pathname === "/dashboard/Followup",
       showFor: ["admin", "user"]
     },
     {
-      href: "/dashboard/OrderPlace",
-      label: "Solarkart ",
-      icon: ShoppingCart,
-      active: location.pathname === "/dashboard/OrderPlace",
+      href: "/dashboard/DocumentsUpload",
+      label: "Documents Uploads",
+      icon: CreditCard,
+      active: location.pathname === "/dashboard/DocumentsUpload",
       showFor: ["admin", "user"]
     },
     {
-      href: "/dashboard/IPAssigment",
-      label: "IP Assignment",
-      icon: UserCheck,
-      active: location.pathname === "/dashboard/IPAssigment",
+      href: "/dashboard/RegistrationPage",
+      label: "Registration",
+      icon: CreditCard,
+      active: location.pathname === "/dashboard/RegistrationPage",
+      showFor: ["admin", "user"]
+    },
+    {
+      href: "/dashboard/Payment",
+      label: "Payement",
+      icon: CreditCard,
+      active: location.pathname === "/dashboard/Payment",
+      showFor: ["admin", "user"]
+    },
+    {
+      href: "/dashboard/PaymentConfirmation",
+      label: "Payment Confirmation",
+      icon: DollarSign,
+      active: location.pathname === "/dashboard/PaymentConfirmation",
+      showFor: ["admin", "user"]
+    },
+    {
+      href: "/dashboard/DispatchPlanne",
+      label: "Dispatch Planner",
+      icon: Truck,
+      active: location.pathname === "/dashboard/DispatchPlanne",
       showFor: ["admin", "user"]
     },
     {
@@ -124,13 +193,6 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       label: "Dispatch Material",
       icon: Truck,
       active: location.pathname === "/dashboard/Dispatchmaterial",
-      showFor: ["admin", "user"]
-    },
-    {
-      href: "/dashboard/InformToCustomer",
-      label: "Inform To Customer",
-      icon: Bell,
-      active: location.pathname === "/dashboard/InformToCustomer",
       showFor: ["admin", "user"]
     },
     {
@@ -155,10 +217,24 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       showFor: ["admin", "user"]
     },
     {
+      href: "/dashboard/CSPDL_Inspection",
+      label: "CSPDL Inspection",
+      icon: CheckCircle,
+      active: location.pathname === "/dashboard/CSPDL_Inspection",
+      showFor: ["admin", "user"]
+    },
+    {
       href: "/dashboard/IpPayment",
       label: "IP Payment",
       icon: Wrench,
       active: location.pathname === "/dashboard/IpPayment",
+      showFor: ["admin", "user"]
+    },
+    {
+      href: "/dashboard/FinalPayment",
+      label: "Financial",
+      icon: CreditCard,
+      active: location.pathname === "/dashboard/FinalPayment",
       showFor: ["admin", "user"]
     },
     {
@@ -168,6 +244,31 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/Billing",
       showFor: ["admin", "user"]
     },
+    {
+      href: "/dashboard/OrderPlace",
+      label: "Solarkart ",
+      icon: ShoppingCart,
+      active: location.pathname === "/dashboard/OrderPlace",
+      showFor: ["admin", "user"]
+    },
+    // {
+    //   href: "/dashboard/IPAssigment",
+    //   label: "IP Assignment",
+    //   icon: UserCheck,
+    //   active: location.pathname === "/dashboard/IPAssigment",
+    //   showFor: ["admin", "user"]
+    // },
+
+    {
+      href: "/dashboard/InformToCustomer",
+      label: "Inform To Customer",
+      icon: Bell,
+      active: location.pathname === "/dashboard/InformToCustomer",
+      showFor: ["admin", "user"]
+    },
+
+
+
     {
       href: "/dashboard/CspdclForSynconization",
       label: "Mandatory Documents for Synchronization",
@@ -182,9 +283,10 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/Inspection",
       showFor: ["admin", "user"]
     },
+
     {
       href: "/dashboard/ProjectCommission",
-      label: "Project Commission",
+      label: "Project Synchronisation",
       icon: CheckSquare,
       active: location.pathname === "/dashboard/ProjectCommission",
       showFor: ["admin", "user"]
@@ -203,7 +305,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/SubsidyDisbursal",
       showFor: ["admin", "user"]
     },
-    
+
     {
       href: "/dashboard/Insurance",
       label: "Insurance",
@@ -218,7 +320,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/ModuleEntry",
       showFor: ["admin", "user"]
     },
-   
+
     {
       href: "/dashboard/analysis-graph",
       label: "Analysis Graph",
@@ -254,20 +356,14 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/AddUser",
       showFor: ["admin", "user"]
     },
-     {
+    {
       href: "/dashboard/ProductList",
       label: "Product List",
       icon: ClipboardList,
       active: location.pathname === "/dashboard/ProductList",
       showFor: ["admin", "user"]
     },
-    {
-      href: "/dashboard/PaymentConfirmation",
-      label: "Payment Confirmation",
-      icon: DollarSign,
-      active: location.pathname === "/dashboard/PaymentConfirmation",
-      showFor: ["admin", "user"]
-    },
+
     {
       href: "/dashboard/DispatchApproval",
       label: "Dispatch Approval",
@@ -276,13 +372,23 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       showFor: ["admin", "user"]
     },
     
+
     {
       href: "/dashboard/BankProcess",
       label: "Bank Process",
       icon: CreditCard,
       active: location.pathname === "/dashboard/BankProcess",
       showFor: ["admin", "user"]
-    }
+    },
+    {
+      href: "/dashboard/DCRPage",
+      label: "DCR",
+      icon: CreditCard,
+      active: location.pathname === "/dashboard/DCRPage",
+      showFor: ["admin", "user"]
+    },
+
+
   ]
 
   const getAccessibleDepartments = () => {
@@ -331,7 +437,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
             <span>Market Mode</span>
           </Link>
         </div>
-        <nav className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+        <nav ref={desktopSidebarRef} onScroll={handleDesktopScroll} className="flex-1 overflow-y-auto p-2 custom-scrollbar">
           <ul className="space-y-1 pb-20">
             {accessibleRoutes.map((route) => (
               <li key={route.label}>
@@ -454,7 +560,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                 <span>Market Mode</span>
               </Link>
             </div>
-            <nav className="flex-1 overflow-y-auto p-2 bg-white custom-scrollbar">
+            <nav ref={mobileSidebarRef} onScroll={handleMobileScroll} className="flex-1 overflow-y-auto p-2 bg-white custom-scrollbar">
               <ul className="space-y-1 pb-20">
                 {accessibleRoutes.map((route) => (
                   <li key={route.label}>

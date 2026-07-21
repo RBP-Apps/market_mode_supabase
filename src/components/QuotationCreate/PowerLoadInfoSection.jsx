@@ -188,17 +188,7 @@ export default function PowerLoadInfoSection({
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-100">
           <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-amber-100">
-              <HybridSelector
-                label="Hours Of Failure"
-                name="failureHours"
-                value={formData.failureHours}
-                onChange={handleChange}
-                options={dropdownOptions.failureHours}
-                icon={Clock}
-                inputClass={inputClass}
-                selectClass={selectClass}
-                labelClass={labelClass}
-              />
+             
 
               <HybridSelector
                 label="Load details/Application"

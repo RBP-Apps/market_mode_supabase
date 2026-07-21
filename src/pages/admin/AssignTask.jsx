@@ -58,6 +58,7 @@ export default function BeneficiaryForm() {
     needType: "",
     projectMode: "",
     vendorName: "",
+    paymentType: "",
     assignedBy: "",
     reference: ""
   });
@@ -115,8 +116,6 @@ export default function BeneficiaryForm() {
     )
   );
 
-
-
   const formatDateTime = (dateString) => {
     if (!dateString) return "";
     // If it's already in DD/MM/YYYY HH:mm:ss format, return it
@@ -140,7 +139,7 @@ export default function BeneficiaryForm() {
       setIsLoadingHistory(true);
 
       const { data, error } = await supabase
-        .from("fms")
+        .from("enquiries")
         .select("*")
         .order("id", { ascending: false });
 
@@ -148,7 +147,7 @@ export default function BeneficiaryForm() {
 
       const processedData = data.map((row) => {
         return {
-          rowIndex: row.id, // important (sheet row ki jagah id)
+          rowIndex: row.id,
           timestamp: formatDateTime(row.timestamp),
           enquiryNumber: row.enquiry_number || "",
           beneficiaryName: row.beneficiary_name || "",
@@ -163,13 +162,14 @@ export default function BeneficiaryForm() {
           electricityBillUrl: row.avg_electricity_bill || "",
           futureLoadRequirement: row.future_load_requirement || "",
           loadDetailsApplication: row.load_details || "",
-          noOfHoursOfFailure: row.failure_hours || "",
+          noOfHoursOfFailure: "",
           structureType: row.structure_type || "",
           roofType: row.roof_type || "",
           systemType: row.system_type || "",
           needType: row.need_type || "",
           projectMode: row.project_mode || "",
-          vendorName: row.vendor_name || "",
+          vendorName: row.firm_name || "",
+          paymentType: row.payment_type || "",
           assignedBy: row.assigned_by || "",
           reference: row.reference || ""
         };
@@ -184,7 +184,6 @@ export default function BeneficiaryForm() {
       setIsLoadingHistory(false);
     }
   };
-
 
   const startEdit = (rowData) => {
     setEditingRow(rowData.rowIndex);
@@ -210,6 +209,7 @@ export default function BeneficiaryForm() {
       needType: rowData.needType,
       projectMode: rowData.projectMode,
       vendorName: rowData.vendorName,
+      paymentType: rowData.paymentType,
       assignedBy: rowData.assignedBy,
       reference: rowData.reference
     });
@@ -217,7 +217,6 @@ export default function BeneficiaryForm() {
     setEditImagePreview(null);
     setShowEditModal(true);
   };
-
 
   const cancelEdit = () => {
     setEditingRow(null);
@@ -233,18 +232,17 @@ export default function BeneficiaryForm() {
 
       let imageUrl = editFormData.electricityBillUrl;
 
-      // Upload new image if selected
       if (editSelectedImage) {
         try {
           imageUrl = await uploadImageToDrive(editSelectedImage);
         } catch (error) {
           console.error("Image upload error:", error);
-          imageUrl = editFormData.electricityBillUrl; // Keep old URL if upload fails
+          imageUrl = editFormData.electricityBillUrl;
         }
       }
 
       const { error } = await supabase
-        .from("fms")
+        .from("enquiries")
         .update({
           enquiry_number: editFormData.enquiryNumber,
           beneficiary_name: editFormData.beneficiaryName,
@@ -259,13 +257,13 @@ export default function BeneficiaryForm() {
           avg_electricity_bill: imageUrl,
           future_load_requirement: editFormData.futureLoadRequirement,
           load_details: editFormData.loadDetailsApplication,
-          failure_hours: editFormData.noOfHoursOfFailure,
           structure_type: editFormData.structureType,
           roof_type: editFormData.roofType,
           system_type: editFormData.systemType,
           need_type: editFormData.needType,
           project_mode: editFormData.projectMode,
-          vendor_name: editFormData.vendorName,
+          firm_name: editFormData.vendorName,
+          payment_type: editFormData.paymentType,
           assigned_by: editFormData.assignedBy,
           reference: editFormData.reference
         })
@@ -275,10 +273,14 @@ export default function BeneficiaryForm() {
 
       alert("Record updated successfully!");
 
-      setHistoryData(prevData =>
-        prevData.map(row =>
+      setHistoryData((prevData) =>
+        prevData.map((row) =>
           row.rowIndex === rowIndex
-            ? { ...row, ...editFormData, electricityBillUrl: imageUrl }
+            ? {
+              ...row,
+              ...editFormData,
+              electricityBillUrl: imageUrl,
+            }
             : row
         )
       );
@@ -365,7 +367,6 @@ export default function BeneficiaryForm() {
     try {
       let imageUrl = "";
 
-      // Using updated Supabase Storage upload
       if (selectedImage) {
         try {
           imageUrl = await uploadImageToDrive(selectedImage);
@@ -375,38 +376,39 @@ export default function BeneficiaryForm() {
         }
       }
 
-      const { error } = await supabase.from("fms").insert([
-        {
-          timestamp: new Date(),
-          beneficiary_name: formData.beneficiaryName,
-          beneficiary_number: formData.beneficiaryNumber,
-          address: formData.address,
-          village_block: formData.villageBlock,
-          district: formData.district,
-          contact_number: formData.contactNumber,
-          present_load: formData.presentLoad,
-          bp_number: formData.bpNumber,
-          cspdcl_contract_demand: formData.cspdclContractDemand,
-          avg_electricity_bill: imageUrl,
-          future_load_requirement: formData.futureLoadRequirement,
-          load_details: formData.loadDetailsApplication,
-          failure_hours: formData.noOfHoursOfFailure,
-          structure_type: formData.structureType,
-          roof_type: formData.roofType,
-          system_type: formData.systemType,
-          need_type: formData.needType,
-          project_mode: formData.projectMode,
-          vendor_name: formData.vendorName,
-          assigned_by: formData.assignedBy,
-          reference: formData.reference
-        }
-      ]);
+      const { error } = await supabase
+        .from("enquiries")
+        .insert([
+          {
+            timestamp: new Date(),
+            beneficiary_name: formData.beneficiaryName,
+            beneficiary_number: formData.beneficiaryNumber,
+            address: formData.address,
+            village_block: formData.villageBlock,
+            district: formData.district,
+            contact_number: formData.contactNumber,
+            present_load: formData.presentLoad,
+            bp_number: formData.bpNumber,
+            cspdcl_contract_demand: formData.cspdclContractDemand,
+            avg_electricity_bill: imageUrl,
+            future_load_requirement: formData.futureLoadRequirement,
+            load_details: formData.loadDetailsApplication,
+            structure_type: formData.structureType,
+            roof_type: formData.roofType,
+            system_type: formData.systemType,
+            need_type: formData.needType,
+            project_mode: formData.projectMode,
+            firm_name: formData.vendorName,
+            payment_type: formData.paymentType,
+            assigned_by: formData.assignedBy,
+            reference: formData.reference
+          }
+        ]);
 
       if (error) throw error;
 
       alert("Successfully submitted beneficiary information!");
 
-      // reset form
       setFormData({
         beneficiaryName: "",
         beneficiaryNumber: "",
@@ -426,6 +428,7 @@ export default function BeneficiaryForm() {
         needType: "",
         projectMode: "",
         vendorName: "",
+        paymentType: "",
         assignedBy: sessionStorage.getItem("username") || "",
         reference: ""
       });
@@ -440,8 +443,6 @@ export default function BeneficiaryForm() {
       setIsSubmitting(false);
     }
   };
-
-
 
   return (
     <AdminLayout>
@@ -642,19 +643,6 @@ export default function BeneficiaryForm() {
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <label htmlFor="noOfHoursOfFailure" className="block text-xs font-medium text-purple-700">
-                        Hours Of Failure
-                      </label>
-                      <input
-                        type="number"
-                        id="noOfHoursOfFailure"
-                        name="noOfHoursOfFailure"
-                        value={formData.noOfHoursOfFailure}
-                        onChange={handleChange}
-                        className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                      />
-                    </div>
                   </div>
 
                   <div className="space-y-1">
@@ -794,7 +782,7 @@ export default function BeneficiaryForm() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-3">
                     <div className="space-y-1">
                       <label htmlFor="projectMode" className="block text-xs font-medium text-purple-700">
                         Project Mode
@@ -827,6 +815,24 @@ export default function BeneficiaryForm() {
                             {option}
                           </option>
                         ))}
+                      </select>
+                    </div>
+
+                    {/* Payment type dropdown */}
+                    <div className="space-y-1">
+                      <label htmlFor="paymentType" className="block text-xs font-medium text-purple-700">
+                        Payment type
+                      </label>
+                      <select
+                        id="paymentType"
+                        name="paymentType"
+                        value={formData.paymentType}
+                        onChange={handleChange}
+                        className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      >
+                        <option value="">Select Payment Type</option>
+                        <option value="Cheque / UPI / RTGS">Cheque / UPI / RTGS</option>
+                        <option value="Loan Bank Finance">Loan Bank Finance</option>
                       </select>
                     </div>
                   </div>
@@ -885,6 +891,7 @@ export default function BeneficiaryForm() {
                         needType: "",
                         projectMode: "",
                         vendorName: "",
+                        paymentType: "",
                         assignedBy: sessionStorage.getItem("username") || "",
                         reference: ""
                       });
@@ -947,155 +954,155 @@ export default function BeneficiaryForm() {
                       />
                     </div>
                     <div className="overflow-x-auto h-[60vh]">
-                    <table className="min-w-full divide-y divide-gray-200 text-center">
-  <thead className="bg-purple-50 sticky top-0 z-10">
-    <tr>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Actions</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Number</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Created Date</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Name</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Number</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Firm Name</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Assigned By</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Address</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Village/Block</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">District</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Contact Number</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Present Load</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">BP Number</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">CSPDCL Contract Demand</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Electricity Bill</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Future Load Requirement</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Load Details/Application</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Hours Of Failure</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Structure Type</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Roof Type</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">System Type</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Need Type</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Project Mode</th>
-      <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Reference</th>
-    </tr>
-  </thead>
+                      <table className="min-w-full divide-y divide-gray-200 text-center">
+                        <thead className="bg-purple-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Actions</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Number</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Enquiry Created Date</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Name</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Beneficiary Number</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Firm Name</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Payment type</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Assigned By</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Address</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Village/Block</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">District</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Contact Number</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Present Load</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">BP Number</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">CSPDCL Contract Demand</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Electricity Bill</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Future Load Requirement</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Load Details/Application</th>
 
-  <tbody className="bg-white divide-y divide-gray-200">
-    {filteredHistoryData.map((row, index) => (
-      <tr key={`${row.enquiryNumber}-${index}`} className="hover:bg-purple-50">
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          <button
-            onClick={() => startEdit(row)}
-            className="text-purple-600 hover:text-purple-700 flex justify-center items-center w-full"
-            title="Edit"
-          >
-            <Edit2 className="h-4 w-4" />
-          </button>
-        </td>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Structure Type</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Roof Type</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">System Type</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Need Type</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Project Mode</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Reference</th>
+                          </tr>
+                        </thead>
 
-        <td className="px-2 py-2 text-center text-xs font-medium text-purple-600">
-          {row.enquiryNumber}
-        </td>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredHistoryData.map((row, index) => (
+                            <tr key={`${row.enquiryNumber}-${index}`} className="hover:bg-purple-50">
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                <button
+                                  onClick={() => startEdit(row)}
+                                  className="text-purple-600 hover:text-purple-700 flex justify-center items-center w-full"
+                                  title="Edit"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </button>
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs font-medium text-purple-600">
-          {row.timestamp}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs font-medium text-purple-600">
+                                {row.enquiryNumber}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.beneficiaryName}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs font-medium text-purple-600">
+                                {row.timestamp}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.beneficiaryNumber}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.beneficiaryName}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.vendorName}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.beneficiaryNumber}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.assignedBy}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.vendorName}
+                              </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.paymentType}
+                              </td>
 
-        {/* Address Wrap */}
-        <td className="px-2 py-2 text-center text-xs text-gray-900 max-w-xs whitespace-normal break-words">
-          {row.address}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.assignedBy}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.villageBlock}
-        </td>
+                              {/* Address Wrap */}
+                              <td className="px-2 py-2 text-center text-xs text-gray-900 max-w-xs whitespace-normal break-words">
+                                {row.address}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.district}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.villageBlock}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.contactNumber}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.district}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.presentLoad}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.contactNumber}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.bpNumber}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.presentLoad}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.cspdclContractDemand}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.bpNumber}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.electricityBillUrl && (
-            <a
-              href={row.electricityBillUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800"
-            >
-              View
-            </a>
-          )}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.cspdclContractDemand}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.futureLoadRequirement}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.electricityBillUrl && (
+                                  <a
+                                    href={row.electricityBillUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
+                                    View
+                                  </a>
+                                )}
+                              </td>
 
-        {/* Load Details Wrap */}
-        <td className="px-2 py-2 text-center text-xs text-gray-900 max-w-xs whitespace-normal break-words">
-          {row.loadDetailsApplication}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.futureLoadRequirement}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.noOfHoursOfFailure}
-        </td>
+                              {/* Load Details Wrap */}
+                              <td className="px-2 py-2 text-center text-xs text-gray-900 max-w-xs whitespace-normal break-words">
+                                {row.loadDetailsApplication}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.structureType}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.structureType}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.roofType}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.roofType}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.systemType}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.systemType}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.needType}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.needType}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.projectMode}
-        </td>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.projectMode}
+                              </td>
 
-        <td className="px-2 py-2 text-center text-xs text-gray-900">
-          {row.reference}
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.reference}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
@@ -1244,16 +1251,7 @@ export default function BeneficiaryForm() {
                             className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <label className="block text-xs font-medium text-purple-700">Hours Of Failure</label>
-                          <input
-                            type="number"
-                            name="noOfHoursOfFailure"
-                            value={editFormData.noOfHoursOfFailure || ""}
-                            onChange={handleEditChange}
-                            className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          />
-                        </div>
+
                       </div>
 
                       <div className="space-y-1">
@@ -1433,7 +1431,7 @@ export default function BeneficiaryForm() {
                         </div>
                       </div>
 
-                      <div className="grid gap-3 md:grid-cols-2">
+                      <div className="grid gap-3 md:grid-cols-3">
                         <div className="space-y-1">
                           <label className="block text-xs font-medium text-purple-700">Project Mode</label>
                           <input
@@ -1460,6 +1458,22 @@ export default function BeneficiaryForm() {
                                 {option}
                               </option>
                             ))}
+                          </select>
+                        </div>
+
+                        {/* Payment type Field in Edit Modal */}
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-purple-700">Payment type</label>
+                          <select
+                            name="paymentType"
+                            value={editFormData.paymentType || ""}
+                            onChange={handleEditChange}
+                            className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          >
+                            <option value="">Select Payment Type</option>
+                            <option value="cash">cash</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="loan">loan</option>
                           </select>
                         </div>
                       </div>

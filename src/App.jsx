@@ -31,14 +31,20 @@ import InsurancePage from "./pages/Insurance"
 import ModuleEntryPage from "./pages/ModuleEntry"
 import ProductListPage from "./pages/ProductList"
 import DispatchApprovalPage from "./pages/DispatchApproval"
+import DispatchPlannerPage from "./pages/DispatchPlanne"
 import PaymentConfirmationPage from "./pages/PaymentConfirmation"
+import CSPDLInspectionPage from "./pages/CSPDL_Inspection"
 import BankProcessPage from "./pages/BankProcess"
 
 import QuotationCreatePage from "./pages/QuatationCreate"
 import AddUser from "./pages/AddUser"
 import QCPage from "./pages/QC"
 import IpPayment from "./pages/IpPayment"
-
+import DocumentsUpload from "./pages/DocumentsUpload"
+import FinalPayment from "./pages/FinalPayment"
+import AssignServey from "./pages/AssignServey"
+import DCRPage from "./pages/DCR"
+import RegistrationPage from "./pages/Registration"
 import "./index.css"
 
 // Auth wrapper component to protect routes
@@ -287,10 +293,26 @@ function App() {
             }
           />
           <Route
+            path="/dashboard/DispatchPlanne"
+            element={
+              <ProtectedRoute>
+                <DispatchPlannerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/dashboard/PaymentConfirmation"
             element={
               <ProtectedRoute>
                 <PaymentConfirmationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/CSPDL_Inspection"
+            element={
+              <ProtectedRoute>
+                <CSPDLInspectionPage />
               </ProtectedRoute>
             }
           />
@@ -315,6 +337,46 @@ function App() {
             element={
               <ProtectedRoute>
                 <IpPayment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/DocumentsUpload"
+            element={
+              <ProtectedRoute>
+                <DocumentsUpload />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/FinalPayment"
+            element={
+              <ProtectedRoute>
+                <FinalPayment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/AssignServey"
+            element={
+              <ProtectedRoute>
+                <AssignServey />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/DCRPage"
+            element={
+              <ProtectedRoute>
+                <DCRPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/RegistrationPage"
+            element={
+              <ProtectedRoute>
+                <RegistrationPage />
               </ProtectedRoute>
             }
           />

@@ -57,126 +57,132 @@ function InformToCustomerPage() {
   }, [])
 
   // Fetch dropdown options from "Drop-Down Value" sheet Column H2:H
-const fetchDropdownOptions = useCallback(async () => {
-  try {
-    const { data, error } = await supabase
-      .from("dropdown")
-      .select("status")
+  const fetchDropdownOptions = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("dropdown")
+        .select("status")
 
-    if (error) throw error
+      if (error) throw error
 
-    const options = data
-      .map((item) => item.status)
-      .filter((val) => val && val.trim() !== "")
+      const options = data
+        .map((item) => item.status)
+        .filter((val) => val && val.trim() !== "")
 
-    setDropdownOptions(options)
-  } catch (error) {
-    console.error("Error fetching dropdown options:", error)
-    setDropdownOptions([])
-  }
-}, [])
-
-
-
-// Optimized data fetching
-const fetchSheetData = useCallback(async () => {
-  try {
-    setLoading(true)
-    setError(null)
-
-    await fetchDropdownOptions()
-
-    // 🔹 1. fetch fms
-    const { data: fmsData, error: fmsError } = await supabase
-      .from("fms")
-      .select("*")
-
-    if (fmsError) throw fmsError
-
-    // 🔹 2. fetch quotation
-    const { data: quotationData, error: quotationError } = await supabase
-      .from("quatation_create")
-      .select("*")
-
-    if (quotationError) throw quotationError
-
-    // 🔥 FAST MAP
-    const quotationMap = {}
-    quotationData.forEach((q) => {
-      quotationMap[q.enquiry_number] = q
-    })
-
-    const pending = []
-    const history = []
-
-    fmsData.forEach((row) => {
-      const hasEnquiry = row.enquiry_number && row.enquiry_number.trim() !== ""
-      if (!hasEnquiry) return
-
-      // 🔥 merge quotation hh
-      const quotation = quotationMap[row.enquiry_number] || {}
-
-      const rowData = {
-        _id: row.id,
-        _rowIndex: row.id,
-
-        enquiryNumber: row.enquiry_number || "",
-        beneficiaryName: row.beneficiary_name || "",
-        address: row.address || "",
-        villageBlock: row.village_block || "",
-        district: row.district || "",
-        contactNumber: row.contact_number || "",
-
-        surveyorName: row.surveyor_name || "",
-        surveyorContact: row.surveyor_contact || "",
-
-        orderCopy: row.order_copy || "",
-
-        ipName: row.ip_name || "",
-        ipContact: row.ip_contact || "",
-
-        gstNumber: row.gst_number || "",
-        gstCertificates: row.gst_certificates || "",
-        // bankAccountDetails: row.bank_account_details || "",
-        aadharCard: row.aadhar_card || "",
-        panCard: row.pan_card || "",
-        workOrderNumber: row.work_order_number || "",
-        workOrderCopy: row.order_copy || "",
-        dispatchMaterial: row.status_7 || "",
-
-        // 🔹 QUOTATION DATA (added only)
-        amount: quotation.amount || "",
-        netCost: quotation.net_cost || "",
-        gst: quotation.gst || "",
-        rate: quotation.rate || "",
-        qty: quotation.qty || "",
-        quotationCopy: quotation.quatation_copy || "",
-        sendStatus: quotation.send_status || "",
-        quotationBank: quotation.bank_name || "",
-        bankAccountDetails: quotation.bank_name || "",
+      setDropdownOptions(options)
+    } catch (error) {
+      console.error("Error fetching dropdown options:", error)
+      setDropdownOptions([])
+    }
+  }, [])
 
 
-        // 🔥 EXISTING LOGIC SAME
-        actual: row.actual_7 || "",
-        informToCustomer: row.status_7 || "",
-      }
 
-      if (!row.actual_7) {
-        pending.push(rowData)
-      } else {
-        history.push(rowData)
-      }
-    })
+  // Optimized data fetching
+  const fetchSheetData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-    setPendingData(pending)
-    setHistoryData(history)
-    setLoading(false)
-  } catch (error) {
-    console.error("Error fetching data:", error)
-    setError("Failed to load Inform to Customer data: " + error.message)
-    setLoading(false)
-  }
-}, [fetchDropdownOptions])
+      await fetchDropdownOptions()
+
+      // 🔹 1. fetch customer_notifications and quotation in parallel
+      const [{ data: cnData, error: cnError }, { data: quotationData, error: quotationError }] =
+        await Promise.all([
+          supabase
+            .from("customer_notifications")
+            .select(`
+              *,
+              enquiries!left (
+                beneficiary_name,
+                address,
+                village_block,
+                district,
+                contact_number
+              )
+            `)
+            .not("planned", "is", null),
+          supabase
+            .from("new_quatation_create")
+            .select("*"),
+        ])
+
+      if (cnError) throw cnError
+      if (quotationError) throw quotationError
+
+      // 🔥 FAST MAP
+      const quotationMap = {}
+      quotationData.forEach((q) => {
+        quotationMap[q.enquiry_number] = q
+      })
+
+      const pending = [];
+      const history = [];
+
+      (cnData || []).forEach((row) => {
+        const enquiryNumber = row.enquiry_number || ""
+        const enq = row.enquiries || {}
+        const quotation = quotationMap[enquiryNumber] || {}
+
+        const rowData = {
+          _id: row.id,
+          _rowIndex: row.id,
+
+          enquiryNumber: enquiryNumber,
+          beneficiaryName: enq.beneficiary_name || "",
+          address: enq.address || "",
+          villageBlock: enq.village_block || "",
+          district: enq.district || "",
+          contactNumber: enq.contact_number || "",
+
+          surveyorName: "",
+          surveyorContact: "",
+
+          orderCopy: "",
+
+          ipName: "",
+          ipContact: "",
+
+          gstNumber: "",
+          gstCertificates: "",
+          aadharCard: "",
+          panCard: "",
+          workOrderNumber: "",
+          workOrderCopy: "",
+          dispatchMaterial: "",
+
+          // 🔹 QUOTATION DATA (added only)
+          amount: quotation.amount || "",
+          netCost: quotation.net_cost || "",
+          gst: quotation.gst || "",
+          rate: quotation.rate || "",
+          qty: quotation.qty || "",
+          quotationCopy: quotation.quatation_copy || "",
+          sendStatus: quotation.send_status || "",
+          quotationBank: quotation.bank_name || "",
+          bankAccountDetails: quotation.bank_name || "",
+
+          // 🔥 EXISTING LOGIC SAME
+          actual: row.actual || "",
+          informToCustomer: row.status || "",
+        }
+
+        if (!row.actual) {
+          pending.push(rowData)
+        } else {
+          history.push(rowData)
+        }
+      })
+
+      setPendingData(pending)
+      setHistoryData(history)
+      setLoading(false)
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      setError("Failed to load Inform to Customer data: " + error.message)
+      setLoading(false)
+    }
+  }, [fetchDropdownOptions])
 
 
 
@@ -231,75 +237,75 @@ const fetchSheetData = useCallback(async () => {
     }))
   }, [])
 
-const handleSubmit = async () => {
-  const selectedRecordIds = Object.keys(selectedRows).filter((id) => selectedRows[id])
+  const handleSubmit = async () => {
+    const selectedRecordIds = Object.keys(selectedRows).filter((id) => selectedRows[id])
 
-  if (selectedRecordIds.length === 0) {
-    alert("Please select at least one record to submit")
-    return
-  }
+    if (selectedRecordIds.length === 0) {
+      alert("Please select at least one record to submit")
+      return
+    }
 
-  const missingStatus = selectedRecordIds.filter(
-    (id) => !statusValues[id] || statusValues[id] === "Select"
-  )
+    const missingStatus = selectedRecordIds.filter(
+      (id) => !statusValues[id] || statusValues[id] === "Select"
+    )
 
-  if (missingStatus.length > 0) {
-    alert("Please select status for all selected records")
-    return
-  }
+    if (missingStatus.length > 0) {
+      alert("Please select status for all selected records")
+      return
+    }
 
-  setIsSubmitting(true)
+    setIsSubmitting(true)
 
-  try {
-    const updatePromises = selectedRecordIds.map(async (recordId) => {
+    try {
+      const updatePromises = selectedRecordIds.map(async (recordId) => {
 
 
         const record =
-  pendingData.find((r) => r._id === Number(recordId)) ||
-  historyData.find((r) => r._id === Number(recordId))
+          pendingData.find((r) => r._id === Number(recordId)) ||
+          historyData.find((r) => r._id === Number(recordId))
 
-      const status = statusValues[recordId]
+        const status = statusValues[recordId]
 
-      if (!record) return
+        if (!record) return
 
-      let actualDate = null
+        let actualDate = null
 
-      if (status === "Done") {
-        actualDate = new Date().toISOString()
-      }
+        if (status === "Done") {
+          actualDate = new Date().toISOString()
+        }
 
-      const { error } = await supabase
-        .from("fms")
-        .update({
-          status_7: status,
-          actual_7: actualDate,
-        })
-        .eq("id", record._id)
+        const { error } = await supabase
+          .from("customer_notifications")
+          .update({
+            status: status,
+            actual: actualDate,
+          })
+          .eq("enquiry_number", record.enquiryNumber)
 
-      if (error) throw error
-    })
+        if (error) throw error
+      })
 
-    await Promise.all(updatePromises)
+      await Promise.all(updatePromises)
 
-    setSuccessMessage(
-      `Successfully updated ${selectedRecordIds.length} customer notification record(s)`
-    )
+      setSuccessMessage(
+        `Successfully updated ${selectedRecordIds.length} customer notification record(s)`
+      )
 
-    fetchSheetData()
+      fetchSheetData()
 
-    setSelectedRows({})
-    setStatusValues({})
+      setSelectedRows({})
+      setStatusValues({})
 
-    setTimeout(() => {
-      setSuccessMessage("")
-    }, 3000)
-  } catch (error) {
-    console.error("Error updating:", error)
-    alert("Failed: " + error.message)
-  } finally {
-    setIsSubmitting(false)
+      setTimeout(() => {
+        setSuccessMessage("")
+      }, 3000)
+    } catch (error) {
+      console.error("Error updating:", error)
+      alert("Failed: " + error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
-}
 
 
 
@@ -436,81 +442,81 @@ const handleSubmit = async () => {
             /* Table with Fixed Height and Scrolling */
             <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10 text-nowrap">
+                <thead className="bg-gray-50 sticky top-0 z-10 whitespace-normal text-center">
                   <tr>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Action
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Enquiry Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Beneficiary Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Address
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Village/Block
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Dist.
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number Of Beneficiary
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Surveyor Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Order Copy
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       IP Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number Of IP
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       GST Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       GST Certificates
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Bank Account Details
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Aadhar Card
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Pan Card
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Work Order Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Work Order Copy
                     </th>
                     {showHistory && (
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Dispatch Material
                       </th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-200 text-center">
                   {showHistory ? (
                     filteredHistoryData.length > 0 ? (
                       filteredHistoryData.map((record) => (
                         <tr key={record._id} className="hover:bg-gray-50">
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <input
                               type="checkbox"
                               checked={selectedRows[record._id] || false}
@@ -518,7 +524,7 @@ const handleSubmit = async () => {
                               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                             />
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <select
                               value={statusValues[record._id] || record.informToCustomer || "Select"}
                               onChange={(e) => handleStatusChange(record._id, e.target.value)}
@@ -533,39 +539,39 @@ const handleSubmit = async () => {
                               ))}
                             </select>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs font-medium text-gray-900">{record.enquiryNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.beneficiaryName || "—"}</div>
                           </td>
                           <td className="px-2 py-3 max-w-xs">
-                            <div className="text-xs text-gray-900 truncate" title={record.address}>
+                            <div className="text-xs text-gray-900 whitespace-normal break-words" title={record.address}>
                               {record.address || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.villageBlock || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.district || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.contactNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.orderCopy ? (
                               <a
                                 href={record.orderCopy}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -574,24 +580,24 @@ const handleSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900 font-medium text-blue-600">
                               {record.ipName || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.ipContact || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.gstNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.gstCertificates ? (
                               <a
                                 href={record.gstCertificates}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -600,64 +606,25 @@ const handleSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            {/* {record.bankAccountDetails ? (
-                              <a
-                                href={record.bankAccountDetails}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </a>
-                            ) : (
-                              <span className="text-gray-400 text-xs">—</span>
-                            )} */}
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.bankAccountDetails || ""}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            {/* {record.aadharCard ? (
-                              <a
-                                href={record.aadharCard}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </a>
-                            ) : (
-                              <span className="text-gray-400 text-xs">—</span>
-                            )} */}
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.aadharCard || ""}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            {/* {record.panCard ? (
-                              <a
-                                href={record.panCard}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </a>
-                            ) : (
-                              <span className="text-gray-400 text-xs">—</span>
-                            )} */}
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.panCard || ""}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.workOrderNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.workOrderCopy ? (
                               <a
                                 href={record.workOrderCopy}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -666,8 +633,8 @@ const handleSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <td className="px-2 py-3 whitespace-normal">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 animate-none">
                               {record.dispatchMaterial || "—"}
                             </span>
                           </td>
@@ -686,7 +653,7 @@ const handleSubmit = async () => {
                   ) : filteredPendingData.length > 0 ? (
                     filteredPendingData.map((record) => (
                       <tr key={record._id} className="hover:bg-gray-50">
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <input
                             type="checkbox"
                             checked={selectedRows[record._id] || false}
@@ -694,7 +661,7 @@ const handleSubmit = async () => {
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <select
                             value={statusValues[record._id] || record.informToCustomer || "Select"}
                             onChange={(e) => handleStatusChange(record._id, e.target.value)}
@@ -709,46 +676,46 @@ const handleSubmit = async () => {
                             ))}
                           </select>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs font-medium text-blue-900">{record.enquiryNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Users className="h-3 w-3 mr-1 text-gray-400" />
                             {record.beneficiaryName || "—"}
                           </div>
                         </td>
                         <td className="px-2 py-3 max-w-xs">
-                          <div className="text-xs text-gray-900 truncate flex items-center" title={record.address}>
+                          <div className="text-xs text-gray-900 whitespace-normal break-words flex items-center justify-center" title={record.address}>
                             <MapPin className="h-3 w-3 mr-1 text-gray-400" />
                             {record.address || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.villageBlock || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.district || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Phone className="h-3 w-3 mr-1 text-gray-400" />
                             {record.contactNumber || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.orderCopy ? (
                             <a
                               href={record.orderCopy}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -757,22 +724,22 @@ const handleSubmit = async () => {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 font-medium text-blue-600">{record.ipName || "—"}</div>
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 font-medium text-blue-600 flex items-center justify-center">{record.ipName || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.ipContact || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.gstNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.gstCertificates ? (
                             <a
                               href={record.gstCertificates}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -781,64 +748,25 @@ const handleSubmit = async () => {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          {/* {record.bankAccountDetails ? (
-                            <a
-                              href={record.bankAccountDetails}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              View
-                            </a>
-                          ) : (
-                            <span className="text-gray-400 text-xs">—</span>
-                          )} */}
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.bankAccountDetails || ""}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          {/* {record.aadharCard ? (
-                            <a
-                              href={record.aadharCard}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              View
-                            </a>
-                          ) : (
-                            <span className="text-gray-400 text-xs">—</span>
-                          )} */}
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.aadharCard || ""}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          {/* {record.panCard ? (
-                            <a
-                              href={record.panCard}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              View
-                            </a>
-                          ) : (
-                            <span className="text-gray-400 text-xs">—</span>
-                          )} */}
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.panCard || ""}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.workOrderNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.workOrderCopy ? (
                             <a
                               href={record.workOrderCopy}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View

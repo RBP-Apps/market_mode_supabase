@@ -1,15 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { CheckCircle2, X, Search, History, MapPin, Users, Phone, Eye, CreditCard, Wrench } from "lucide-react"
+import { CheckCircle2, X, Search, History, MapPin, Users, Phone, Eye, CreditCard, Wrench, Upload, FileText, Loader2 } from "lucide-react"
 import AdminLayout from "../components/layout/AdminLayout"
 import supabase from "../utils/supabase"
 
-
 // Configuration object
 const CONFIG = {
-
-  // Updated page configuration
   PAGE_CONFIG: {
     title: "Payment",
     historyTitle: "Payment History",
@@ -47,36 +44,53 @@ function PaymentPage() {
   const [successMessage, setSuccessMessage] = useState("")
   const [userRole, setUserRole] = useState("")
   const [username, setUsername] = useState("")
-  const [selectedRows, setSelectedRows] = useState({})
-  const [statusValues, setStatusValues] = useState({})
-  const [paymentDetails, setPaymentDetails] = useState({})
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
+  const [viewingFileUrl, setViewingFileUrl] = useState(null)
+
+  const isImage = useCallback((url) => {
+    if (!url) return false
+    const cleanUrl = url.split("?")[0].toLowerCase()
+    return cleanUrl.endsWith(".png") || cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg") || cleanUrl.endsWith(".webp") || cleanUrl.endsWith(".gif")
+  }, [])
+  
   const [paymentForm, setPaymentForm] = useState({
-    payment: "",
+    paymentType: "",
     checkNo: "",
     date: "",
     amount: "",
     deduction: "",
+    loanApply: "",
+    submissionUpload: null,
+    applicationNumber: "",
+    registrationNumber: "",
+    feasibilityReport: null,
+    digitalLoanApproval: null,
+    siteFeasibilityReport: null,
+    electricityBill: null,
+    aadhaarCard: null,
+    panCard: null,
+    bankStatement: null,
+    vendorConsumerAgreement: null,
+  })
+
+  const [fileUploads, setFileUploads] = useState({
+    submissionUpload: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    feasibilityReport: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    digitalLoanApproval: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    siteFeasibilityReport: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    electricityBill: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    aadhaarCard: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    panCard: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    bankStatement: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    vendorConsumerAgreement: { uploading: false, uploaded: false, url: "", error: null, name: "" },
   })
 
   // Debounced search term for better performance
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
-  const formatTimestamp = useCallback(() => {
-    const now = new Date()
-    const day = now.getDate().toString().padStart(2, "0")
-    const month = (now.getMonth() + 1).toString().padStart(2, "0")
-    const year = now.getFullYear()
-    const hours = now.getHours().toString().padStart(2, "0")
-    const minutes = now.getMinutes().toString().padStart(2, "0")
-    const seconds = now.getSeconds().toString().padStart(2, "0")
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
-  }, [])
-
   const formatDateForInput = useCallback((dateString) => {
     if (!dateString) return ""
-    // extended logic to handle DD/MM/YYYY
     if (dateString.includes("/")) {
       const [day, month, year] = dateString.split("/")
       return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
@@ -90,7 +104,6 @@ function PaymentPage() {
 
   const formatDateTime = useCallback((dateString) => {
     if (!dateString) return ""
-    // If it's already in DD/MM/YYYY HH:mm:ss format, return it
     if (typeof dateString === "string" && dateString.match(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/)) return dateString
 
     const date = new Date(dateString)
@@ -105,11 +118,8 @@ function PaymentPage() {
     return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
   }, [])
 
-  // Format date to DD/MM/YYYY only (no time)
   const formatDate = useCallback((dateString) => {
     if (!dateString) return "—"
-
-    // If already in DD/MM/YYYY format, return as-is
     if (typeof dateString === "string" && dateString.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
       return dateString
     }
@@ -134,109 +144,150 @@ function PaymentPage() {
     setUsername(user || "")
   }, [])
 
-  // Fetch dropdown options
-const fetchDropdownOptions = useCallback(async () => {
-  try {
-    const { data, error } = await supabase
-      .from("dropdown")
-      .select("stage")
+  const fetchDropdownOptions = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("dropdown")
+        .select("stage")
 
-    if (error) throw error
+      if (error) throw error
 
-    const options = data
-      .map(item => item.stage)
-      .filter(val => !isEmpty(val))
+      const options = data
+        .map(item => item.stage)
+        .filter(val => !isEmpty(val))
 
-    setDropdownOptions(options)
-  } catch (error) {
-    console.error("Error fetching dropdown:", error)
-    setDropdownOptions([])
-  }
-}, [isEmpty])
+      setDropdownOptions(options)
+    } catch (error) {
+      console.error("Error fetching dropdown:", error)
+      setDropdownOptions([])
+    }
+  }, [isEmpty])
 
+  const fetchSheetData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
+      await fetchDropdownOptions()
 
+      const [
+        { data: pData, error: pError },
+        { data: fmsData, error: fmsError }
+      ] = await Promise.all([
+        supabase
+          .from("payments")
+          .select(`
+            *,
+            enquiries!left (
+              beneficiary_name,
+              address,
+              contact_number
+            )
+          `)
+          .not("planned", "is", null),
+        supabase
+          .from("fms")
+          .select("enquiry_number, surveyor_name, power_purchase_agreement, vendor_consumer_agreement, quotation_copy, application_copy, electricity_bill_doc, witness_id_proof, actual_12, status_13, status_14, status_15")
+      ])
 
-const fetchSheetData = useCallback(async () => {
-  try {
-    setLoading(true)
-    setError(null)
+      if (pError) throw pError
+      if (fmsError) throw fmsError
 
-    await fetchDropdownOptions()
-
-    const { data, error } = await supabase
-      .from("fms")
-      .select("*")
-      .not("enquiry_number", "is", null)
-
-    if (error) throw error
-
-    const pending = []
-    const history = []
-
-    data.forEach((row) => {
-      const rowData = {
-        _id: `enquiry_${row.enquiry_number}`,
-        _enquiryNumber: row.enquiry_number,
-
-        enquiryNumber: row.enquiry_number || "",
-        beneficiaryName: row.beneficiary_name || "",
-        address: row.address || "",
-        contactNumber: row.contact_number || "",
-        surveyorName: row.surveyor_name || "",
-
-        payment: row.status_16 || "",
-        checkNo: row.check_number || "",
-        date: row.date_16 || "",
-        amount: row.amount_16 || "",
-        deduction: row.deduction_16 || "",
-        actual: row.actual_16 || "",
+      const fmsMap = {}
+      if (fmsData) {
+        fmsData.forEach(item => {
+          if (item.enquiry_number) {
+            fmsMap[item.enquiry_number] = {
+              surveyorName: item.surveyor_name || "",
+              powerPurchaseAgreement: item.power_purchase_agreement || "",
+              vendorConsumerAgreement: item.vendor_consumer_agreement || "",
+              quotationCopy: item.quotation_copy || "",
+              applicationCopy: item.application_copy || "",
+              electricityBill: item.electricity_bill_doc || "",
+              witnessIdProof: item.witness_id_proof || "",
+              inspection: item.actual_12 || "",
+              projectCommission: item.status_13 || "",
+              subsidyToken: item.status_14 || "",
+              subsidyDisbursal: item.status_15 || ""
+            }
+          }
+        })
       }
 
-      if (isEmpty(row.actual_16)) {
-        pending.push(rowData)
-      } else {
-        history.push(rowData)
+      const pending = []
+      const history = []
+
+      if (pData) {
+        pData.forEach((row) => {
+          const enqNum = row.enquiry_number || ""
+          const enq = row.enquiries || {}
+          const fmsRow = fmsMap[enqNum] || {}
+
+          const rowData = {
+            _id: row.id,
+            _enquiryNumber: enqNum,
+
+            enquiryNumber: enqNum,
+            beneficiaryName: enq.beneficiary_name || "",
+            address: enq.address || "",
+            contactNumber: enq.contact_number || "",
+            surveyorName: fmsRow.surveyorName || "",
+
+            paymentType: row.payment_type || "",
+            payment: row.status || "",
+            checkNo: row.check_number || "",
+            date: row.payment_date || "",
+            amount: row.amount || "",
+            deduction: row.deduction || "",
+            actual: row.actual || "",
+
+            loanApply: row.loan_apply || "",
+            submissionUpload: row.submission_upload || "",
+            applicationNumber: row.application_number || "",
+            registrationNumber: row.registration_number || "",
+            feasibilityReport: row.feasibility_report || "",
+            digitalLoanApproval: row.digital_loan_approval || "",
+            siteFeasibilityReport: row.site_feasibility_report || "",
+            electricityBillDoc: row.electricity_bill || "",
+            aadhaarCard: row.aadhaar_card || "",
+            panCard: row.pan_card || "",
+            bankStatement: row.bank_statement || "",
+            vendorConsumerAgreementDoc: row.vendor_consumer_agreement || "",
+
+            powerPurchaseAgreement: fmsRow.powerPurchaseAgreement || "",
+            vendorConsumerAgreement: fmsRow.vendorConsumerAgreement || "",
+            quotationCopy: fmsRow.quotationCopy || "",
+            applicationCopy: fmsRow.applicationCopy || "",
+            electricityBill: fmsRow.electricityBill || "",
+            witnessIdProof: fmsRow.witnessIdProof || "",
+            inspection: fmsRow.inspection || "",
+            projectCommission: fmsRow.projectCommission || "",
+            subsidyToken: fmsRow.subsidyToken || "",
+            subsidyDisbursal: fmsRow.subsidyDisbursal || ""
+          }
+
+          if (row.planned && !row.actual) {
+            pending.push(rowData)
+          } else if (row.planned && row.actual) {
+            history.push(rowData)
+          }
+        })
       }
-    })
 
-    setPendingData(pending)
-    setHistoryData(history)
-    setLoading(false)
+      setPendingData(pending)
+      setHistoryData(history)
+      setLoading(false)
 
-  } catch (error) {
-    console.error("Error fetching data:", error)
-    setError("Failed to load Payment data: " + error.message)
-    setLoading(false)
-  }
-}, [isEmpty, fetchDropdownOptions])
-
-
-
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      setError("Failed to load Payment data: " + error.message)
+      setLoading(false)
+    }
+  }, [isEmpty, fetchDropdownOptions])
 
   useEffect(() => {
     fetchSheetData()
   }, [fetchSheetData])
-
-  // Initialize status values with existing payment values
-  useEffect(() => {
-    const initialStatusValues = {}
-    const initialPaymentDetails = {}
-    const allRecords = [...pendingData, ...historyData]
-    allRecords.forEach((record) => {
-      if (record.payment && record.payment !== "") {
-        initialStatusValues[record._id] = record.payment
-      }
-      initialPaymentDetails[record._id] = {
-        checkNo: record.checkNo || "",
-        date: record.date ? formatDateForInput(record.date) : "",
-        amount: record.amount || "",
-        deduction: record.deduction || "",
-      }
-    })
-    setStatusValues(initialStatusValues)
-    setPaymentDetails(initialPaymentDetails)
-  }, [pendingData, historyData, formatDateForInput])
 
   // Optimized filtered data with debounced search
   const filteredPendingData = useMemo(() => {
@@ -259,183 +310,179 @@ const fetchSheetData = useCallback(async () => {
       : historyData
   }, [historyData, debouncedSearchTerm])
 
-  const handleRowSelection = useCallback((recordId, isChecked) => {
-    setSelectedRows((prev) => ({
-      ...prev,
-      [recordId]: isChecked,
-    }))
-  }, [])
-
-  const handleStatusChange = useCallback((recordId, status) => {
-    setStatusValues((prev) => ({
-      ...prev,
-      [recordId]: status,
-    }))
-  }, [])
-
-  const handlePaymentDetailChange = useCallback((recordId, field, value) => {
-    setPaymentDetails((prev) => ({
-      ...prev,
-      [recordId]: {
-        ...prev[recordId],
-        [field]: value,
-      },
-    }))
-  }, [])
-
   const handlePaymentClick = useCallback(
     (record) => {
       setSelectedRecord(record)
       setPaymentForm({
-        payment: record.payment || "",
+        paymentType: record.paymentType || "",
         checkNo: record.checkNo || "",
         date: formatDateForInput(record.date || ""),
         amount: record.amount || "",
         deduction: record.deduction || "",
+        loanApply: record.loanApply || "",
+        submissionUpload: record.submissionUpload || null,
+        applicationNumber: record.applicationNumber || "",
+        registrationNumber: record.registrationNumber || "",
+        feasibilityReport: record.feasibilityReport || null,
+        digitalLoanApproval: record.digitalLoanApproval || null,
+        siteFeasibilityReport: record.siteFeasibilityReport || null,
+        electricityBill: record.electricityBillDoc || null,
+        aadhaarCard: record.aadhaarCard || null,
+        panCard: record.panCard || null,
+        bankStatement: record.bankStatement || null,
+        vendorConsumerAgreement: record.vendorConsumerAgreementDoc || null,
+      })
+      setFileUploads({
+        submissionUpload: { uploading: false, uploaded: !!record.submissionUpload, url: record.submissionUpload || "", error: null, name: record.submissionUpload ? "Existing File" : "" },
+        feasibilityReport: { uploading: false, uploaded: !!record.feasibilityReport, url: record.feasibilityReport || "", error: null, name: record.feasibilityReport ? "Existing File" : "" },
+        digitalLoanApproval: { uploading: false, uploaded: !!record.digitalLoanApproval, url: record.digitalLoanApproval || "", error: null, name: record.digitalLoanApproval ? "Existing File" : "" },
+        siteFeasibilityReport: { uploading: false, uploaded: !!record.siteFeasibilityReport, url: record.siteFeasibilityReport || "", error: null, name: record.siteFeasibilityReport ? "Existing File" : "" },
+        electricityBill: { uploading: false, uploaded: !!record.electricityBillDoc, url: record.electricityBillDoc || "", error: null, name: record.electricityBillDoc ? "Existing File" : "" },
+        aadhaarCard: { uploading: false, uploaded: !!record.aadhaarCard, url: record.aadhaarCard || "", error: null, name: record.aadhaarCard ? "Existing File" : "" },
+        panCard: { uploading: false, uploaded: !!record.panCard, url: record.panCard || "", error: null, name: record.panCard ? "Existing File" : "" },
+        bankStatement: { uploading: false, uploaded: !!record.bankStatement, url: record.bankStatement || "", error: null, name: record.bankStatement ? "Existing File" : "" },
+        vendorConsumerAgreement: { uploading: false, uploaded: !!record.vendorConsumerAgreementDoc, url: record.vendorConsumerAgreementDoc || "", error: null, name: record.vendorConsumerAgreementDoc ? "Existing File" : "" },
       })
       setShowPaymentModal(true)
     },
     [formatDateForInput],
   )
 
-const handlePaymentSubmit = async () => {
-  if (!paymentForm.payment) {
-    alert("Please select Payment Status")
-    return
-  }
+  const uploadFileToSupabase = useCallback(async (file, prefix) => {
+    try {
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${prefix}_${selectedRecord.enquiryNumber}_${Date.now()}.${fileExt}`
 
-  if (paymentForm.payment === "Done") {
-    if (!paymentForm.checkNo || !paymentForm.date || !paymentForm.amount) {
-      alert("Please fill Check No, Date, Amount")
+      const { data, error } = await supabase.storage
+        .from("enquery_file")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false
+        })
+
+      if (error) throw error
+
+      const { data: publicUrl } = supabase.storage
+        .from("enquery_file")
+        .getPublicUrl(fileName)
+
+      return publicUrl.publicUrl
+    } catch (err) {
+      console.error("Storage upload failed:", err)
+      throw err
+    }
+  }, [selectedRecord])
+
+  const handleFileUpload = useCallback((field, file) => {
+    if (!file) return
+
+    setPaymentForm((prev) => ({ ...prev, [field]: file }))
+    setFileUploads((prev) => ({
+      ...prev,
+      [field]: { ...prev[field], name: file.name, uploaded: false, error: null }
+    }))
+  }, [])
+
+  const handlePaymentSubmit = async () => {
+    if (!paymentForm.paymentType) {
+      alert("Please select Payment Type")
       return
     }
-  }
 
-  setIsSubmitting(true)
-
-  try {
-    const status = paymentForm.payment
-
-    const actualDate =
-      status === "Done"
-        ? (selectedRecord.actual || new Date().toISOString())
-        : null
-
-    const { error } = await supabase
-      .from("fms")
-      .update({
-        status_16: status,
-        check_number: paymentForm.checkNo || "",
-        date_16: paymentForm.date || null,
-        amount_16: paymentForm.amount || "",
-        deduction_16: paymentForm.deduction || "",
-        actual_16: actualDate,
-      })
-      .eq("enquiry_number", selectedRecord._enquiryNumber)
-
-    if (error) throw error
-
-    const updatedRecord = {
-      ...selectedRecord,
-      payment: status,
-      checkNo: paymentForm.checkNo,
-      date: paymentForm.date,
-      amount: paymentForm.amount,
-      deduction: paymentForm.deduction,
-      actual: actualDate,
+    if (paymentForm.paymentType === "Cheque / RTGS / UPI") {
+      if (!paymentForm.checkNo || !paymentForm.date || !paymentForm.amount) {
+        alert("Please fill Check No, Date, and Amount")
+        return
+      }
     }
 
-    if (status === "Done") {
-      setPendingData(prev => prev.filter(r => r._id !== selectedRecord._id))
-      setHistoryData(prev => [updatedRecord, ...prev])
-    } else {
-      setHistoryData(prev => prev.filter(r => r._id !== selectedRecord._id))
-      setPendingData(prev => [updatedRecord, ...prev])
+    setIsSubmitting(true)
+
+    try {
+      const uploadPromises = {}
+      const fileFields = [
+        { name: "submissionUpload", prefix: "sub_upload" },
+        { name: "feasibilityReport", prefix: "feas_rep" },
+        { name: "digitalLoanApproval", prefix: "dig_loan_app" },
+        { name: "siteFeasibilityReport", prefix: "site_feas_rep" },
+        { name: "electricityBill", prefix: "elec_bill" },
+        { name: "aadhaarCard", prefix: "aadhar_card" },
+        { name: "panCard", prefix: "pan_card" },
+        { name: "bankStatement", prefix: "bank_stmt" },
+        { name: "vendorConsumerAgreement", prefix: "vendor_agreement" }
+      ]
+
+      for (const field of fileFields) {
+        let fileUrl = paymentForm[field.name]
+        if (paymentForm[field.name] instanceof File) {
+          setFileUploads(prev => ({
+            ...prev,
+            [field.name]: { ...prev[field.name], uploading: true }
+          }))
+          fileUrl = await uploadFileToSupabase(paymentForm[field.name], field.prefix)
+          setFileUploads(prev => ({
+            ...prev,
+            [field.name]: {
+              ...prev[field.name],
+              uploading: false,
+              uploaded: true,
+              url: fileUrl
+            }
+          }))
+        }
+        uploadPromises[field.name] = fileUrl
+      }
+
+      const actualDate = selectedRecord.actual || new Date().toISOString()
+
+      const updatePayload = {
+        payment_type: paymentForm.paymentType,
+        check_number: paymentForm.paymentType === "Cheque / RTGS / UPI" ? paymentForm.checkNo : null,
+        payment_date: paymentForm.paymentType === "Cheque / RTGS / UPI" ? paymentForm.date : null,
+        amount: paymentForm.paymentType === "Cheque / RTGS / UPI" ? parseFloat(paymentForm.amount) || null : null,
+        deduction: paymentForm.paymentType === "Cheque / RTGS / UPI" ? parseFloat(paymentForm.deduction) || null : null,
+
+        loan_apply: paymentForm.paymentType === "Bank Finance" ? paymentForm.loanApply : null,
+        submission_upload: paymentForm.paymentType === "Bank Finance" ? uploadPromises.submissionUpload : null,
+        application_number: paymentForm.paymentType === "Bank Finance" ? paymentForm.applicationNumber : null,
+        registration_number: paymentForm.paymentType === "Bank Finance" ? paymentForm.registrationNumber : null,
+        feasibility_report: paymentForm.paymentType === "Bank Finance" ? uploadPromises.feasibilityReport : null,
+        digital_loan_approval: paymentForm.paymentType === "Bank Finance" ? uploadPromises.digitalLoanApproval : null,
+        site_feasibility_report: paymentForm.paymentType === "Bank Finance" ? uploadPromises.siteFeasibilityReport : null,
+        electricity_bill: paymentForm.paymentType === "Bank Finance" ? uploadPromises.electricityBill : null,
+        aadhaar_card: paymentForm.paymentType === "Bank Finance" ? uploadPromises.aadhaarCard : null,
+        pan_card: paymentForm.paymentType === "Bank Finance" ? uploadPromises.panCard : null,
+        bank_statement: paymentForm.paymentType === "Bank Finance" ? uploadPromises.bankStatement : null,
+        vendor_consumer_agreement: paymentForm.paymentType === "Bank Finance" ? uploadPromises.vendorConsumerAgreement : null,
+
+        actual: actualDate,
+        status: "Done"
+      }
+
+      const { error } = await supabase
+        .from("payments")
+        .update(updatePayload)
+        .eq("enquiry_number", selectedRecord._enquiryNumber)
+
+      if (error) throw error
+
+      setShowPaymentModal(false)
+      setSuccessMessage("Payment updated successfully")
+      fetchSheetData()
+
+      setTimeout(() => setSuccessMessage(""), 3000)
+
+    } catch (error) {
+      console.error(error)
+      alert("Update failed: " + error.message)
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setShowPaymentModal(false)
-    setSuccessMessage("Updated successfully")
-
-    setTimeout(() => setSuccessMessage(""), 3000)
-
-  } catch (error) {
-    console.error(error)
-    alert("Update failed: " + error.message)
-  } finally {
-    setIsSubmitting(false)
   }
-}
-
-
-
-const handleSubmit = async () => {
-  const selectedRecordIds = Object.keys(selectedRows).filter(id => selectedRows[id])
-
-  if (selectedRecordIds.length === 0) {
-    alert("Select at least one record")
-    return
-  }
-
-  setIsSubmitting(true)
-
-  try {
-    const updatePromises = selectedRecordIds.map(async (recordId) => {
-      const record =
-        pendingData.find(r => r._id === recordId) ||
-        historyData.find(r => r._id === recordId)
-
-      if (!record) return
-
-      const status = statusValues[recordId]
-      const details = paymentDetails[recordId] || {}
-
-      const actualDate =
-        status === "Done"
-          ? new Date().toISOString()
-          : null
-
-      return supabase
-        .from("fms")
-        .update({
-          status_16: status,
-          check_number: details.checkNo || "",
-          date_16: details.date || null,
-          amount_16: details.amount || "",
-          deduction_16: details.deduction || "",
-          actual_16: actualDate,
-        })
-        .eq("enquiry_number", record._enquiryNumber)
-    })
-
-    await Promise.all(updatePromises)
-
-    setSuccessMessage(`Updated ${selectedRecordIds.length} records`)
-
-    fetchSheetData()
-
-    setSelectedRows({})
-    setStatusValues({})
-    setPaymentDetails({})
-
-    setTimeout(() => setSuccessMessage(""), 3000)
-
-  } catch (error) {
-    console.error(error)
-    alert("Update failed: " + error.message)
-  } finally {
-    setIsSubmitting(false)
-  }
-}
-
-
-
 
   const toggleSection = useCallback((section) => {
     setShowHistory(section === "history")
     setSearchTerm("")
-    setSelectedRows({})
-    setStatusValues({})
-    setPaymentDetails({})
   }, [])
 
   return (
@@ -499,34 +546,6 @@ const handleSubmit = async () => {
           </div>
         )}
 
-        {/* Submit Button for Pending Section */}
-        {Object.values(selectedRows).some(Boolean) && (
-          <div className="bg-blue-50 border border-blue-200 p-4 rounded-md">
-            <div className="flex items-center justify-between">
-              <span className="text-blue-700 text-sm">
-                {Object.values(selectedRows).filter(Boolean).length} record(s) selected
-              </span>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="px-6 py-2 bg-linear-to-r from-green-500 to-blue-600 text-white rounded-md hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Processing Payment...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Submit Payment
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Table Container with Fixed Height */}
         <div className="rounded-lg border border-blue-200 shadow-md bg-white overflow-hidden">
           <div className="bg-linear-to-r from-blue-50 to-indigo-50 border-b border-blue-100 p-3">
@@ -570,7 +589,7 @@ const handleSubmit = async () => {
                       Action
                     </th>
                     <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      Payment Type
                     </th>
                     <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Check No
@@ -634,7 +653,6 @@ const handleSubmit = async () => {
                     <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Subsidy Disbursal
                     </th>
-
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200 text-center">
@@ -643,66 +661,28 @@ const handleSubmit = async () => {
                       filteredHistoryData.map((record) => (
                         <tr key={record._id} className="hover:bg-gray-50">
                           <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={selectedRows[record._id] || false}
-                              onChange={(e) => handleRowSelection(record._id, e.target.checked)}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                          </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <select
-                              value={statusValues[record._id] || record.payment || "Select"}
-                              onChange={(e) => handleStatusChange(record._id, e.target.value)}
-                              disabled={!selectedRows[record._id]}
-                              className="text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            <button
+                              onClick={() => handlePaymentClick(record)}
+                              className="inline-flex items-center px-3 py-1.5 border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 text-xs font-semibold rounded-md transition-colors"
                             >
-                              <option value="Select">Select</option>
-                              {dropdownOptions.map((option, index) => (
-                                <option key={index} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              Edit
+                            </button>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="text"
-                              value={paymentDetails[record._id]?.checkNo || ""}
-                              onChange={(e) => handlePaymentDetailChange(record._id, "checkNo", e.target.value)}
-                              disabled={!selectedRows[record._id] || statusValues[record._id] !== "Done"}
-                              placeholder="Check No"
-                              className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed w-20"
-                            />
+                          <td className="px-2 py-3 whitespace-nowrap text-xs font-semibold text-gray-700">
+                            {record.paymentType || "—"}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="date"
-                              value={paymentDetails[record._id]?.date || ""}
-                              onChange={(e) => handlePaymentDetailChange(record._id, "date", e.target.value)}
-                              disabled={!selectedRows[record._id] || statusValues[record._id] !== "Done"}
-                              className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed w-28"
-                            />
+                          <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
+                            {record.checkNo || "—"}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="number"
-                              value={paymentDetails[record._id]?.amount || ""}
-                              onChange={(e) => handlePaymentDetailChange(record._id, "amount", e.target.value)}
-                              disabled={!selectedRows[record._id] || statusValues[record._id] !== "Done"}
-                              placeholder="Amount"
-                              className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed w-20"
-                            />
+                          <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
+                            {formatDate(record.date)}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="number"
-                              value={paymentDetails[record._id]?.deduction || ""}
-                              onChange={(e) => handlePaymentDetailChange(record._id, "deduction", e.target.value)}
-                              disabled={!selectedRows[record._id] || statusValues[record._id] !== "Done"}
-                              placeholder="Deduction"
-                              className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed w-20"
-                            />
+                          <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
+                            {record.amount || "—"}
+                          </td>
+                          <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
+                            {record.deduction || "—"}
                           </td>
                           <td className="px-2 py-3 whitespace-nowrap">
                             <div className="text-xs font-medium text-gray-900">{record.enquiryNumber || "—"}</div>
@@ -730,30 +710,26 @@ const handleSubmit = async () => {
                           </td>
                           <td className="px-2 py-3 whitespace-nowrap">
                             {record.powerPurchaseAgreement ? (
-                              <a
-                                href={record.powerPurchaseAgreement}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={() => setViewingFileUrl(record.powerPurchaseAgreement)}
                                 className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
-                              </a>
+                              </button>
                             ) : (
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
                           <td className="px-2 py-3 whitespace-nowrap">
                             {record.vendorConsumerAgreement ? (
-                              <a
-                                href={record.vendorConsumerAgreement}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={() => setViewingFileUrl(record.vendorConsumerAgreement)}
                                 className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
-                              </a>
+                              </button>
                             ) : (
                               <span className="text-gray-400 text-xs">—</span>
                             )}
@@ -764,9 +740,11 @@ const handleSubmit = async () => {
                           <td className="px-2 py-3 whitespace-nowrap">
                             <div className="text-xs text-gray-900">{record.applicationCopy || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-900">{record.cancellationCheque || "—"}</div>
-                          </td>
+                          {showHistory && (
+                            <td className="px-2 py-3 whitespace-nowrap">
+                              <div className="text-xs text-gray-900">{record.cancellationCheque || "—"}</div>
+                            </td>
+                          )}
                           <td className="px-2 py-3 whitespace-nowrap">
                             <div className="text-xs text-gray-900">{record.electricityBill || "—"}</div>
                           </td>
@@ -785,7 +763,6 @@ const handleSubmit = async () => {
                           <td className="px-2 py-3 whitespace-nowrap">
                             <div className="text-xs text-gray-900">{formatDateTime(record.subsidyDisbursal)}</div>
                           </td>
-
                         </tr>
                       ))
                     ) : (
@@ -799,74 +776,31 @@ const handleSubmit = async () => {
                     )
                   ) : filteredPendingData.length > 0 ? (
                     filteredPendingData.map((record) => {
-                      const isSelected = selectedRows[record._id] || false
-                      const currentStatus = statusValues[record._id] || record.payment || "Select"
-                      const isDoneStatus = currentStatus === "Done"
-                      const currentDetails = paymentDetails[record._id] || {}
-
                       return (
                         <tr key={record._id} className="hover:bg-gray-50">
                           <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => handleRowSelection(record._id, e.target.checked)}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                          </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <select
-                              value={currentStatus}
-                              onChange={(e) => handleStatusChange(record._id, e.target.value)}
-                              disabled={!isSelected}
-                              className="text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            <button
+                              onClick={() => handlePaymentClick(record)}
+                              className="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md shadow-sm transition-colors"
                             >
-                              <option value="Select">Select</option>
-                              {dropdownOptions.map((option, index) => (
-                                <option key={index} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
+                              <CreditCard className="h-3.5 w-3.5 mr-1" />
+                              Payment
+                            </button>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="text"
-                              value={currentDetails.checkNo || ""}
-                              onChange={(e) => handlePaymentDetailChange(record._id, "checkNo", e.target.value)}
-                              disabled={!isSelected || !isDoneStatus}
-                              placeholder="Check No"
-                              className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed w-20"
-                            />
+                          <td className="px-2 py-3 whitespace-nowrap text-xs font-semibold text-gray-700">
+                            {record.paymentType || "—"}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="date"
-                              value={currentDetails.date || ""}
-                              onChange={(e) => handlePaymentDetailChange(record._id, "date", e.target.value)}
-                              disabled={!isSelected || !isDoneStatus}
-                              className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed w-28"
-                            />
+                          <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
+                            {record.checkNo || "—"}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="number"
-                              value={currentDetails.amount || ""}
-                              onChange={(e) => handlePaymentDetailChange(record._id, "amount", e.target.value)}
-                              disabled={!isSelected || !isDoneStatus}
-                              placeholder="Amount"
-                              className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed w-20"
-                            />
+                          <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
+                            {formatDate(record.date)}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            <input
-                              type="number"
-                              value={currentDetails.deduction || ""}
-                              onChange={(e) => handlePaymentDetailChange(record._id, "deduction", e.target.value)}
-                              disabled={!isSelected || !isDoneStatus}
-                              placeholder="Deduction"
-                              className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed w-20"
-                            />
+                          <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
+                            {record.amount || "—"}
+                          </td>
+                          <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
+                            {record.deduction || "—"}
                           </td>
                           <td className="px-2 py-3 whitespace-nowrap">
                             <div className="text-xs font-medium text-blue-900">{record.enquiryNumber || "—"}</div>
@@ -894,30 +828,26 @@ const handleSubmit = async () => {
                           </td>
                           <td className="px-2 py-3 whitespace-nowrap">
                             {record.powerPurchaseAgreement ? (
-                              <a
-                                href={record.powerPurchaseAgreement}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={() => setViewingFileUrl(record.powerPurchaseAgreement)}
                                 className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
-                              </a>
+                              </button>
                             ) : (
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
                           <td className="px-2 py-3 whitespace-nowrap">
                             {record.vendorConsumerAgreement ? (
-                              <a
-                                href={record.vendorConsumerAgreement}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={() => setViewingFileUrl(record.vendorConsumerAgreement)}
                                 className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
-                              </a>
+                              </button>
                             ) : (
                               <span className="text-gray-400 text-xs">—</span>
                             )}
@@ -962,6 +892,7 @@ const handleSubmit = async () => {
           )}
         </div>
       </div>
+
       {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -970,39 +901,36 @@ const handleSubmit = async () => {
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">
               &#8203;
             </span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div className="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full z-10">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
+                <div className="sm:flex sm:items-start w-full">
                   <div className="mx-auto shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
                     <CreditCard className="h-6 w-6 text-blue-600" />
                   </div>
                   <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                      Edit Payment
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4" id="modal-title">
+                      Payment Entry (Enquiry No: {selectedRecord?.enquiryNumber})
                     </h3>
-                    <div className="mt-4 space-y-4">
-                      {/* Status Dropdown */}
+                    <div className="space-y-4">
+                      {/* Payment Type Dropdown */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Payment Status</label>
+                        <label className="block text-sm font-semibold text-gray-700">Payment Type</label>
                         <select
-                          value={paymentForm.payment}
-                          onChange={(e) => setPaymentForm({ ...paymentForm, payment: e.target.value })}
+                          value={paymentForm.paymentType}
+                          onChange={(e) => setPaymentForm({ ...paymentForm, paymentType: e.target.value })}
                           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                         >
-                          <option value="">Select Status</option>
-                          {dropdownOptions.map((option, index) => (
-                            <option key={index} value={option}>
-                              {option}
-                            </option>
-                          ))}
+                          <option value="">Select Payment Type</option>
+                          <option value="Cheque / RTGS / UPI">Cheque / RTGS / UPI</option>
+                          <option value="Bank Finance">Bank Finance</option>
                         </select>
                       </div>
 
-                      {/* Payment Details */}
-                      {paymentForm.payment === "Done" && (
-                        <>
+                      {/* Cheque / RTGS / UPI Conditional Fields */}
+                      {paymentForm.paymentType === "Cheque / RTGS / UPI" && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Check No</label>
+                            <label className="block text-xs font-semibold text-gray-700">Check No</label>
                             <input
                               type="text"
                               value={paymentForm.checkNo}
@@ -1011,7 +939,7 @@ const handleSubmit = async () => {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Date</label>
+                            <label className="block text-xs font-semibold text-gray-700">Date</label>
                             <input
                               type="date"
                               value={paymentForm.date}
@@ -1020,30 +948,122 @@ const handleSubmit = async () => {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Amount</label>
+                            <label className="block text-xs font-semibold text-gray-700">Amount</label>
                             <input
-                              type="text"
+                              type="number"
                               value={paymentForm.amount}
                               onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                               className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Deduction</label>
+                            <label className="block text-xs font-semibold text-gray-700">Deduction</label>
                             <input
-                              type="text"
+                              type="number"
                               value={paymentForm.deduction}
                               onChange={(e) => setPaymentForm({ ...paymentForm, deduction: e.target.value })}
                               className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
                             />
                           </div>
-                        </>
+                        </div>
+                      )}
+
+                      {/* Bank Finance Conditional Fields */}
+                      {paymentForm.paymentType === "Bank Finance" && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-[50vh] overflow-y-auto">
+                          {/* 1. Loan Apply */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700">Loan Apply</label>
+                            <input
+                              type="text"
+                              value={paymentForm.loanApply}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, loanApply: e.target.value })}
+                              className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                              placeholder="e.g. Yes / No / In Progress"
+                            />
+                          </div>
+
+                          {/* 3. Application Number */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700">Application Number</label>
+                            <input
+                              type="text"
+                              value={paymentForm.applicationNumber}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, applicationNumber: e.target.value })}
+                              className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                            />
+                          </div>
+
+                          {/* 4. Registration Number */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700">Registration Number</label>
+                            <input
+                              type="text"
+                              value={paymentForm.registrationNumber}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, registrationNumber: e.target.value })}
+                              className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                            />
+                          </div>
+
+                          {/* File fields */}
+                          {[
+                            { label: "Submission Upload", key: "submissionUpload" },
+                            { label: "Feasibility Report", key: "feasibilityReport" },
+                            { label: "Digital Loan Approval", key: "digitalLoanApproval" },
+                            { label: "Site Feasibility Report", key: "siteFeasibilityReport" },
+                            { label: "Electricity Bill", key: "electricityBill" },
+                            { label: "Aadhaar Card", key: "aadhaarCard" },
+                            { label: "PAN Card", key: "panCard" },
+                            { label: "Bank Statement", key: "bankStatement" },
+                            { label: "Vendor Consumer Agreement", key: "vendorConsumerAgreement" },
+                          ].map((field) => (
+                            <div key={field.key} className="space-y-1">
+                              <label className="block text-xs font-semibold text-gray-700">
+                                {field.label} (Image / PDF)
+                              </label>
+                              <div className="flex gap-2 items-center">
+                                <div className="relative flex-1">
+                                  <input
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    onChange={(e) => handleFileUpload(field.key, e.target.files[0])}
+                                    className="hidden"
+                                    id={`${field.key}Input`}
+                                  />
+                                  <label
+                                    htmlFor={`${field.key}Input`}
+                                    className="flex items-center justify-between w-full border border-gray-300 rounded-lg px-3 py-2 cursor-pointer bg-white hover:bg-gray-50 text-xs text-gray-600 transition-colors shadow-xs"
+                                  >
+                                    <span className="truncate max-w-[130px]">
+                                      {fileUploads[field.key]?.name || "Select file"}
+                                    </span>
+                                    {fileUploads[field.key]?.uploading ? (
+                                      <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                                    ) : (
+                                      <Upload className="h-4 w-4 text-gray-400" />
+                                    )}
+                                  </label>
+                                </div>
+                                {fileUploads[field.key]?.url && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewingFileUrl(fileUploads[field.key].url)}
+                                    className="p-2 border border-blue-200 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors shrink-0"
+                                    title="View Current File"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200">
                 <button
                   type="button"
                   onClick={handlePaymentSubmit}
@@ -1058,6 +1078,60 @@ const handleSubmit = async () => {
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* File Viewer Modal */}
+      {viewingFileUrl && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setViewingFileUrl(null)}></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">
+              &#8203;
+            </span>
+            <div className="relative inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full z-10">
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-sm font-semibold text-gray-900">Document Preview</h3>
+                <button
+                  type="button"
+                  onClick={() => setViewingFileUrl(null)}
+                  className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                >
+                  <span className="sr-only">Close</span>
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="bg-white p-4 flex justify-center items-center min-h-[300px]">
+                {isImage(viewingFileUrl) ? (
+                  <div className="flex justify-center bg-gray-100 p-2 rounded-lg max-w-full">
+                    <img src={viewingFileUrl} alt="Preview" className="max-w-full max-h-[70vh] object-contain" />
+                  </div>
+                ) : (
+                  <iframe
+                    src={viewingFileUrl}
+                    title="Document Preview"
+                    className="w-full h-[70vh] border-0 rounded-lg"
+                  />
+                )}
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 flex justify-end gap-3 border-t border-gray-200">
+                <a
+                  href={viewingFileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Open in New Tab
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setViewingFileUrl(null)}
+                  className="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-xs font-medium text-white hover:bg-blue-700"
+                >
+                  Close
                 </button>
               </div>
             </div>

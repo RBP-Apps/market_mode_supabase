@@ -8,10 +8,10 @@ import supabase from "../utils/supabase"
 const CONFIG = {
 
   PAGE_CONFIG: {
-    title: "Follow-Up",
-    historyTitle: "Follow-Up History",
-    description: "Manage pending follow-up tasks",
-    historyDescription: "View completed follow-up records",
+    title: "Sales Call",
+    historyTitle: "Sales Call History",
+    description: "Manage pending Sales Call tasks",
+    historyDescription: "View completed Sales Call records",
   },
 }
 
@@ -43,8 +43,9 @@ function FollowUpPage() {
   const [successMessage, setSuccessMessage] = useState("")
   const [userRole, setUserRole] = useState("")
   const [username, setUsername] = useState("")
+  const [historyFilter, setHistoryFilter] = useState("all") // "all" | "order_received" | "order_not_received"
 
-  // Follow-up form state
+  // Sales call form state
   const [followUpForm, setFollowUpForm] = useState({
     whatDidCustomerSay: "",
     stage: "",
@@ -55,55 +56,20 @@ function FollowUpPage() {
   // Debounced search term for better performance
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
-  // const formatTimestamp = useCallback(() => {
-  //   const now = new Date()
-  //   const day = now.getDate().toString().padStart(2, "0")
-  //   const month = (now.getMonth() + 1).toString().padStart(2, "0")
-  //   const year = now.getFullYear()
-  //   const hours = now.getHours().toString().padStart(2, "0")
-  //   const minutes = now.getMinutes().toString().padStart(2, "0")
-  //   const seconds = now.getSeconds().toString().padStart(2, "0")
-  //   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
-  // }, [])
-
-
-
   const formatTimestamp = useCallback(() => {
-  return new Date().toISOString().split("T")[0]
-}, [])
-
-
-
-
-  // Normalize any date value (ISO string, Date object, etc.) to DD/MM/YYYY HH:mm:ss
-  // const normalizeTimestamp = useCallback((value) => {
-  //   if (!value) return ""
-  //   // Already in correct DD/MM/YYYY HH:mm:ss format
-  //   if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(value)) {
-  //     return value
-  //   }
-  //   // Convert from ISO / Date object to local DD/MM/YYYY HH:mm:ss
-  //   const date = new Date(value)
-  //   if (isNaN(date.getTime())) return value
-  //   const day = date.getDate().toString().padStart(2, "0")
-  //   const month = (date.getMonth() + 1).toString().padStart(2, "0")
-  //   const year = date.getFullYear()
-  //   const hours = date.getHours().toString().padStart(2, "0")
-  //   const minutes = date.getMinutes().toString().padStart(2, "0")
-  //   const seconds = date.getSeconds().toString().padStart(2, "0")
-  //   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
-  // }, [])
+    return new Date().toISOString().split("T")[0]
+  }, [])
 
 
   const normalizeTimestamp = useCallback((value) => {
-  if (!value) return null
+    if (!value) return null
 
-  const date = new Date(value)
+    const date = new Date(value)
 
-  if (isNaN(date.getTime())) return null
+    if (isNaN(date.getTime())) return null
 
-  return date.toISOString().split("T")[0]
-}, [])
+    return date.toISOString().split("T")[0]
+  }, [])
 
 
 
@@ -125,25 +91,16 @@ function FollowUpPage() {
     return `${year}-${month}-${day}`
   }, [])
 
-  // const formatDateForStorage = useCallback((dateString) => {
-  //   if (!dateString) return ""
-  //   const date = new Date(dateString)
-  //   const day = date.getDate().toString().padStart(2, "0")
-  //   const month = (date.getMonth() + 1).toString().padStart(2, "0")
-  //   const year = date.getFullYear()
-  //   return `${day}/${month}/${year}`
-  // }, [])
-
 
   const formatDateForStorage = useCallback((dateString) => {
-  if (!dateString) return null
+    if (!dateString) return null
 
-  const date = new Date(dateString)
+    const date = new Date(dateString)
 
-  if (isNaN(date.getTime())) return null
+    if (isNaN(date.getTime())) return null
 
-  return date.toISOString().split("T")[0]
-}, [])
+    return date.toISOString().split("T")[0]
+  }, [])
 
   const isEmpty = useCallback((value) => {
     return value === null || value === undefined || (typeof value === "string" && value.trim() === "")
@@ -157,119 +114,114 @@ function FollowUpPage() {
   }, [])
 
   // Fetch dropdown values for stage
-const fetchDropdownValues = useCallback(async () => {
-  try {
-    const { data, error } = await supabase
-      .from("dropdown")
-      .select("stage")
-
-    if (error) throw error
-
-    // same output format (array of stage values)
-    const options = data
-      .map((item) => item.stage)
-      .filter((val) => val && val.trim() !== "")
-
-    setStageOptions(options)
-  } catch (error) {
-    console.error("Error fetching dropdown data:", error)
-
-    // fallback same as before
+  const fetchDropdownValues = useCallback(() => {
+    // Static Stage Options
     setStageOptions([
       "Order Received",
-      "In Progress",
-      "Completed",
-      "Cancelled",
+      "Not Received",
+      "Expected Date",
     ])
-  }
-}, [])
+  }, [])
 
 
+  const fetchSheetData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-const fetchSheetData = useCallback(async () => {
-  try {
-    setLoading(true)
-    setError(null)
+      await Promise.all([
+        fetchDropdownValues(),
 
-    await Promise.all([
-      fetchDropdownValues(),
+        (async () => {
+          // ✅ 1. Fetch both tables
+          const [{ data: salesCallsData, error: salesError }, { data: qcData, error: qcError }] =
+            await Promise.all([
+              supabase
+                .from("sales_calls")
+                .select(`
+                  *,
+                  enquiries!left (
+                    beneficiary_name,
+                    address,
+                    village_block,
+                    district,
+                    contact_number
+                  )
+                `)
+                .not("planned", "is", null),
+              supabase.from("new_quatation_create").select("enquiry_number, net_cost, quatation_copy"),
+            ])
 
-      (async () => {
-        // ✅ 1. Fetch both tables
-        const [{ data: fmsData, error: fmsError }, { data: qcData, error: qcError }] =
-          await Promise.all([
-            supabase.from("fms").select("*"),
-            supabase.from("quatation_create").select("enquiry_number, net_cost"),
-          ])
+          if (salesError) throw salesError
+          if (qcError) throw qcError
 
-        if (fmsError) throw fmsError
-        if (qcError) throw qcError
+          // ✅ 2. Create map for fast lookup
+          const quotationMap = {}
+          qcData.forEach((item) => {
+            quotationMap[item.enquiry_number] = {
+              netCost: item.net_cost,
+              quotationCopy: item.quatation_copy
+            }
+          })
 
-        // ✅ 2. Create map for fast lookup
-        const quotationMap = {}
-        qcData.forEach((item) => {
-          quotationMap[item.enquiry_number] = item.net_cost
-        })
+          const pending = [];
+          const history = [];
 
-        const pending = []
-        const history = []
+          // ✅ 3. Merge data
+          (salesCallsData || []).forEach((row) => {
+            const enquiryNumber = row.enquiry_number || ""
+            if (!enquiryNumber) return
 
-        // ✅ 3. Merge data
-        fmsData.forEach((row) => {
-          const enquiryNumber = row.enquiry_number || ""
-          if (!enquiryNumber) return
+            const qData = quotationMap[enquiryNumber] || {}
+            const enq = row.enquiries || {}
 
-          const netCost = quotationMap[enquiryNumber] || ""
+            const rowData = {
+              _id: `enquiry_${enquiryNumber}_${row.id}`,
+              _rowIndex: row.id,
+              _enquiryNumber: enquiryNumber,
 
-          const rowData = {
-            _id: `enquiry_${enquiryNumber}_${row.id}`,
-            _rowIndex: row.id,
-            _enquiryNumber: enquiryNumber,
+              enquiryNumber: enquiryNumber,
+              beneficiaryName: enq.beneficiary_name || "",
+              address: enq.address || "",
+              villageBlock: enq.village_block || "",
+              district: enq.district || "",
+              contactNumber: enq.contact_number || "",
+              aadharCard: "",
+              addressProof: "",
+              surveyorName: "",
+              surveyorContact: "",
+              quotationNumber: "",
 
-            enquiryNumber: row.enquiry_number || "",
-            beneficiaryName: row.beneficiary_name || "",
-            address: row.address || "",
-            villageBlock: row.village_block || "",
-            district: row.district || "",
-            contactNumber: row.contact_number || "",
-            aadharCard: row.aadhar_card || "",
-            addressProof: row.address_proof || "",
-            surveyorName: row.surveyor_name || "",
-            surveyorContact: row.surveyor_contact || "",
-            quotationNumber: row.reference_no || "",
+              // ✅ MAIN CHANGE
+              valueOfQuotation: qData.netCost || "",
 
-            // ✅ MAIN CHANGE
-            valueOfQuotation: netCost,
+              quotationCopy: qData.quotationCopy || "",
 
-            quotationCopy: row.url || "",
+              actual: row.actual || "",
+              whatDidCustomerSay: row.customer_feedback || "",
+              stage: row.stage || "",
+              nextDateOfCall: row.next_call_date || "",
+              valueOfOrder: row.value_order || "",
+            }
 
-            actual: row.actual_3 || "",
-            whatDidCustomerSay: row.customer_feedback || "",
-            stage: row.stage || "",
-            nextDateOfCall: row.next_call_date || "",
-            valueOfOrder: row.order_value || "",
-          }
+            if (!row.actual) {
+              pending.push(rowData)
+            } else {
+              history.push(rowData)
+            }
+          })
 
-          const isColumnEmpty = !row.actual_3
-
-          if (isColumnEmpty) {
-            pending.push(rowData)
-          } else {
-            history.push(rowData)
-          }
-        })
-
-        setPendingData(pending)
-        setHistoryData(history)
-        setLoading(false)
-      })(),
-    ])
-  } catch (error) {
-    console.error("Error fetching data:", error)
-    setError("Failed to load Follow-Up data: " + error.message)
-    setLoading(false)
-  }
-}, [fetchDropdownValues])
+          setPendingData(pending)
+          setHistoryData(history)
+          setLoading(false)
+        })(),
+      ])
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      setError("Failed to load Sales call data: " + error.message)
+      setLoading(false)
+    }
+  }, [fetchDropdownValues])
 
 
   useEffect(() => {
@@ -287,15 +239,30 @@ const fetchSheetData = useCallback(async () => {
       : pendingData
   }, [pendingData, debouncedSearchTerm])
 
+  const orderReceivedCount = useMemo(() => {
+    return historyData.filter((r) => r.stage === "Order Received").length
+  }, [historyData])
+
+  const orderNotReceivedCount = useMemo(() => {
+    return historyData.filter((r) => r.stage !== "Order Received").length
+  }, [historyData])
+
   const filteredHistoryData = useMemo(() => {
+    let list = historyData
+    if (historyFilter === "order_received") {
+      list = list.filter((record) => record.stage === "Order Received")
+    } else if (historyFilter === "order_not_received") {
+      list = list.filter((record) => record.stage !== "Order Received")
+    }
+
     return debouncedSearchTerm
-      ? historyData.filter((record) =>
+      ? list.filter((record) =>
         Object.values(record).some(
           (value) => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase()),
         ),
       )
-      : historyData
-  }, [historyData, debouncedSearchTerm])
+      : list
+  }, [historyData, historyFilter, debouncedSearchTerm])
 
   const handleFollowUpClick = useCallback((record) => {
     setSelectedRecord(record)
@@ -312,72 +279,72 @@ const fetchSheetData = useCallback(async () => {
     setFollowUpForm((prev) => ({ ...prev, [field]: value }))
   }, [])
 
-const handleFollowUpSubmit = async () => {
-  if (!followUpForm.stage) {
-    alert("Please select a stage")
-    return
-  }
+  const handleFollowUpSubmit = async () => {
+    if (!followUpForm.stage) {
+      alert("Please select a stage")
+      return
+    }
 
-  setIsSubmitting(true)
+    setIsSubmitting(true)
 
-  try {
-    const isEdit = !isEmpty(selectedRecord.actual)
+    try {
+      const isEdit = !isEmpty(selectedRecord.actual)
 
-    const actualDate = isEdit
-      ? normalizeTimestamp(selectedRecord.actual)
-      : formatTimestamp()
+      const actualDate = isEdit
+        ? normalizeTimestamp(selectedRecord.actual)
+        : formatTimestamp()
 
-    const { error } = await supabase
-      .from("fms")
-      .update({
-        actual_3: actualDate, // ✅ main column
-        customer_feedback: followUpForm.whatDidCustomerSay,
+      const { error } = await supabase
+        .from("sales_calls")
+        .update({
+          actual: actualDate, // ✅ main column
+          customer_feedback: followUpForm.whatDidCustomerSay,
+          stage: followUpForm.stage,
+          next_call_date: followUpForm.nextDateOfCall
+            ? formatDateForStorage(followUpForm.nextDateOfCall)
+            : null,
+          value_order: followUpForm.valueOfOrder,
+        })
+        .eq("id", selectedRecord._rowIndex)
+
+      if (error) throw error
+
+      setSuccessMessage(
+        `Sales call completed successfully for Enquiry Number: ${selectedRecord.enquiryNumber}`
+      )
+
+      setShowFollowUpModal(false)
+
+      const updatedRecord = {
+        ...selectedRecord,
+        actual: actualDate,
+        whatDidCustomerSay: followUpForm.whatDidCustomerSay,
         stage: followUpForm.stage,
-        next_call_date: followUpForm.nextDateOfCall
-          ? formatDateForStorage(followUpForm.nextDateOfCall)
-          : null,
-        order_value: followUpForm.valueOfOrder,
-      })
-      .eq("id", selectedRecord._rowIndex)
+        nextDateOfCall: formatDateForStorage(followUpForm.nextDateOfCall),
+        valueOfOrder: followUpForm.valueOfOrder,
+      }
 
-    if (error) throw error
-
-    setSuccessMessage(
-      `Follow-up completed successfully for Enquiry Number: ${selectedRecord.enquiryNumber}`
-    )
-
-    setShowFollowUpModal(false)
-
-    const updatedRecord = {
-      ...selectedRecord,
-      actual: actualDate,
-      whatDidCustomerSay: followUpForm.whatDidCustomerSay,
-      stage: followUpForm.stage,
-      nextDateOfCall: formatDateForStorage(followUpForm.nextDateOfCall),
-      valueOfOrder: followUpForm.valueOfOrder,
-    }
-
-    if (isEdit) {
-      setHistoryData((prev) =>
-        prev.map((rec) =>
-          rec._id === selectedRecord._id ? updatedRecord : rec
+      if (isEdit) {
+        setHistoryData((prev) =>
+          prev.map((rec) =>
+            rec._id === selectedRecord._id ? updatedRecord : rec
+          )
         )
-      )
-    } else {
-      setPendingData((prev) =>
-        prev.filter((rec) => rec._id !== selectedRecord._id)
-      )
-      setHistoryData((prev) => [updatedRecord, ...prev])
-    }
+      } else {
+        setPendingData((prev) =>
+          prev.filter((rec) => rec._id !== selectedRecord._id)
+        )
+        setHistoryData((prev) => [updatedRecord, ...prev])
+      }
 
-    setTimeout(() => setSuccessMessage(""), 3000)
-  } catch (error) {
-    console.error("Error submitting follow-up:", error)
-    alert("Failed to submit follow-up: " + error.message)
-  } finally {
-    setIsSubmitting(false)
+      setTimeout(() => setSuccessMessage(""), 3000)
+    } catch (error) {
+      console.error("Error submitting follow-up:", error)
+      alert("Failed to submit follow-up: " + error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
-}
 
   const toggleSection = useCallback((section) => {
     setShowHistory(section === "history")
@@ -416,31 +383,69 @@ const handleFollowUpSubmit = async () => {
         </div>
 
         {/* Section Toggle Buttons */}
-        <div className="flex space-x-2 border-b border-gray-200">
-          <button
-            onClick={() => toggleSection("pending")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${!showHistory
-              ? "border-blue-500 text-blue-600 bg-blue-50"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-          >
-            <div className="flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Pending ({filteredPendingData.length})
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200 pb-2">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => toggleSection("pending")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${!showHistory
+                ? "border-blue-500 text-blue-600 bg-blue-50"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+            >
+              <div className="flex items-center">
+                <FileText className="h-4 w-4 mr-2" />
+                Pending ({filteredPendingData.length})
+              </div>
+            </button>
+            <button
+              onClick={() => toggleSection("history")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${showHistory
+                ? "border-blue-500 text-blue-600 bg-blue-50"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+            >
+              <div className="flex items-center">
+                <History className="h-4 w-4 mr-2" />
+                History ({historyData.length})
+              </div>
+            </button>
+          </div>
+
+          {/* History Filter Sub-tabs */}
+          {showHistory && (
+            <div className="flex items-center space-x-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
+              <button
+                onClick={() => setHistoryFilter("all")}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  historyFilter === "all"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                }`}
+              >
+                All ({historyData.length})
+              </button>
+              <button
+                onClick={() => setHistoryFilter("order_received")}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  historyFilter === "order_received"
+                    ? "bg-green-600 text-white shadow-xs"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                }`}
+              >
+                Order Received ({orderReceivedCount})
+              </button>
+              <button
+                onClick={() => setHistoryFilter("order_not_received")}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  historyFilter === "order_not_received"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                }`}
+              >
+                Order Not Received ({orderNotReceivedCount})
+              </button>
             </div>
-          </button>
-          <button
-            onClick={() => toggleSection("history")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${showHistory
-              ? "border-blue-500 text-blue-600 bg-blue-50"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-          >
-            <div className="flex items-center">
-              <History className="h-4 w-4 mr-2" />
-              History ({filteredHistoryData.length})
-            </div>
-          </button>
+          )}
         </div>
 
         {/* Success Message */}
@@ -468,7 +473,7 @@ const handleFollowUpSubmit = async () => {
               ) : (
                 <>
                   <FileText className="h-4 w-4 mr-2" />
-                  Pending Follow-Ups
+                  Pending Sales call
                 </>
               )}
             </h2>
@@ -493,59 +498,59 @@ const handleFollowUpSubmit = async () => {
             /* Table with Fixed Height and Scrolling */
             <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10 text-nowrap">
+                <thead className="bg-gray-50 sticky top-0 z-10 whitespace-normal text-center">
                   <tr>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Action
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Enquiry Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Beneficiary Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Address
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Village/Block
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Dist.
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Aadhar Card
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Address Proof
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Surveyor Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Quotation Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Value Of Quotation
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Quotation Copy
                     </th>
                     {showHistory && (
                       <>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           What Did Customer Say
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Stage
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Value Of Order
                         </th>
                       </>
@@ -557,7 +562,7 @@ const handleFollowUpSubmit = async () => {
                     filteredHistoryData.length > 0 ? (
                       filteredHistoryData.map((record) => (
                         <tr key={record._id} className="hover:bg-gray-50">
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <button
                               onClick={() => handleFollowUpClick(record)}
                               className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -566,36 +571,36 @@ const handleFollowUpSubmit = async () => {
                               Edit
                             </button>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs font-medium text-gray-900">{record.enquiryNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.beneficiaryName || "—"}</div>
                           </td>
                           <td className="px-2 py-3 max-w-xs">
-                            <div className="text-xs text-gray-900 truncate" title={record.address}>
+                            <div className="text-xs text-gray-900 whitespace-normal break-words" title={record.address}>
                               {record.address || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.villageBlock || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.district || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.contactNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.aadharCard || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.addressProof ? (
                               <a
                                 href={record.addressProof}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -604,25 +609,25 @@ const handleFollowUpSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.quotationNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.valueOfQuotation || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.quotationCopy ? (
                               <a
                                 href={record.quotationCopy}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -632,16 +637,16 @@ const handleFollowUpSubmit = async () => {
                             )}
                           </td>
                           <td className="px-2 py-3 max-w-xs">
-                            <div className="text-xs text-gray-900 truncate" title={record.whatDidCustomerSay}>
+                            <div className="text-xs text-gray-900 whitespace-normal break-words" title={record.whatDidCustomerSay}>
                               {record.whatDidCustomerSay || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                               {record.stage || "—"}
                             </span>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.valueOfOrder || "—"}</div>
                           </td>
                         </tr>
@@ -649,7 +654,13 @@ const handleFollowUpSubmit = async () => {
                     ) : (
                       <tr>
                         <td colSpan={17} className="px-4 py-8 text-center text-gray-500 text-sm">
-                          {searchTerm ? "No history records matching your search" : "No completed follow-ups found"}
+                          {searchTerm
+                            ? "No history records matching your search"
+                            : historyFilter === "order_received"
+                            ? "No Order Received records found in history"
+                            : historyFilter === "order_not_received"
+                            ? "No Order Not Received records found in history"
+                            : "No completed follow-ups found"}
                         </td>
                       </tr>
                     )
@@ -659,49 +670,49 @@ const handleFollowUpSubmit = async () => {
                         <td className="px-2 py-3 whitespace-nowrap">
                           <button
                             onClick={() => handleFollowUpClick(record)}
-                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                            className="inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                           >
                             <Phone className="h-3 w-3 mr-1" />
-                            Follow-Up
+                            Sales Call
                           </button>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs font-medium text-blue-900">{record.enquiryNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Users className="h-3 w-3 mr-1 text-gray-400" />
                             {record.beneficiaryName || "—"}
                           </div>
                         </td>
                         <td className="px-2 py-3 max-w-xs">
-                          <div className="text-xs text-gray-900 truncate flex items-center" title={record.address}>
+                          <div className="text-xs text-gray-900 whitespace-normal break-words flex items-center justify-center" title={record.address}>
                             <MapPin className="h-3 w-3 mr-1 text-gray-400" />
                             {record.address || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.villageBlock || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.district || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Phone className="h-3 w-3 mr-1 text-gray-400" />
                             {record.contactNumber || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.aadharCard || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.addressProof ? (
                             <a
                               href={record.addressProof}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -710,28 +721,28 @@ const handleFollowUpSubmit = async () => {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.quotationNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <DollarSign className="h-3 w-3 mr-1 text-green-500" />
                             {record.valueOfQuotation || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.quotationCopy ? (
                             <a
                               href={record.quotationCopy}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -745,7 +756,7 @@ const handleFollowUpSubmit = async () => {
                   ) : (
                     <tr>
                       <td colSpan={14} className="px-4 py-8 text-center text-gray-500 text-sm">
-                        {searchTerm ? "No pending follow-ups matching your search" : "No pending follow-ups found"}
+                        {searchTerm ? "No pending follow-ups matching your search" : "No pending Sales call found"}
                       </td>
                     </tr>
                   )}
@@ -755,14 +766,14 @@ const handleFollowUpSubmit = async () => {
           )}
         </div>
 
-        {/* Follow-Up Modal */}
+        {/* Sales Call  Modal */}
         {showFollowUpModal && selectedRecord && (
           <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
             <div className="relative bg-white border max-w-2xl w-full shadow-2xl rounded-lg max-h-[90vh] overflow-y-auto">
               <div className="sticky top-0 bg-white border-b border-gray-200 p-4 rounded-t-lg">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium text-gray-900">
-                    Follow-Up Form - Enquiry: {selectedRecord.enquiryNumber}
+                    Sales Call Form - Enquiry: {selectedRecord.enquiryNumber}
                   </h3>
                   <button onClick={closeFollowUpModal} className="text-gray-400 hover:text-gray-600">
                     <X className="h-5 w-5" />

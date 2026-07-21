@@ -14,9 +14,42 @@ export default function UserRegistration() {
     given_by: "",
   });
 
-  // ========== PAGE OPTIONS को masterData से dynamic बनाएं ==========
-  const [pageOptions, setPageOptions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ========== PAGE OPTIONS को sidebar pages से static बनाएं ==========
+  const pageOptions = [
+    "Dashboard",
+    "Enquiry Form",
+    "Documents Uploads",
+    "Assign Servey",
+    "Site Survey",
+    "Quotation Create",
+    "Sales Call",
+    "Payment Confirmation",
+    "Dispatch Material",
+    "Material Received",
+    "Installation",
+    "QC",
+    "IP Payment",
+    "Final Payment",
+    "Billings and Payment Details",
+    "Solarkart",
+    "Inform To Customer",
+    "Mandatory Documents for Synchronization",
+    "Inspection",
+    "Project Synchronisation",
+    "Subsidy Redemption",
+    "Subsidy Disbursal",
+    "Insurance",
+    "Module Entry",
+    "Analysis Graph",
+    "All Graph",
+    "Weekly Report",
+    "Monthly Report",
+    "Add User",
+    "Product List",
+    "Dispatch Approval",
+    "Bank Process"
+  ];
+  const [loading, setLoading] = useState(false);
 
   const [pageAccess, setPageAccess] = useState([]);
   const [openPageBox, setOpenPageBox] = useState(false);
@@ -37,8 +70,6 @@ export default function UserRegistration() {
   };
 
   const [formData, setFormData] = useState({
-    department: "",
-    given_by: "",
     doer_name: "",
     email_id: "",
     wa_number: "",
@@ -74,14 +105,8 @@ export default function UserRegistration() {
 
       if (error) throw error;
       setMasterData(data || []);
-      setLoading(false);
-
-      // Master data से unique departments निकालें
-      const departments = [...new Set(data.map((item) => item.department))];
-      setPageOptions(departments.sort());
     } catch (error) {
       console.error("Error fetching master data:", error);
-      setLoading(false);
     }
   };
 
@@ -129,8 +154,6 @@ export default function UserRegistration() {
       username: formData.doer_name, // Note: username field in login
       password: formData.password,
       name: formData.doer_name,
-      department: formData.department,
-      given_by: formData.given_by,
       email_id: formData.email_id,
       wa_number: formData.wa_number,
       role: formData.role,
@@ -146,8 +169,6 @@ export default function UserRegistration() {
 
       setOpen(false);
       setFormData({
-        department: "",
-        given_by: "",
         doer_name: "",
         email_id: "",
         wa_number: "",
@@ -915,8 +936,8 @@ export default function UserRegistration() {
       {/* ================= ADD USER MODAL ================= */}
       {open && (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-y-auto">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 flex-shrink-0">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-white">Add New User</h2>
                 <button
@@ -945,7 +966,7 @@ export default function UserRegistration() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Username
@@ -1004,55 +1025,10 @@ export default function UserRegistration() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Department Field */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Department
-                  </label>
-                  <select
-                    className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                    name="department"
-                    onChange={handleChange}
-                    value={formData.department}
-                  >
-                    <option value="">Select Department</option>
-                    {Array.from(
-                      new Set(masterData.map((item) => item.department)),
-                    ).map((dept, index) => (
-                      <option key={index} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Given By Field */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Given By
-                  </label>
-                  <select
-                    className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                    name="given_by"
-                    onChange={handleChange}
-                    value={formData.given_by}
-                  >
-                    <option value="">Select Given By</option>
-                    {Array.from(
-                      new Set(masterData.map((item) => item.given_by)),
-                    ).map((given, index) => (
-                      <option key={index} value={given}>
-                        {given}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
 
               <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Page Access (Departments)
+                  Page Access
                 </label>
 
                 {/* Select box */}
@@ -1062,7 +1038,7 @@ export default function UserRegistration() {
                 >
                   <span className="text-gray-600">
                     {pageAccess.length === 0
-                      ? "Select departments"
+                      ? "Select pages"
                       : `${pageAccess.length} selected`}
                   </span>
                   <span>▾</span>
@@ -1075,23 +1051,23 @@ export default function UserRegistration() {
                       <div className="text-center py-4">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
                         <p className="text-gray-500 mt-2">
-                          Loading departments...
+                          Loading pages...
                         </p>
                       </div>
                     ) : pageOptions.length === 0 ? (
                       <p className="text-gray-500 text-center py-4">
-                        No departments found
+                        No pages found
                       </p>
                     ) : (
                       <>
-                        {/* All Departments */}
+                        {/* All Pages */}
                         <label className="flex items-center gap-2 font-medium text-green-600">
                           <input
                             type="checkbox"
                             checked={pageAccess.length === pageOptions.length}
                             onChange={toggleAllPages}
                           />
-                          All Departments
+                          All Pages
                         </label>
 
                         <hr />

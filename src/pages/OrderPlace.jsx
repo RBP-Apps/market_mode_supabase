@@ -7,7 +7,7 @@ import supabase from "../utils/supabase"
 
 // Configuration object
 const CONFIG = {
-  
+
   // Updated page configuration
   PAGE_CONFIG: {
     title: "Solarkart",
@@ -52,12 +52,18 @@ function OrderReceivePage() {
     bos: "",
     acdb: "",
     dcdb: "",
-    orderCopy: "", // Changed from null to empty string for URL storage
+    orderCopy1: "",
+    orderCopy2: "",
+    orderCopy3: "",
+    orderCopy4: "",
   })
 
   // Professional file upload status state
   const [fileUploads, setFileUploads] = useState({
-    orderCopy: { uploading: false, uploaded: false, url: "", error: null, name: "" }
+    orderCopy1: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    orderCopy2: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    orderCopy3: { uploading: false, uploaded: false, url: "", error: null, name: "" },
+    orderCopy4: { uploading: false, uploaded: false, url: "", error: null, name: "" }
   })
 
   // Debounced search term for better performance
@@ -88,157 +94,108 @@ function OrderReceivePage() {
     setUsername(user || "")
   }, [])
 
-  // Optimized data fetching
-// const fetchSupabaseData = useCallback(async () => {
-//   try {
-//     setLoading(true)
-//     setError(null)
-
-//     const { data, error } = await supabase
-//       .from("fms")
-//       .select("*")
-//       .not("enquiry_number", "is", null)
-
-//     if (error) throw error
-
-//     const pending = []
-//     const history = []
-
-//     data.forEach((row) => {
-//       const record = {
-//         _id: row.id,
-//         _enquiryNumber: row.enquiry_number,
-
-//         enquiryNumber: row.enquiry_number || "",
-//         beneficiaryName: row.beneficiary_name || "",
-//         address: row.address || "",
-//         villageBlock: row.village_block || "",
-//         district: row.district || "",
-//         contactNumber: row.contact_number || "",
-
-//         aadharCard: row.aadhar_card || "",
-//         addressProof: row.address_proof || "",
-//         surveyorName: row.surveyor_name || "",
-//         surveyorContact: row.surveyor_contact || "",
-
-//         quotationNumber: row.reference_no || "",
-//         quotationValue: row.order_value || "",
-
-//         // 🔥 IMPORTANT CHANGE
-//         actualDate: row.actual_4 ? formatDate(row.actual_4) : "",
-
-//         module: row.module || "",
-//         inverter: row.inverter || "",
-//         bos: row.bos || "",
-//         acdb: row.acdb || "",
-//         dcdb: row.dcdb || "",
-//         orderCopy: row.order_copy || "",
-//       }
-
-//       // ✅ SAME LOGIC (as you said)
-//       const isActualEmpty = isEmpty(row.actual_4)
-
-//       if (isActualEmpty) {
-//         pending.push(record)
-//       } else {
-//         history.push(record)
-//       }
-//     })
-
-//     setPendingData(pending)
-//     setHistoryData(history)
-//     setLoading(false)
-//   } catch (err) {
-//     console.error("Error fetching supabase data:", err)
-//     setError("Failed to load data: " + err.message)
-//     setLoading(false)
-//   }
-// }, [isEmpty, formatDate])
 
 
-const fetchSupabaseData = useCallback(async () => {
-  try {
-    setLoading(true)
-    setError(null)
+  const fetchSupabaseData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-    // ✅ 1. Fetch both tables parallel
-    const [{ data: fmsData, error: fmsError }, { data: qcData, error: qcError }] =
-      await Promise.all([
-        supabase.from("fms").select("*").not("enquiry_number", "is", null),
-        supabase.from("quatation_create").select("enquiry_number, net_cost"),
-      ])
+      // ✅ 1. Fetch both tables parallel
+      const [{ data: opData, error: opError }, { data: qcData, error: qcError }] =
+        await Promise.all([
+          supabase
+            .from("order_placements")
+            .select(`
+              *,
+              enquiries!left (
+                beneficiary_name,
+                address,
+                village_block,
+                district,
+                contact_number
+              )
+            `)
+            .not("planned", "is", null),
+          supabase.from("new_quatation_create").select("enquiry_number, net_cost"),
+        ])
 
-    if (fmsError) throw fmsError
-    if (qcError) throw qcError
+      if (opError) throw opError
+      if (qcError) throw qcError
 
-    // ✅ 2. Create lookup map
-    const quotationMap = {}
-    qcData.forEach((item) => {
-      quotationMap[item.enquiry_number] = item.net_cost
-    })
+      // ✅ 2. Create lookup map
+      const quotationMap = {}
+      qcData.forEach((item) => {
+        quotationMap[item.enquiry_number] = item.net_cost
+      })
 
-    const pending = []
-    const history = []
+      const pending = [];
+      const history = [];
 
-    // ✅ 3. Merge data
-    fmsData.forEach((row) => {
-      const enquiryNumber = row.enquiry_number || ""
+      // ✅ 3. Merge data
+      (opData || []).forEach((row) => {
+        const enquiryNumber = row.enquiry_number || ""
+        const enq = row.enquiries || {}
 
-      const record = {
-        _id: row.id,
-        _enquiryNumber: enquiryNumber,
+        const record = {
+          _id: row.id,
+          _enquiryNumber: enquiryNumber,
 
-        enquiryNumber: enquiryNumber,
-        beneficiaryName: row.beneficiary_name || "",
-        address: row.address || "",
-        villageBlock: row.village_block || "",
-        district: row.district || "",
-        contactNumber: row.contact_number || "",
+          enquiryNumber: enquiryNumber,
+          beneficiaryName: enq.beneficiary_name || "",
+          address: enq.address || "",
+          villageBlock: enq.village_block || "",
+          district: enq.district || "",
+          contactNumber: enq.contact_number || "",
 
-        aadharCard: row.aadhar_card || "",
-        addressProof: row.address_proof || "",
-        surveyorName: row.surveyor_name || "",
-        surveyorContact: row.surveyor_contact || "",
+          aadharCard: "",
+          addressProof: "",
+          surveyorName: "",
+          surveyorContact: "",
 
-        quotationNumber: row.reference_no || "",
+          quotationNumber: "",
 
-        // ✅ MAIN CHANGE (net_cost from quatation_create)
-        quotationValue: quotationMap[enquiryNumber] || "",
+          // ✅ MAIN CHANGE (net_cost from new_quatation_create)
+          quotationValue: quotationMap[enquiryNumber] || "",
 
-        actualDate: row.actual_4 ? formatDate(row.actual_4) : "",
+          actualDate: row.actual ? formatDate(row.actual) : "",
 
-        module: row.module || "",
-        inverter: row.inverter || "",
-        bos: row.bos || "",
-        acdb: row.acdb || "",
-        dcdb: row.dcdb || "",
-        orderCopy: row.order_copy || "",
-      }
+          module: row.module || "",
+          inverter: row.inverter || "",
+          bos: row.bos || "",
+          acdb: row.acdb || "",
+          dcdb: row.dcdb || "",
+          orderCopy: row.order_copy_1 || "",
+          orderCopy1: row.order_copy_1 || "",
+          orderCopy2: row.order_copy_2 || "",
+          orderCopy3: row.order_copy_3 || "",
+          orderCopy4: row.order_copy_4 || "",
+        }
 
-      const isActualEmpty = isEmpty(row.actual_4)
+        const isActualEmpty = isEmpty(row.actual)
 
-      if (isActualEmpty) {
-        pending.push(record)
-      } else {
-        history.push(record)
-      }
-    })
+        if (isActualEmpty) {
+          pending.push(record)
+        } else {
+          history.push(record)
+        }
+      })
 
-    setPendingData(pending)
-    setHistoryData(history)
-    setLoading(false)
-  } catch (err) {
-    console.error("Error fetching supabase data:", err)
-    setError("Failed to load data: " + err.message)
-    setLoading(false)
-  }
-}, [isEmpty, formatDate])
+      setPendingData(pending)
+      setHistoryData(history)
+      setLoading(false)
+    } catch (err) {
+      console.error("Error fetching supabase data:", err)
+      setError("Failed to load data: " + err.message)
+      setLoading(false)
+    }
+  }, [isEmpty, formatDate])
 
 
 
-useEffect(() => {
-  fetchSupabaseData()
-}, [fetchSupabaseData])
+  useEffect(() => {
+    fetchSupabaseData()
+  }, [fetchSupabaseData])
 
   // Optimized filtered data with debounced search
   const filteredPendingData = useMemo(() => {
@@ -271,26 +228,26 @@ useEffect(() => {
   }, [])
 
   const uploadImageToDrive = useCallback(async (file) => {
-  try {
-    const fileExt = file.name.split(".").pop()
-    const fileName = `${selectedRecord._enquiryNumber}_${Date.now()}.${fileExt}`
+    try {
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${selectedRecord._enquiryNumber}_${Date.now()}.${fileExt}`
 
-    const { data, error } = await supabase.storage
-      .from("survey_file")
-      .upload(`order/${fileName}`, file)
+      const { data, error } = await supabase.storage
+        .from("survey_file")
+        .upload(`order/${fileName}`, file)
 
-    if (error) throw error
+      if (error) throw error
 
-    const { data: publicUrlData } = supabase.storage
-      .from("survey_file")
-      .getPublicUrl(`order/${fileName}`)
+      const { data: publicUrlData } = supabase.storage
+        .from("survey_file")
+        .getPublicUrl(`order/${fileName}`)
 
-    return publicUrlData.publicUrl
-  } catch (err) {
-    console.error("Upload error:", err)
-    throw err
-  }
-}, [selectedRecord])
+      return publicUrlData.publicUrl
+    } catch (err) {
+      console.error("Upload error:", err)
+      throw err
+    }
+  }, [selectedRecord])
 
   const handleOrderClick = useCallback((record) => {
     setSelectedRecord(record)
@@ -300,17 +257,41 @@ useEffect(() => {
       bos: record.bos || "",
       acdb: record.acdb || "",
       dcdb: record.dcdb || "",
-      orderCopy: record.orderCopy || "",
+      orderCopy1: record.orderCopy1 || "",
+      orderCopy2: record.orderCopy2 || "",
+      orderCopy3: record.orderCopy3 || "",
+      orderCopy4: record.orderCopy4 || "",
     })
 
     // Initialize professional upload status
     setFileUploads({
-      orderCopy: {
+      orderCopy1: {
         uploading: false,
-        uploaded: !!record.orderCopy,
-        url: record.orderCopy || "",
+        uploaded: !!record.orderCopy1,
+        url: record.orderCopy1 || "",
         error: null,
-        name: record.orderCopy ? "Existing Order Copy" : ""
+        name: record.orderCopy1 ? "Existing Order Copy 1" : ""
+      },
+      orderCopy2: {
+        uploading: false,
+        uploaded: !!record.orderCopy2,
+        url: record.orderCopy2 || "",
+        error: null,
+        name: record.orderCopy2 ? "Existing Order Copy 2" : ""
+      },
+      orderCopy3: {
+        uploading: false,
+        uploaded: !!record.orderCopy3,
+        url: record.orderCopy3 || "",
+        error: null,
+        name: record.orderCopy3 ? "Existing Order Copy 3" : ""
+      },
+      orderCopy4: {
+        uploading: false,
+        uploaded: !!record.orderCopy4,
+        url: record.orderCopy4 || "",
+        error: null,
+        name: record.orderCopy4 ? "Existing Order Copy 4" : ""
       }
     })
 
@@ -379,96 +360,106 @@ useEffect(() => {
     setOrderForm((prev) => ({ ...prev, [field]: value }))
   }, [])
 
-  
 
-const handleOrderSubmit = async () => {
-  if (!orderForm.module || !orderForm.inverter) {
-    alert("Please fill Module and Inverter")
-    return
-  }
 
-  setIsSubmitting(true)
-
-  try {
-    const uploadingFields = Object.keys(fileUploads).filter(
-      (key) => fileUploads[key].uploading
-    )
-
-    if (uploadingFields.length > 0) {
-      alert("Wait for file upload")
+  const handleOrderSubmit = async () => {
+    if (!orderForm.module || !orderForm.inverter) {
+      alert("Please fill Module and Inverter")
       return
     }
 
-    const isEdit = !isEmpty(selectedRecord.actualDate)
+    const hasAtLeastOneImage = fileUploads.orderCopy1.url || fileUploads.orderCopy2.url || fileUploads.orderCopy3.url || fileUploads.orderCopy4.url
+    if (!hasAtLeastOneImage) {
+      alert("Please upload at least one Order Copy image (Order Copy 1, 2, 3, or 4)")
+      return
+    }
 
-    // const actualDate = isEdit
-    //   ? selectedRecord.actualDate
-    //   : new Date().toISOString()
+    setIsSubmitting(true)
 
-    
+    try {
+      const uploadingFields = Object.keys(fileUploads).filter(
+        (key) => fileUploads[key].uploading
+      )
 
-    const actualDate = isEdit
-  ? selectedRecord.actualDate.split("/").reverse().join("-")
-  : new Date().toISOString().split("T")[0]
+      if (uploadingFields.length > 0) {
+        alert("Wait for file upload")
+        return
+      }
 
-    console.log("selectedRecord.actualDate =", selectedRecord.actualDate)
+      const isEdit = !isEmpty(selectedRecord.actualDate)
 
-    const orderCopyUrl = fileUploads.orderCopy.url
+      const actualDate = isEdit
+        ? selectedRecord.actualDate.split("/").reverse().join("-")
+        : new Date().toISOString().split("T")[0]
 
-    // ✅ SUPABASE UPDATE
-    const { error } = await supabase
-      .from("fms")
-      .update({
-        actual_4: actualDate,
+      console.log("selectedRecord.actualDate =", selectedRecord.actualDate)
+
+      const orderCopy1Url = fileUploads.orderCopy1.url
+      const orderCopy2Url = fileUploads.orderCopy2.url
+      const orderCopy3Url = fileUploads.orderCopy3.url
+      const orderCopy4Url = fileUploads.orderCopy4.url
+
+      // ✅ SUPABASE UPDATE
+      const { error } = await supabase
+        .from("order_placements")
+        .update({
+          actual: actualDate,
+          module: orderForm.module,
+          inverter: orderForm.inverter,
+          bos: orderForm.bos,
+          acdb: orderForm.acdb,
+          dcdb: orderForm.dcdb,
+          order_copy_1: orderCopy1Url,
+          order_copy_2: orderCopy2Url,
+          order_copy_3: orderCopy3Url,
+          order_copy_4: orderCopy4Url,
+        })
+        .eq("enquiry_number", selectedRecord._enquiryNumber)
+
+      if (error) throw error
+
+      setSuccessMessage(
+        `Order processed: ${selectedRecord.enquiryNumber}`
+      )
+
+      setShowOrderModal(false)
+
+      const updatedRecord = {
+        ...selectedRecord,
+        actualDate: actualDate,
         module: orderForm.module,
         inverter: orderForm.inverter,
         bos: orderForm.bos,
         acdb: orderForm.acdb,
         dcdb: orderForm.dcdb,
-        order_copy: orderCopyUrl,
-      })
-      .eq("enquiry_number", selectedRecord._enquiryNumber)
+        orderCopy: orderCopy1Url,
+        orderCopy1: orderCopy1Url,
+        orderCopy2: orderCopy2Url,
+        orderCopy3: orderCopy3Url,
+        orderCopy4: orderCopy4Url,
+      }
 
-    if (error) throw error
-
-    setSuccessMessage(
-      `Order processed: ${selectedRecord.enquiryNumber}`
-    )
-
-    setShowOrderModal(false)
-
-    const updatedRecord = {
-      ...selectedRecord,
-      actualDate: actualDate,
-      module: orderForm.module,
-      inverter: orderForm.inverter,
-      bos: orderForm.bos,
-      acdb: orderForm.acdb,
-      dcdb: orderForm.dcdb,
-      orderCopy: orderCopyUrl,
-    }
-
-    if (isEdit) {
-      setHistoryData((prev) =>
-        prev.map((rec) =>
-          rec._id === selectedRecord._id ? updatedRecord : rec
+      if (isEdit) {
+        setHistoryData((prev) =>
+          prev.map((rec) =>
+            rec._id === selectedRecord._id ? updatedRecord : rec
+          )
         )
-      )
-    } else {
-      setPendingData((prev) =>
-        prev.filter((rec) => rec._id !== selectedRecord._id)
-      )
-      setHistoryData((prev) => [updatedRecord, ...prev])
-    }
+      } else {
+        setPendingData((prev) =>
+          prev.filter((rec) => rec._id !== selectedRecord._id)
+        )
+        setHistoryData((prev) => [updatedRecord, ...prev])
+      }
 
-    setTimeout(() => setSuccessMessage(""), 3000)
-  } catch (err) {
-    console.error("Submit error:", err)
-    alert("Failed: " + err.message)
-  } finally {
-    setIsSubmitting(false)
+      setTimeout(() => setSuccessMessage(""), 3000)
+    } catch (err) {
+      console.error("Submit error:", err)
+      alert("Failed: " + err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
-}
 
   const toggleSection = useCallback((section) => {
     setShowHistory(section === "history")
@@ -586,69 +577,78 @@ const handleOrderSubmit = async () => {
             /* Table with Fixed Height and Scrolling */
             <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10 text-nowrap">
+                <thead className="bg-gray-50 sticky top-0 z-10 whitespace-normal text-center">
                   <tr>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Action
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Enquiry Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Beneficiary Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Address
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Village/Block
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Dist.
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number Of Beneficiary
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Aadhar Card
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Address Proof
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Surveyor Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Quotation Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Value Of Quotation
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Quotation Copy
                     </th>
                     {showHistory && (
                       <>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Module
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Inverter
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           BOS
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           ACDB
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           DCDB
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Order Copy
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Order Copy 1
+                        </th>
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Order Copy 2
+                        </th>
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Order Copy 3
+                        </th>
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Order Copy 4
                         </th>
                       </>
                     )}
@@ -659,7 +659,7 @@ const handleOrderSubmit = async () => {
                     filteredHistoryData.length > 0 ? (
                       filteredHistoryData.map((record) => (
                         <tr key={record._id} className="hover:bg-gray-50">
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <button
                               onClick={() => handleOrderClick(record)}
                               className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -668,36 +668,36 @@ const handleOrderSubmit = async () => {
                               Edit
                             </button>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs font-medium text-gray-900">{record.enquiryNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.beneficiaryName || "—"}</div>
                           </td>
                           <td className="px-2 py-3 max-w-xs">
-                            <div className="text-xs text-gray-900 truncate" title={record.address}>
+                            <div className="text-xs text-gray-900 whitespace-normal break-words" title={record.address}>
                               {record.address || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.villageBlock || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.district || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.contactNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.aadharCard || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.addressProof ? (
                               <a
                                 href={record.addressProof}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -706,25 +706,25 @@ const handleOrderSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.quotationNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.quotationValue || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.quotationCopy ? (
                               <a
                                 href={record.quotationCopy}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -733,28 +733,73 @@ const handleOrderSubmit = async () => {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.module || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.inverter || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.bos || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.acdb || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.dcdb || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            {record.orderCopy ? (
+                          <td className="px-2 py-3 whitespace-normal">
+                            {record.orderCopy1 ? (
                               <a
-                                href={record.orderCopy}
+                                href={record.orderCopy1}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 whitespace-normal">
+                            {record.orderCopy2 ? (
+                              <a
+                                href={record.orderCopy2}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 whitespace-normal">
+                            {record.orderCopy3 ? (
+                              <a
+                                href={record.orderCopy3}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 whitespace-normal">
+                            {record.orderCopy4 ? (
+                              <a
+                                href={record.orderCopy4}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -767,7 +812,7 @@ const handleOrderSubmit = async () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={20} className="px-4 py-8 text-center text-gray-500 text-sm">
+                        <td colSpan={23} className="px-4 py-8 text-center text-gray-500 text-sm">
                           {searchTerm ? "No history records matching your search" : "No completed orders found"}
                         </td>
                       </tr>
@@ -775,52 +820,52 @@ const handleOrderSubmit = async () => {
                   ) : filteredPendingData.length > 0 ? (
                     filteredPendingData.map((record) => (
                       <tr key={record._id} className="hover:bg-gray-50">
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <button
                             onClick={() => handleOrderClick(record)}
-                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-linear-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                            className="inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                           >
                             <Package className="h-3 w-3 mr-1" />
                             Order
                           </button>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs font-medium text-blue-900">{record.enquiryNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Users className="h-3 w-3 mr-1 text-gray-400" />
                             {record.beneficiaryName || "—"}
                           </div>
                         </td>
                         <td className="px-2 py-3 max-w-xs">
-                          <div className="text-xs text-gray-900 truncate flex items-center" title={record.address}>
+                          <div className="text-xs text-gray-900 whitespace-normal break-words flex items-center justify-center" title={record.address}>
                             <MapPin className="h-3 w-3 mr-1 text-gray-400" />
                             {record.address || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.villageBlock || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.district || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Phone className="h-3 w-3 mr-1 text-gray-400" />
                             {record.contactNumber || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.aadharCard || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.addressProof ? (
                             <a
                               href={record.addressProof}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -829,28 +874,28 @@ const handleOrderSubmit = async () => {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.quotationNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <DollarSign className="h-3 w-3 mr-1 text-green-500" />
                             {record.quotationValue || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.quotationCopy ? (
                             <a
                               href={record.quotationCopy}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -973,36 +1018,111 @@ const handleOrderSubmit = async () => {
                     />
                   </div>
 
-                  {/* Order Copy */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Order Copy <span className="text-gray-500 text-[10px] ml-1">(Image/PDF)</span>
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => handleFileUpload("orderCopy", e.target.files[0])}
-                      className="mt-1 block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    <UploadStatus field="orderCopy" />
-
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {selectedRecord?.orderCopy && (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-[10px] text-gray-500 font-medium italic">Existing Order:</span>
+                  {/* Order Copies */}
+                  <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Order Copy 1 <span className="text-red-500">*</span> <span className="text-gray-500 text-[10px] ml-1">(Image/PDF)</span>
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleFileUpload("orderCopy1", e.target.files[0])}
+                        className="mt-1 block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <UploadStatus field="orderCopy1" />
+                      {fileUploads.orderCopy1.url && (
+                        <div className="mt-1">
                           <button
                             type="button"
-                            onClick={() => window.open(selectedRecord.orderCopy, "_blank", "noopener,noreferrer")}
-                            className="inline-flex items-center px-2 py-1 text-[10px] font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                            onClick={() => window.open(fileUploads.orderCopy1.url, "_blank", "noopener,noreferrer")}
+                            className="inline-flex items-center text-[10px] font-medium text-blue-600 hover:text-blue-800"
                           >
                             <Eye className="h-3 w-3 mr-1" />
-                            Preview Previous Order
+                            View Order Copy 1
                           </button>
                         </div>
                       )}
+                    </div>
 
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Order Copy 2 <span className="text-gray-500 text-[10px] ml-1">(Image/PDF)</span>
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleFileUpload("orderCopy2", e.target.files[0])}
+                        className="mt-1 block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <UploadStatus field="orderCopy2" />
+                      {fileUploads.orderCopy2.url && (
+                        <div className="mt-1">
+                          <button
+                            type="button"
+                            onClick={() => window.open(fileUploads.orderCopy2.url, "_blank", "noopener,noreferrer")}
+                            className="inline-flex items-center text-[10px] font-medium text-blue-600 hover:text-blue-800"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Order Copy 2
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Order Copy 3 <span className="text-gray-500 text-[10px] ml-1">(Image/PDF)</span>
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleFileUpload("orderCopy3", e.target.files[0])}
+                        className="mt-1 block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <UploadStatus field="orderCopy3" />
+                      {fileUploads.orderCopy3.url && (
+                        <div className="mt-1">
+                          <button
+                            type="button"
+                            onClick={() => window.open(fileUploads.orderCopy3.url, "_blank", "noopener,noreferrer")}
+                            className="inline-flex items-center text-[10px] font-medium text-blue-600 hover:text-blue-800"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Order Copy 3
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Order Copy 4 <span className="text-gray-500 text-[10px] ml-1">(Image/PDF)</span>
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleFileUpload("orderCopy4", e.target.files[0])}
+                        className="mt-1 block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <UploadStatus field="orderCopy4" />
+                      {fileUploads.orderCopy4.url && (
+                        <div className="mt-1">
+                          <button
+                            type="button"
+                            onClick={() => window.open(fileUploads.orderCopy4.url, "_blank", "noopener,noreferrer")}
+                            className="inline-flex items-center text-[10px] font-medium text-blue-600 hover:text-blue-800"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Order Copy 4
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {selectedRecord?.quotationCopy && (
-                        <div className="flex items-center space-x-2 border-l border-gray-200 pl-2">
+                        <div className="flex items-center space-x-2 pl-2">
                           <button
                             type="button"
                             onClick={() => window.open(selectedRecord.quotationCopy, "_blank", "noopener,noreferrer")}
@@ -1028,7 +1148,7 @@ const handleOrderSubmit = async () => {
                   </button>
                   <button
                     onClick={handleOrderSubmit}
-                    disabled={isSubmitting || !orderForm.module || !orderForm.inverter}
+                    disabled={isSubmitting || !orderForm.module || !orderForm.inverter || !(fileUploads.orderCopy1.url || fileUploads.orderCopy2.url || fileUploads.orderCopy3.url || fileUploads.orderCopy4.url)}
                     className="px-3 py-1 bg-linear-to-r from-green-500 to-blue-600 text-white rounded-md hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
                   >
                     {isSubmitting ? "Submitting..." : "Submit"}

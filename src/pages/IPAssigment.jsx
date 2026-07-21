@@ -69,98 +69,108 @@ function IPAssignmentPage() {
   }, [])
 
 
-const fetchSheetData = useCallback(async () => {
-  try {
-    setLoading(true)
-    setError(null)
+  const fetchSheetData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-    // 🔹 1. fetch fms
-    const { data: fmsData, error: fmsError } = await supabase
-      .from("fms")
-      .select("*")
-      .not("enquiry_number", "is", null)
+      // 🔹 1. fetch ip_assignments and quotation in parallel
+      const [{ data: ipData, error: ipError }, { data: quotationData, error: quotationError }] =
+        await Promise.all([
+          supabase
+            .from("ip_assignments")
+            .select(`
+              *,
+              enquiries!left (
+                beneficiary_name,
+                address,
+                village_block,
+                district,
+                contact_number
+              )
+            `)
+            .not("planned", "is", null),
+          supabase
+            .from("new_quatation_create")
+            .select("*"),
+        ])
 
-    if (fmsError) throw fmsError
+      if (ipError) throw ipError
+      if (quotationError) throw quotationError
 
-    // 🔹 2. fetch quotation
-    const { data: quotationData, error: quotationError } = await supabase
-      .from("quatation_create")
-      .select("*")
+      // ✅ 🔥 FAST LOOKUP MAP (performance fix)
+      const quotationMap = {}
+      quotationData.forEach((q) => {
+        quotationMap[q.enquiry_number] = q
+      })
 
-    if (quotationError) throw quotationError
+      const pending = [];
+      const history = [];
 
-    // ✅ 🔥 FAST LOOKUP MAP (performance fix)
-    const quotationMap = {}
-    quotationData.forEach((q) => {
-      quotationMap[q.enquiry_number] = q
-    })
+      (ipData || []).forEach((row) => {
+        const enquiryNumber = row.enquiry_number || ""
+        // 🔥 get matching quotation
+        const quotation = quotationMap[enquiryNumber] || {}
+        const enq = row.enquiries || {}
 
-    const pending = []
-    const history = []
+        const rowData = {
+          _id: row.id,
 
-    fmsData.forEach((row) => {
-      // 🔥 get matching quotation
-      const quotation = quotationMap[row.enquiry_number] || {}
+          // 🔹 IP ASSIGNMENTS & ENQUIRIES DATA
+          enquiryNumber: enquiryNumber,
+          beneficiaryName: enq.beneficiary_name || "",
+          address: enq.address || "",
+          contactNumber: enq.contact_number || "",
+          villageBlock: enq.village_block || "",
+          district: enq.district || "",
+          addressProof: "",
 
-      const rowData = {
-        _id: row.id,
+          surveyorName: "",
+          surveyorContact: "",
+          orderCopy: "",
 
-        // 🔹 FMS DATA
-        enquiryNumber: row.enquiry_number || "",
-        beneficiaryName: row.beneficiary_name || "",
-        address: row.address || "",
-        contactNumber: row.contact_number || "",
-        villageBlock: row.village_block || "",
-        district: row.district || "",
-        addressProof: row.address_proof || "",
+          ipName: row.ip_name || "",
+          ipContact: row.ip_contact || "",
 
-        surveyorName: row.surveyor_name || "",
-        surveyorContact: row.surveyor_contact || "",
-        orderCopy: row.order_copy || "",
+          // 🔹 OPTIONAL FIELDS (future safe)
+          gstNumber: "",
+          gstCertificates: "",
+          aadharCard: "",
+          panCard: "",
+          workOrderNumber: "",
+          workOrderCopy: "",
 
-        ipName: row.ip_name || "",
-        ipContact: row.ip_contact || "",
+          // 🔹 QUOTATION DATA (NO overwrite now)
+          amount: quotation.amount || "",
+          netCost: quotation.net_cost || "",
+          gst: quotation.gst || "",
+          rate: quotation.rate || "",
+          qty: quotation.qty || "",
+          quotationCopy: quotation.quatation_copy || "",
+          sendStatus: quotation.send_status || "",
+          bankAccountDetails: quotation.bank_name || "",
 
-        // 🔹 OPTIONAL FIELDS (future safe)
-        gstNumber: row.gst_number || "",
-        gstCertificates: row.gst_certificate || "",
-        aadharCard: row.aadhar_card || "",
-        panCard: row.pan_card || "",
-        workOrderNumber: row.work_order_number || "",
-        workOrderCopy: row.order_copy || "",
+          // 🔹 STAGE
+          actual: row.actual,
+        }
 
-        // 🔹 QUOTATION DATA (NO overwrite now)
-        amount: quotation.amount || "",
-        netCost: quotation.net_cost || "",
-        gst: quotation.gst || "",
-        rate: quotation.rate || "",
-        qty: quotation.qty || "",
-        quotationCopy: quotation.quatation_copy || "",
-        sendStatus: quotation.send_status || "",
-        bankAccountDetails: quotation.bank_name || "",
+        // 🔥 correct stage filter
+        if (!row.actual) {
+          pending.push(rowData)
+        } else {
+          history.push(rowData)
+        }
+      })
 
-
-        // 🔹 STAGE
-        actual: row.actual_5,
-      }
-
-      // 🔥 correct stage filter
-      if (!row.actual_5) {
-        pending.push(rowData)
-      } else {
-        history.push(rowData)
-      }
-    })
-
-    setPendingData(pending)
-    setHistoryData(history)
-  } catch (error) {
-    console.error("Error fetching data:", error)
-    setError(error.message)
-  } finally {
-    setLoading(false)
-  }
-}, [])
+      setPendingData(pending)
+      setHistoryData(history)
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      setError(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
 
   useEffect(() => {
@@ -212,69 +222,70 @@ const fetchSheetData = useCallback(async () => {
 
 
 
-const handleIPSubmit = async () => {
-  if (!ipForm.ipName || !ipForm.contactNumberOfIP) {
-    alert("Please fill required fields")
-    return
-  }
-
-  setIsSubmitting(true)
-
-  try {
-    const isEdit = !!selectedRecord.actual
-
-    const actualDate = isEdit
-      ? selectedRecord.actual
-      : new Date().toISOString()
-
-    const updatePayload = {
-      actual_5: actualDate,
-      ip_name: ipForm.ipName,
-      ip_contact: ipForm.contactNumberOfIP,
+  const handleIPSubmit = async () => {
+    if (!ipForm.ipName || !ipForm.contactNumberOfIP) {
+      alert("Please fill required fields")
+      return
     }
 
-    const { error } = await supabase
-  .from("fms")
-  .update(updatePayload)
-  .eq("enquiry_number", selectedRecord.enquiryNumber)
+    setIsSubmitting(true)
 
-    if (error) throw error
+    try {
+      const isEdit = !!selectedRecord.actual
 
-    setSuccessMessage(
-      `IP Assignment completed for ${selectedRecord._enquiryNumber}`
-    )
+      const actualDate = isEdit
+        ? selectedRecord.actual
+        : new Date().toISOString()
 
-    setShowIPModal(false)
+      const updatePayload = {
+        actual: actualDate,
+        ip_name: ipForm.ipName,
+        ip_contact: ipForm.contactNumberOfIP,
+      }
 
-    const updatedRecord = {
-      ...selectedRecord,
-      actual: actualDate,
-      ...updatePayload,
-    }
+      const { error } = await supabase
+        .from("ip_assignments")
+        .update(updatePayload)
+        .eq("enquiry_number", selectedRecord.enquiryNumber)
 
-    if (isEdit) {
-      setHistoryData((prev) =>
-        prev.map((rec) =>
-          rec._id === selectedRecord._id ? updatedRecord : rec
+      if (error) throw error
+
+      setSuccessMessage(
+        `IP Assignment completed for ${selectedRecord.enquiryNumber}`
+      )
+
+      setShowIPModal(false)
+
+      const updatedRecord = {
+        ...selectedRecord,
+        actual: actualDate,
+        ipName: ipForm.ipName,
+        ipContact: ipForm.contactNumberOfIP,
+      }
+
+      if (isEdit) {
+        setHistoryData((prev) =>
+          prev.map((rec) =>
+            rec._id === selectedRecord._id ? updatedRecord : rec
+          )
         )
-      )
-    } else {
-      setPendingData((prev) =>
-        prev.filter((rec) => rec._id !== selectedRecord._id)
-      )
-      setHistoryData((prev) => [updatedRecord, ...prev])
-    }
+      } else {
+        setPendingData((prev) =>
+          prev.filter((rec) => rec._id !== selectedRecord._id)
+        )
+        setHistoryData((prev) => [updatedRecord, ...prev])
+      }
 
-    setTimeout(() => setSuccessMessage(""), 3000)
-    console.log("Selected Record:", selectedRecord)
-console.log("Enquiry Number:", selectedRecord._enquiryNumber)
-  } catch (error) {
-    console.error(error)
-    alert("Failed: " + error.message)
-  } finally {
-    setIsSubmitting(false)
+      setTimeout(() => setSuccessMessage(""), 3000)
+      console.log("Selected Record:", selectedRecord)
+      console.log("Enquiry Number:", selectedRecord._enquiryNumber)
+    } catch (error) {
+      console.error(error)
+      alert("Failed: " + error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
-}
 
   const toggleSection = useCallback((section) => {
     setShowHistory(section === "history")
@@ -395,111 +406,111 @@ console.log("Enquiry Number:", selectedRecord._enquiryNumber)
             /* Table with Fixed Height and Scrolling */
             <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10 text-nowrap">
+                <thead className="bg-gray-50 sticky top-0 z-10 whitespace-normal text-center">
                   <tr>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Action
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Enquiry Number
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Beneficiary Name
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Address
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Village/Block
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Dist.
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Number Of Beneficiary
                     </th>
                     {!showHistory && (
                       <>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Address Proof
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Surveyor Name
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Contact Number
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Quotation Copy
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Module
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Inverter
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           BOS
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           ACDB
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           DCDB
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Order Copy
                         </th>
                       </>
                     )}
                     {showHistory && (
                       <>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Surveyor Name
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Contact Number
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Order Copy
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           IP Name
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Contact Number Of IP
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           GST Number
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           GST Certificates
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Bank Account Details
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Aadhar Card
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Pan Card
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Work Order Number
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Work Order Copy
                         </th>
                       </>
                     )}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-200 text-center">
                   {showHistory ? (
                     filteredHistoryData.length > 0 ? (
                       filteredHistoryData.map((record) => (
                         <tr key={record._id} className="hover:bg-gray-50">
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <button
                               onClick={() => handleIPClick(record)}
                               className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -508,39 +519,39 @@ console.log("Enquiry Number:", selectedRecord._enquiryNumber)
                               Edit
                             </button>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs font-medium text-gray-900">{record.enquiryNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.beneficiaryName || "—"}</div>
                           </td>
                           <td className="px-2 py-3 max-w-xs">
-                            <div className="text-xs text-gray-900 truncate" title={record.address}>
+                            <div className="text-xs text-gray-900 whitespace-normal break-words" title={record.address}>
                               {record.address || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.villageBlock || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.district || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.contactNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.orderCopy ? (
                               <a
                                 href={record.orderCopy}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -549,24 +560,24 @@ console.log("Enquiry Number:", selectedRecord._enquiryNumber)
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs font-medium text-blue-600">
                               {record.ipName || "—"}
                             </div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.ipContact || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.gstNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.gstCertificates ? (
                               <a
                                 href={record.gstCertificates}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -575,70 +586,25 @@ console.log("Enquiry Number:", selectedRecord._enquiryNumber)
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
-                          {/* <td className="px-2 py-3 whitespace-nowrap">
-                            {record.bankAccountDetails ? (
-                              <a
-                                href={record.bankAccountDetails}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </a>
-                            ) : (
-                              <span className="text-gray-400 text-xs">—</span>
-                            )}
-                          </td> */}
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.bankAccountDetails || ""}
                           </td>
-                          {/* <td className="px-2 py-3 whitespace-nowrap">
-                            {record.aadharCard ? (
-                              <a
-                                href={record.aadharCard}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </a>
-                            ) : (
-                              <span className="text-gray-400 text-xs">—</span>
-                            )}
-                          </td> */}
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.aadharCard || ""}
                           </td>
-                          {/* <td className="px-2 py-3 whitespace-nowrap">
-                            {record.panCard ? (
-                              <a
-                                href={record.panCard}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </a>
-                            ) : (
-                              <span className="text-gray-400 text-xs">—</span>
-                            )}
-                          </td> */}
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.panCard || ""}
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs text-gray-900">{record.workOrderNumber || "—"}</div>
                           </td>
-                          <td className="px-2 py-3 whitespace-nowrap">
+                          <td className="px-2 py-3 whitespace-normal">
                             {record.workOrderCopy ? (
                               <a
                                 href={record.workOrderCopy}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -659,49 +625,49 @@ console.log("Enquiry Number:", selectedRecord._enquiryNumber)
                   ) : filteredPendingData.length > 0 ? (
                     filteredPendingData.map((record) => (
                       <tr key={record._id} className="hover:bg-gray-50">
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <button
                             onClick={() => handleIPClick(record)}
-                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-linear-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                            className="inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                           >
                             <User className="h-3 w-3 mr-1" />
                             IP
                           </button>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs font-medium text-blue-900">{record.enquiryNumber || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Users className="h-3 w-3 mr-1 text-gray-400" />
                             {record.beneficiaryName || "—"}
                           </div>
                         </td>
                         <td className="px-2 py-3 max-w-xs">
-                          <div className="text-xs text-gray-900 truncate flex items-center" title={record.address}>
+                          <div className="text-xs text-gray-900 whitespace-normal break-words flex items-center justify-center" title={record.address}>
                             <MapPin className="h-3 w-3 mr-1 text-gray-400" />
                             {record.address || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.villageBlock || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.district || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="text-xs text-gray-900 flex items-center">
+                        <td className="px-2 py-3 whitespace-normal">
+                          <div className="text-xs text-gray-900 flex items-center justify-center">
                             <Phone className="h-3 w-3 mr-1 text-gray-400" />
                             {record.contactNumber || "—"}
                           </div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.addressProof ? (
                             <a
                               href={record.addressProof}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -710,19 +676,19 @@ console.log("Enquiry Number:", selectedRecord._enquiryNumber)
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorName || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.surveyorContact || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.quotationCopy ? (
                             <a
                               href={record.quotationCopy}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -731,28 +697,28 @@ console.log("Enquiry Number:", selectedRecord._enquiryNumber)
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.module || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.inverter || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.bos || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.acdb || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           <div className="text-xs text-gray-900">{record.dcdb || "—"}</div>
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap">
+                        <td className="px-2 py-3 whitespace-normal">
                           {record.orderCopy ? (
                             <a
                               href={record.orderCopy}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
+                              className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View

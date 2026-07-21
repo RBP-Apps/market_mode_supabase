@@ -1,21 +1,21 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { CheckCircle2, X, Search, History, MapPin, Users, Phone, Eye, CreditCard, DollarSign, Calendar, Edit3, Loader2 } from "lucide-react"
+import { CheckCircle2, X, Search, History, MapPin, Users, Phone, Eye, Upload, AlertCircle, FileText, Loader2, ArrowRight } from "lucide-react"
 import AdminLayout from "../components/layout/AdminLayout"
 import supabase from "../utils/supabase"
 
 // Page configuration
 const CONFIG = {
   PAGE_CONFIG: {
-    title: "Payment Confirmation/ Loan Section",
-    historyTitle: "Payment Confirmation History",
-    description: "Confirm and track customer payments",
-    historyDescription: "View completed payment confirmations",
+    title: "CSPDL Inspection and Solar Meter Inspection",
+    historyTitle: "CSPDL Inspection History",
+    description: "Manage pending CSPDL inspections and meter installations",
+    historyDescription: "View completed CSPDL inspections",
   },
 }
 
-// Debounce hook for search input
+// Debounce hook for search optimization
 function useDebounce(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value)
 
@@ -32,7 +32,7 @@ function useDebounce(value, delay) {
   return debouncedValue
 }
 
-export default function PaymentConfirmationPage() {
+export default function CSPDLInspectionPage() {
   const [pendingData, setPendingData] = useState([])
   const [historyData, setHistoryData] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -46,27 +46,20 @@ export default function PaymentConfirmationPage() {
 
   // Form State
   const [form, setForm] = useState({
-    paymentType: "",
-    chequeNumber: "",
-    utrNumber: "",
-    paymentDate: "",
-    amount: "",
-    downPayment: "",
-    remainingAmount:"",
+    inspectionStatus: "", // 'Yes' or 'No'
+    meterInstallationUpload: "", // URL of the uploaded document
+  })
+
+  // File upload progress state
+  const [fileUpload, setFileUpload] = useState({
+    uploading: false,
+    uploaded: false,
+    url: "",
+    error: null,
+    name: ""
   })
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
-
-  const formatDateForInput = useCallback((dateString) => {
-    if (!dateString) return ""
-    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) return dateString
-
-    const parts = dateString.split("/")
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`
-    }
-    return dateString
-  }, [])
 
   const formatDate = useCallback((dateString) => {
     if (!dateString) return "—"
@@ -82,13 +75,13 @@ export default function PaymentConfirmationPage() {
     }
   }, [])
 
-  const fetchPaymentConfirmations = useCallback(async () => {
+  const fetchCSPDLInspections = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
       const { data, error: fetchError } = await supabase
-        .from("payment_confirmations")
+        .from("cspdl_inspections")
         .select(`
           *,
           enquiries!left (
@@ -117,13 +110,8 @@ export default function PaymentConfirmationPage() {
             actual: row.actual || "",
             delay: row.delay || "",
             status: row.status || "",
-            paymentType: row.payment_type || "",
-            chequeNumber: row.cheque_number || "",
-            utrNumber: row.utr_number || "",
-            paymentDate: row.payment_date || "",
-            amount: row.amount || "",
-            downPayment: row.down_payment || "",
-            remainingAmount: row.remainingAmount || "",
+            inspectionStatus: row.inspection_status || "",
+            meterInstallationUpload: row.meter_installation_upload || "",
           }
 
           if (row.planned && !row.actual) {
@@ -137,18 +125,18 @@ export default function PaymentConfirmationPage() {
       setPendingData(pending)
       setHistoryData(history)
     } catch (err) {
-      console.error("Error fetching payment confirmations:", err)
-      setError("Failed to load payment confirmations: " + err.message)
+      console.error("Error fetching CSPDL inspections:", err)
+      setError("Failed to load CSPDL inspections: " + err.message)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchPaymentConfirmations()
-  }, [fetchPaymentConfirmations])
+    fetchCSPDLInspections()
+  }, [fetchCSPDLInspections])
 
-  // Search filter
+  // Filters
   const filteredPendingData = useMemo(() => {
     return debouncedSearchTerm
       ? pendingData.filter((record) =>
@@ -172,20 +160,74 @@ export default function PaymentConfirmationPage() {
   const handleActionClick = useCallback((record) => {
     setSelectedRecord(record)
     setForm({
-      paymentType: record.paymentType || "",
-      chequeNumber: record.chequeNumber || "",
-      utrNumber: record.utrNumber || "",
-      paymentDate: formatDateForInput(record.paymentDate || ""),
-      amount: record.amount || "",
-      downPayment: record.downPayment || "",
-      remainingAmount: record.remainingAmount || "",
+      inspectionStatus: record.inspectionStatus || "",
+      meterInstallationUpload: record.meterInstallationUpload || "",
+    })
+    setFileUpload({
+      uploading: false,
+      uploaded: !!record.meterInstallationUpload,
+      url: record.meterInstallationUpload || "",
+      error: null,
+      name: record.meterInstallationUpload ? "Existing File" : ""
     })
     setShowModal(true)
-  }, [formatDateForInput])
+  }, [])
+
+  const handleFileUpload = async (file) => {
+    if (!file) return
+
+    setFileUpload({
+      uploading: true,
+      uploaded: false,
+      url: "",
+      error: null,
+      name: file.name
+    })
+
+    try {
+      const fileExt = file.name.split(".").pop()
+      const fileName = `cspdl_inspect_${selectedRecord.enquiryNumber}_${Date.now()}.${fileExt}`
+      const filePath = `module_uploads/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from("module_uploads")
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage
+        .from("module_uploads")
+        .getPublicUrl(filePath)
+
+      setFileUpload({
+        uploading: false,
+        uploaded: true,
+        url: data.publicUrl,
+        error: null,
+        name: file.name
+      })
+
+      setForm((prev) => ({ ...prev, meterInstallationUpload: data.publicUrl }))
+    } catch (err) {
+      console.error("File upload error:", err)
+      setFileUpload({
+        uploading: false,
+        uploaded: false,
+        url: "",
+        error: err.message,
+        name: file.name
+      })
+    }
+  }
 
   const handleFormSubmit = async () => {
-    if (!form.paymentType) {
-      alert("Please select payment type.")
+    if (!form.inspectionStatus) {
+      alert("Please select Inspection Status.")
+      return
+    }
+
+    if (form.inspectionStatus === "Yes" && !form.meterInstallationUpload) {
+      alert("Please upload the Meter Installation document.")
       return
     }
 
@@ -195,31 +237,27 @@ export default function PaymentConfirmationPage() {
       const actualDate = new Date().toISOString()
 
       const updatePayload = {
-        payment_type: form.paymentType,
-        cheque_number: form.chequeNumber || null,
-        utr_number: form.utrNumber || null,
-        payment_date: form.paymentDate || null,
-        amount: form.amount ? parseFloat(form.amount) : null,
-        down_payment: form.downPayment ? parseFloat(form.downPayment) : null,
+        inspection_status: form.inspectionStatus,
+        meter_installation_upload: form.inspectionStatus === "Yes" ? form.meterInstallationUpload : null,
         actual: actualDate,
         status: "Done"
       }
 
       const { error: updateError } = await supabase
-        .from("payment_confirmations")
+        .from("cspdl_inspections")
         .update(updatePayload)
         .eq("enquiry_number", selectedRecord.enquiryNumber)
 
       if (updateError) throw updateError
 
       setShowModal(false)
-      setSuccessMessage(`Payment confirmed successfully for ${selectedRecord.enquiryNumber}`)
-      fetchPaymentConfirmations()
+      setSuccessMessage(`CSPDL Inspection saved successfully for ${selectedRecord.enquiryNumber}`)
+      fetchCSPDLInspections()
 
       setTimeout(() => setSuccessMessage(""), 3000)
     } catch (err) {
       console.error("Save error:", err)
-      alert("Failed to save confirmation: " + err.message)
+      alert("Failed to save inspection: " + err.message)
     } finally {
       setIsSubmitting(false)
     }
@@ -246,7 +284,7 @@ export default function PaymentConfirmationPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
-                placeholder={showHistory ? "Search history..." : "Search pending confirmations..."}
+                placeholder={showHistory ? "Search history..." : "Search pending inspections..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 pr-4 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white shadow-xs w-64"
@@ -266,8 +304,8 @@ export default function PaymentConfirmationPage() {
             }`}
           >
             <div className="flex items-center">
-              <CreditCard className="h-4.5 w-4.5 mr-2 text-blue-500" />
-              Pending Confirmations ({filteredPendingData.length})
+              <FileText className="h-4.5 w-4.5 mr-2 text-blue-500" />
+              Pending Inspections ({filteredPendingData.length})
             </div>
           </button>
           <button
@@ -280,7 +318,7 @@ export default function PaymentConfirmationPage() {
           >
             <div className="flex items-center">
               <History className="h-4.5 w-4.5 mr-2 text-blue-500" />
-              Confirmation History ({filteredHistoryData.length})
+              Inspection History ({filteredHistoryData.length})
             </div>
           </button>
         </div>
@@ -303,12 +341,12 @@ export default function PaymentConfirmationPage() {
           {loading ? (
             <div className="text-center py-20">
               <Loader2 className="inline-block animate-spin h-8 w-8 text-blue-600 mb-4" />
-              <p className="text-blue-600 font-medium text-sm">Loading payment confirmation data...</p>
+              <p className="text-blue-600 font-medium text-sm">Loading inspection data...</p>
             </div>
           ) : error ? (
             <div className="bg-red-50 p-6 rounded-md text-red-800 text-center text-sm">
               {error}
-              <button className="underline ml-2 hover:text-red-900 font-bold" onClick={fetchPaymentConfirmations}>
+              <button className="underline ml-2 hover:text-red-900 font-bold" onClick={fetchCSPDLInspections}>
                 Try again
               </button>
             </div>
@@ -322,15 +360,11 @@ export default function PaymentConfirmationPage() {
                     <th className="px-4 py-4">Beneficiary Name</th>
                     <th className="px-4 py-4">Address</th>
                     <th className="px-4 py-4">Contact Number</th>
-                    <th className="px-4 py-4">Payment Type</th>
-                    <th className="px-4 py-4">Cheque Number</th>
-                    <th className="px-4 py-4">UTR Number</th>
-                    <th className="px-4 py-4">Payment Date</th>
-                    <th className="px-4 py-4">Amount</th>
-                    <th className="px-4 py-4">Down Payment</th>
-                    <th className="px-4 py-4">Remaining Amount</th>
+                    <th className="px-4 py-4">Planned Date</th>
                     {showHistory && (
                       <>
+                        <th className="px-4 py-4">Inspection Status</th>
+                        <th className="px-4 py-4">Meter Installation Copy</th>
                         <th className="px-4 py-4">Confirm Date</th>
                         <th className="px-4 py-4">Delay (Days)</th>
                       </>
@@ -347,8 +381,7 @@ export default function PaymentConfirmationPage() {
                               onClick={() => handleActionClick(record)}
                               className="inline-flex items-center px-2.5 py-1.5 border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold rounded-lg transition-colors"
                             >
-                              <Edit3 className="h-3.5 w-3.5 mr-1" />
-                              Edit
+                              View / Edit
                             </button>
                           </td>
                           <td className="px-4 py-3 font-semibold text-blue-900">{record.enquiryNumber || "—"}</td>
@@ -368,18 +401,28 @@ export default function PaymentConfirmationPage() {
                               {record.contactNumber || "—"}
                             </div>
                           </td>
-                          <td className="px-4 py-3 font-medium text-gray-900">{record.paymentType || "—"}</td>
-                          <td className="px-4 py-3">{record.chequeNumber || "—"}</td>
-                          <td className="px-4 py-3">{record.utrNumber || "—"}</td>
-                          <td className="px-4 py-3">{formatDate(record.paymentDate)}</td>
-                          <td className="px-4 py-3 font-semibold text-green-700">
-                            {record.amount ? `₹${parseFloat(record.amount).toLocaleString("en-IN")}` : "—"}
+                          <td className="px-4 py-3">{formatDate(record.planned)}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">
+                            <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                              record.inspectionStatus === "Yes" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                            }`}>
+                              {record.inspectionStatus || "—"}
+                            </span>
                           </td>
-                          <td className="px-4 py-3 font-semibold text-purple-700">
-                            {record.downPayment ? `₹${parseFloat(record.downPayment).toLocaleString("en-IN")}` : "—"}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-purple-700">
-                            {record.remainingAmount ? `₹${parseFloat(record.remainingAmount).toLocaleString("en-IN")}` : "—"}
+                          <td className="px-4 py-3">
+                            {record.meterInstallationUpload ? (
+                              <a
+                                href={record.meterInstallationUpload}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold underline"
+                              >
+                                <Eye size={13} />
+                                View Upload
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-green-700 font-semibold">{formatDate(record.actual)}</td>
                           <td className="px-4 py-3 font-semibold">
@@ -391,8 +434,8 @@ export default function PaymentConfirmationPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={13} className="px-4 py-16 text-center text-gray-500 font-medium">
-                          {searchTerm ? "No confirmation history records matching your search" : "No completed confirmations found"}
+                        <td colSpan={10} className="px-4 py-16 text-center text-gray-500 font-medium">
+                          {searchTerm ? "No inspection history records matching your search" : "No completed inspections found"}
                         </td>
                       </tr>
                     )
@@ -404,8 +447,7 @@ export default function PaymentConfirmationPage() {
                             onClick={() => handleActionClick(record)}
                             className="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm transition-colors"
                           >
-                            <DollarSign className="h-3.5 w-3.5 mr-1" />
-                            Confirm
+                            Action
                           </button>
                         </td>
                         <td className="px-4 py-3 font-semibold text-blue-950">{record.enquiryNumber || "—"}</td>
@@ -425,22 +467,13 @@ export default function PaymentConfirmationPage() {
                             {record.contactNumber || "—"}
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{record.paymentType || "—"}</td>
-                        <td className="px-4 py-3">{record.chequeNumber || "—"}</td>
-                        <td className="px-4 py-3">{record.utrNumber || "—"}</td>
-                        <td className="px-4 py-3">{formatDate(record.paymentDate)}</td>
-                        <td className="px-4 py-3 font-semibold text-green-700">
-                          {record.amount ? `₹${parseFloat(record.amount).toLocaleString("en-IN")}` : "—"}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-purple-700">
-                          {record.downPayment ? `₹${parseFloat(record.downPayment).toLocaleString("en-IN")}` : "—"}
-                        </td>
+                        <td className="px-4 py-3">{formatDate(record.planned)}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={11} className="px-4 py-16 text-center text-gray-500 font-medium">
-                        {searchTerm ? "No pending confirmations matching your search" : "No pending confirmations found"}
+                      <td colSpan={6} className="px-4 py-16 text-center text-gray-500 font-medium">
+                        {searchTerm ? "No pending inspections matching your search" : "No pending inspections found"}
                       </td>
                     </tr>
                   )}
@@ -460,11 +493,11 @@ export default function PaymentConfirmationPage() {
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
             {/* Modal content */}
-            <div className="relative inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full z-10 border border-blue-50">
+            <div className="relative inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full z-10 border border-blue-50">
               <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-bold text-white" id="modal-title">
-                    Payment Confirmation Form
+                    CSPDL Inspection Status Update
                   </h3>
                   <p className="text-xs text-blue-100 mt-0.5">
                     Customer: {selectedRecord.beneficiaryName} | Enquiry No: {selectedRecord.enquiryNumber}
@@ -479,103 +512,84 @@ export default function PaymentConfirmationPage() {
                 </button>
               </div>
 
-              <div className="px-6 py-6 space-y-4">
-                {/* 1. Payment Type Dropdown */}
+              <div className="px-6 py-6 space-y-5">
+                {/* 1. Status Dropdown */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    Payment Type <span className="text-red-500">*</span>
+                    Inspection Status <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={form.paymentType}
-                    onChange={(e) => setForm({ ...form, paymentType: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
+                    value={form.inspectionStatus}
+                    onChange={(e) => {
+                      setForm({
+                        ...form,
+                        inspectionStatus: e.target.value,
+                        // Reset file if status changed to No
+                        meterInstallationUpload: e.target.value === "No" ? "" : form.meterInstallationUpload
+                      })
+                      if (e.target.value === "No") {
+                        setFileUpload({ uploading: false, uploaded: false, url: "", error: null, name: "" })
+                      }
+                    }}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
                   >
-                    <option value="">Select Payment Type</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="Bank Finance">Bank Finance</option>
+                    <option value="">Select Status</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
                   </select>
                 </div>
 
-                {/* 2. Cheque Number */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    Cheque Number
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter Cheque Number"
-                    value={form.chequeNumber}
-                    onChange={(e) => setForm({ ...form, chequeNumber: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
-                  />
-                </div>
+                {/* 2. Conditionally shown Meter Installation Upload */}
+                {form.inspectionStatus === "Yes" && (
+                  <div className="p-4 bg-blue-25/55 border border-blue-100 rounded-xl space-y-3">
+                    <label className="block text-xs font-bold text-blue-900 uppercase tracking-wider">
+                      Meter Installation Upload <span className="text-red-500">*</span>
+                      <span className="text-gray-400 text-[10px] lowercase font-normal ml-1">(image / pdf)</span>
+                    </label>
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleFileUpload(e.target.files[0])}
+                        className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-750 hover:file:bg-blue-100 cursor-pointer"
+                      />
 
-                {/* 3. UTR Number */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    UTR Number
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter UTR Number"
-                    value={form.utrNumber}
-                    onChange={(e) => setForm({ ...form, utrNumber: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
-                  />
-                </div>
+                      {/* File Upload States */}
+                      {fileUpload.uploading && (
+                        <div className="flex items-center text-xs text-blue-600 bg-blue-50/50 p-2 rounded-lg animate-pulse">
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          Uploading document...
+                        </div>
+                      )}
 
-                {/* 4. Date */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    Payment Date
-                  </label>
-                  <input
-                    type="date"
-                    value={form.paymentDate}
-                    onChange={(e) => setForm({ ...form, paymentDate: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
-                  />
-                </div>
+                      {fileUpload.error && (
+                        <div className="flex items-center text-xs text-red-650 bg-red-50/50 p-2 rounded-lg border border-red-100">
+                          <AlertCircle className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                          Error: {fileUpload.error}
+                        </div>
+                      )}
 
-                {/* 5. Amount */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    Amount (₹)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Enter Amount"
-                    value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
-                  />
-                </div>
-
-                {/* 6. Down Payment */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    Down Payment (₹)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Enter Down Payment"
-                    value={form.downPayment}
-                    onChange={(e) => setForm({ ...form, downPayment: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    Remaining Amount (₹)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Enter Remaining Amount"
-                    value={form.remainingAmount}
-                    onChange={(e) => setForm({ ...form, remainingAmount: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
-                  />
-                </div>
+                      {fileUpload.uploaded && (
+                        <div className="flex items-center justify-between text-xs text-green-700 bg-green-50/50 p-2 rounded-lg border border-green-100 font-medium">
+                          <span className="flex items-center">
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-green-600" />
+                            Uploaded Successfully
+                          </span>
+                          {form.meterInstallationUpload && (
+                            <a
+                              href={form.meterInstallationUpload}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 flex items-center font-bold"
+                            >
+                              <Eye size={12} className="mr-0.5" /> Preview
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -583,8 +597,8 @@ export default function PaymentConfirmationPage() {
                 <button
                   type="button"
                   onClick={handleFormSubmit}
-                  disabled={isSubmitting}
-                  className="inline-flex justify-center rounded-lg shadow-md px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-55 flex items-center"
+                  disabled={isSubmitting || fileUpload.uploading}
+                  className="inline-flex justify-center rounded-lg shadow-md px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-55 disabled:cursor-not-allowed flex items-center"
                 >
                   {isSubmitting ? (
                     <>
@@ -594,7 +608,7 @@ export default function PaymentConfirmationPage() {
                   ) : (
                     <>
                       <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Confirm Payment
+                      Save Status
                     </>
                   )}
                 </button>

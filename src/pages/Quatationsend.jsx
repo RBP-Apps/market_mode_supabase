@@ -79,9 +79,9 @@ function FMSDataPage() {
       const { data, error } = await supabase
         .from('dropdown')
         .select('status')
-      
+
       if (error) throw error
-      
+
       const options = [...new Set(data.map(item => item.status).filter(Boolean))]
       setStatusOptions(options)
     } catch (error) {
@@ -98,21 +98,21 @@ function FMSDataPage() {
 
       // Fetch dropdown values and data in parallel
       await fetchDropdownValues();
-      
+
       const { data: rows, error: fmsError } = await supabase
         .from('fms')
-        .select('*, quatation_create!left(*)')
-      
+        .select('*, new_quatation_create!left(*)')
+
       if (fmsError) throw fmsError
 
       const pending = []
       const history = []
 
       rows.forEach((row) => {
-        const qData = row.quatation_create || {}
-        
-        // condition based on planned_2 (AF) being not null
-        if (!qData.planned_2) return
+        const qData = row.new_quatation_create || {}
+
+        // condition based on planned (AF) being not null
+        if (!qData.planned) return
 
         const rowData = {
           _id: row.enquiry_number || row.id,
@@ -139,12 +139,12 @@ function FMSDataPage() {
           col28: row.address_proof || "",
           col29: row.surveyor_name || "",
           col30: row.surveyor_contact_number || "",
-          col31: qData.planned_2 || "",
-          col32: qData.actual_2 || "", // AG - Actual
+          col31: qData.planned || "",
+          col32: qData.actual || "", // AG - Actual
           col34: qData.quatation_no || "", // AI
           col35: qData.amount || qData.net_cost || "", // AJ
           col36: qData.quatation_copy || "", // AK
-          
+
         }
 
         if (isEmpty(rowData.col32)) {
@@ -216,11 +216,11 @@ function FMSDataPage() {
           .upload(filePath, file)
 
         if (error) throw error
-        
+
         const { data: urlData } = supabase.storage
           .from("Quotation_file")
           .getPublicUrl(filePath)
-          
+
         return urlData.publicUrl
       } catch (error) {
         console.error("Error uploading file:", error)
@@ -245,11 +245,11 @@ function FMSDataPage() {
         quotationCopyUrl = await uploadQuotationFile(quotationForm.quotationCopy)
       }
 
-      // Update data in Supabase quatation_create table
+      // Update data in Supabase new_quatation_create table
       const { error } = await supabase
-        .from('quatation_create')
+        .from('new_quatation_create')
         .update({
-          actual_2: new Date().toISOString(),
+          actual: new Date().toISOString(),
           quatation_no: quotationForm.quotationNumber,
           amount: parseFloat(quotationForm.valueOfQuotation),
           quatation_copy: quotationCopyUrl,
