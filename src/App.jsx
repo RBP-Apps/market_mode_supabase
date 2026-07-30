@@ -38,6 +38,7 @@ import BankProcessPage from "./pages/BankProcess"
 
 import QuotationCreatePage from "./pages/QuatationCreate"
 import AddUser from "./pages/AddUser"
+import DropdownPage from "./pages/Dropdown"
 import QCPage from "./pages/QC"
 import IpPayment from "./pages/IpPayment"
 import DocumentsUpload from "./pages/DocumentsUpload"
@@ -394,6 +395,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <AddUser />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/Dropdown"
+            element={
+              <ProtectedRoute>
+                <DropdownPage />
               </ProtectedRoute>
             }
           />

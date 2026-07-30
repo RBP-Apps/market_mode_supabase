@@ -45,6 +45,7 @@ export default function UserRegistration() {
     "Weekly Report",
     "Monthly Report",
     "Add User",
+    "Dropdown",
     "Product List",
     "Dispatch Approval",
     "Bank Process"

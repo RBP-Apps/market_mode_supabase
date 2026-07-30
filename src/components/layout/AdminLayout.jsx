@@ -28,7 +28,8 @@ import {
   DollarSign,
   CreditCard,
   ChartColumn,
-  BarChart3
+  BarChart3,
+  ListFilter
 } from 'lucide-react'
 
 export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
@@ -354,6 +355,13 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       label: "Add User",
       icon: BarChart3,
       active: location.pathname === "/dashboard/AddUser",
+      showFor: ["admin", "user"]
+    },
+    {
+      href: "/dashboard/Dropdown",
+      label: "Dropdown",
+      icon: ListFilter,
+      active: location.pathname === "/dashboard/Dropdown",
       showFor: ["admin", "user"]
     },
     {

@@ -1225,17 +1225,22 @@ export default function QuatationCreate() {
 
   const fetchProductData = async () => {
     try {
-      const { data, error } = await supabase.from('product_list').select('*');
+      const { data, error } = await supabase.from('product_list').select('*').order('id', { ascending: true });
       if (error) throw error;
 
       const products = [];
       const pMap = {};
 
-      data.forEach(row => {
-        if (row.product_code) {
-          products.push(row.product_code);
-          pMap[row.product_code] = {
-            productName: row.product_name || "",
+      (data || []).forEach(row => {
+        const code = row.product_code ? String(row.product_code).trim() : "";
+        const name = row.product_name ? String(row.product_name).trim() : "";
+
+        // Determine primary key / label
+        const primaryKey = code || name;
+
+        if (primaryKey) {
+          const productData = {
+            productName: name || code,
             bom: row.bill_of_material || "",
             size: row.size || "",
             rate: row.selling_price || 0,
@@ -1243,10 +1248,19 @@ export default function QuatationCreate() {
             centerSubsidy: row.center_subsidy || 0,
             stateSubsidy: row.state_subsidy || 0
           };
+
+          // Add to dropdown options
+          if (code) products.push(code);
+          if (name && name !== code) products.push(name);
+
+          // Map both code and name so lookup works regardless of what is selected or saved
+          if (code) pMap[code] = productData;
+          if (name) pMap[name] = productData;
         }
       });
 
-      setDropdownOptions(prev => ({ ...prev, rating: products }));
+      const uniqueProducts = [...new Set(products)];
+      setDropdownOptions(prev => ({ ...prev, rating: uniqueProducts }));
       setProductMap(pMap);
     } catch (err) {
       console.error("❌ Error fetching product data:", err);
