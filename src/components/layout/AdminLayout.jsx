@@ -128,7 +128,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     },
     {
       href: "/dashboard/AssignServey",
-      label: "Assign Servey",
+      label: "Assign Survey",
       icon: FileText,
       active: location.pathname === "/dashboard/AssignServey",
       showFor: ["admin", "user"]
@@ -170,7 +170,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     },
     {
       href: "/dashboard/Payment",
-      label: "Payement",
+      label: "Payment",
       icon: CreditCard,
       active: location.pathname === "/dashboard/Payment",
       showFor: ["admin", "user"]

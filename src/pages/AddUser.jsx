@@ -19,7 +19,7 @@ export default function UserRegistration() {
     "Dashboard",
     "Enquiry Form",
     "Documents Uploads",
-    "Assign Servey",
+    "Assign Survey",
     "Site Survey",
     "Quotation Create",
     "Sales Call",
