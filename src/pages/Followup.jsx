@@ -1,7 +1,31 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { CheckCircle2, X, Search, History, FileText, MapPin, Users, Phone, Eye, DollarSign, Wrench } from "lucide-react"
+import { CheckCircle2, X, Search, History, FileText, MapPin, Users, Phone, Eye, DollarSign, Wrench, MessageCircle, Mail, Send } from "lucide-react"
+
+// Helper for direct WhatsApp link
+const sendWhatsAppDirect = (phone, text) => {
+  if (!phone) {
+    alert("Kripya valid WhatsApp number dalein.");
+    return;
+  }
+  let cleanPhone = phone.toString().replace(/\D/g, "");
+  if (cleanPhone.length === 10) {
+    cleanPhone = "91" + cleanPhone;
+  }
+  const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
+};
+
+// Helper for direct Email mailto link
+const sendEmailDirect = (email, subject, body) => {
+  if (!email) {
+    alert("Kripya Email address dalein.");
+    return;
+  }
+  const url = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(url, "_blank");
+};
 import AdminLayout from "../components/layout/AdminLayout"
 import supabase from "../utils/supabase"
 // Configuration object
@@ -51,6 +75,13 @@ function FollowUpPage() {
     stage: "",
     nextDateOfCall: "",
     valueOfOrder: "",
+    sendWhatsApp: false,
+    whatsAppNumber: "",
+    whatsAppTemplate: "",
+    sendEmail: false,
+    emailAddress: "",
+    emailSubject: "",
+    emailTemplate: "",
   })
 
   // Debounced search term for better performance
@@ -186,6 +217,7 @@ function FollowUpPage() {
               villageBlock: enq.village_block || "",
               district: enq.district || "",
               contactNumber: enq.contact_number || "",
+              email: "",
               aadharCard: "",
               addressProof: "",
               surveyorName: "",
@@ -266,18 +298,38 @@ function FollowUpPage() {
 
   const handleFollowUpClick = useCallback((record) => {
     setSelectedRecord(record)
+    const valOrder = record.valueOfOrder || ""
+    const bName = record.beneficiaryName || "Customer"
+    const enqNum = record.enquiryNumber || ""
+
     setFollowUpForm({
       whatDidCustomerSay: record.whatDidCustomerSay || "",
       stage: record.stage || "",
       nextDateOfCall: formatDateForInput(record.nextDateOfCall || ""),
-      valueOfOrder: record.valueOfOrder || "",
+      valueOfOrder: valOrder,
+      sendWhatsApp: false,
+      whatsAppNumber: "",
+      whatsAppTemplate: `Dear Purchase Manager,\n\nNew Order Received!\n\nOrder Details:\n- Enquiry Number: ${enqNum}\n- Customer Name: ${bName}\n- Order Value: ₹${valOrder}\n\nPlease proceed with the procurement and dispatch process.\n\nBest Regards,\nSales Team - RBP Solar`,
+      sendEmail: false,
+      emailAddress: "gmpurchase@rbpindia.com",
+      emailSubject: `New Order Notification - Enquiry #${enqNum}`,
+      emailTemplate: `Dear Purchase Manager,\n\nNew Order Received!\n\nOrder Details:\n- Enquiry Number: ${enqNum}\n- Customer Name: ${bName}\n- Order Value: ₹${valOrder}\n\nPlease proceed with the procurement and dispatch process.\n\nBest Regards,\nSales Team - RBP Solar`,
     })
     setShowFollowUpModal(true)
   }, [formatDateForInput])
 
   const handleInputChange = useCallback((field, value) => {
-    setFollowUpForm((prev) => ({ ...prev, [field]: value }))
-  }, [])
+    setFollowUpForm((prev) => {
+      const updated = { ...prev, [field]: value }
+      if (field === "valueOfOrder" && selectedRecord) {
+        const bName = selectedRecord.beneficiaryName || "Customer"
+        const enqNum = selectedRecord.enquiryNumber || ""
+        updated.whatsAppTemplate = `Dear Purchase Manager,\n\nNew Order Received!\n\nOrder Details:\n- Enquiry Number: ${enqNum}\n- Customer Name: ${bName}\n- Order Value: ₹${value}\n\nPlease proceed with the procurement and dispatch process.\n\nBest Regards,\nSales Team - RBP Solar`
+        updated.emailTemplate = `Dear Purchase Manager,\n\nNew Order Received!\n\nOrder Details:\n- Enquiry Number: ${enqNum}\n- Customer Name: ${bName}\n- Order Value: ₹${value}\n\nPlease proceed with the procurement and dispatch process.\n\nBest Regards,\nSales Team - RBP Solar`
+      }
+      return updated
+    })
+  }, [selectedRecord])
 
   const handleFollowUpSubmit = async () => {
     if (!followUpForm.stage) {
@@ -308,6 +360,16 @@ function FollowUpPage() {
         .eq("id", selectedRecord._rowIndex)
 
       if (error) throw error
+
+      // Trigger Notifications if Stage is Order Received & checked
+      if (followUpForm.stage === "Order Received") {
+        if (followUpForm.sendWhatsApp && followUpForm.whatsAppNumber) {
+          sendWhatsAppDirect(followUpForm.whatsAppNumber, followUpForm.whatsAppTemplate)
+        }
+        if (followUpForm.sendEmail && followUpForm.emailAddress) {
+          sendEmailDirect(followUpForm.emailAddress, followUpForm.emailSubject, followUpForm.emailTemplate)
+        }
+      }
 
       setSuccessMessage(
         `Sales call completed successfully for Enquiry Number: ${selectedRecord.enquiryNumber}`
@@ -359,6 +421,13 @@ function FollowUpPage() {
       stage: "",
       nextDateOfCall: "",
       valueOfOrder: "",
+      sendWhatsApp: false,
+      whatsAppNumber: "",
+      whatsAppTemplate: "",
+      sendEmail: false,
+      emailAddress: "gmpurchase@rbpindia.com",
+      emailSubject: "",
+      emailTemplate: "",
     })
   }, [])
 
@@ -859,6 +928,145 @@ function FollowUpPage() {
                     />
                   </div>
                 </div>
+
+                {/* Order Received Notification Section (WhatsApp & Email) */}
+                {followUpForm.stage === "Order Received" && (
+                  <div className="mt-5 p-4 border border-green-200 bg-gradient-to-br from-green-50/70 to-emerald-50/40 rounded-xl space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-green-200/80 pb-2.5">
+                      <h5 className="text-sm font-bold text-green-900 flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 text-green-600" />
+                        Send Order Confirmation (WhatsApp & Email)
+                      </h5>
+                      <span className="text-xs bg-green-100 text-green-800 font-medium px-2.5 py-0.5 rounded-full border border-green-200">
+                        Order Received Selected
+                      </span>
+                    </div>
+
+                    {/* Checkboxes Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* WhatsApp Checkbox */}
+                      <label className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
+                        followUpForm.sendWhatsApp 
+                          ? "border-green-500 bg-white shadow-sm ring-2 ring-green-400/20" 
+                          : "border-gray-200 bg-white/80 hover:border-green-300"
+                      }`}>
+                        <input
+                          type="checkbox"
+                          checked={followUpForm.sendWhatsApp}
+                          onChange={(e) => handleInputChange("sendWhatsApp", e.target.checked)}
+                          className="h-4 w-4 text-green-600 focus:ring-green-500 rounded border-gray-300 cursor-pointer"
+                        />
+                        <div className="ml-3 flex items-center gap-2">
+                          <MessageCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-semibold text-gray-800">WhatsApp Message</span>
+                        </div>
+                      </label>
+
+                      {/* Email Checkbox */}
+                      <label className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
+                        followUpForm.sendEmail 
+                          ? "border-blue-500 bg-white shadow-sm ring-2 ring-blue-400/20" 
+                          : "border-gray-200 bg-white/80 hover:border-blue-300"
+                      }`}>
+                        <input
+                          type="checkbox"
+                          checked={followUpForm.sendEmail}
+                          onChange={(e) => handleInputChange("sendEmail", e.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 rounded border-gray-300 cursor-pointer"
+                        />
+                        <div className="ml-3 flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-semibold text-gray-800">Email Confirmation</span>
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* WhatsApp Details & Template Box */}
+                    {followUpForm.sendWhatsApp && (
+                      <div className="p-3.5 bg-white rounded-xl border border-green-200 space-y-3 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <label className="block text-xs font-semibold text-gray-700">
+                            WhatsApp Number <span className="text-red-500">*</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => sendWhatsAppDirect(followUpForm.whatsAppNumber, followUpForm.whatsAppTemplate)}
+                            className="inline-flex items-center text-xs font-semibold text-green-700 bg-green-100 hover:bg-green-200 border border-green-300 px-3 py-1.5 rounded-lg transition-all"
+                          >
+                            <Send className="h-3 w-3 mr-1.5" />
+                            Send via WhatsApp Web
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={followUpForm.whatsAppNumber}
+                          onChange={(e) => handleInputChange("whatsAppNumber", e.target.value)}
+                          placeholder="Enter 10-digit mobile number"
+                          className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                        />
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            WhatsApp Message Template (Editable)
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={followUpForm.whatsAppTemplate}
+                            onChange={(e) => handleInputChange("whatsAppTemplate", e.target.value)}
+                            className="w-full text-xs p-2.5 bg-gray-50 border border-gray-300 rounded-lg font-mono text-gray-800 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Email Details & Template Box */}
+                    {followUpForm.sendEmail && (
+                      <div className="p-3.5 bg-white rounded-xl border border-blue-200 space-y-3 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <label className="block text-xs font-semibold text-gray-700">
+                            Email Address <span className="text-red-500">*</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => sendEmailDirect(followUpForm.emailAddress, followUpForm.emailSubject, followUpForm.emailTemplate)}
+                            className="inline-flex items-center text-xs font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 border border-blue-300 px-3 py-1.5 rounded-lg transition-all"
+                          >
+                            <Send className="h-3 w-3 mr-1.5" />
+                            Send via Email App
+                          </button>
+                        </div>
+                        <input
+                          type="email"
+                          value={followUpForm.emailAddress}
+                          onChange={(e) => handleInputChange("emailAddress", e.target.value)}
+                          placeholder="Enter customer email address"
+                          className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Email Subject Line
+                          </label>
+                          <input
+                            type="text"
+                            value={followUpForm.emailSubject}
+                            onChange={(e) => handleInputChange("emailSubject", e.target.value)}
+                            className="w-full text-xs px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none mb-2"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Email Body Template (Editable)
+                          </label>
+                          <textarea
+                            rows={5}
+                            value={followUpForm.emailTemplate}
+                            onChange={(e) => handleInputChange("emailTemplate", e.target.value)}
+                            className="w-full text-xs p-2.5 bg-gray-50 border border-gray-300 rounded-lg font-mono text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex justify-end space-x-3 mt-6 pt-3 border-t">
