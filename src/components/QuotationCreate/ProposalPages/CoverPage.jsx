@@ -3,7 +3,7 @@ import React from "react";
 export default function CoverPage({ formData }) {
   // Extract values from formData or use defaults
   const clientName = formData.preparedFor || formData.customer || "Mr. Subham Singhal";
-  const capacity = formData.proposalFor || formData.capacity || "2.5 MWp";
+  const capacity = formData.rating || formData.product || formData.proposalFor || formData.capacity || "2.5 MWp";
   const formatDateString = (dateInput) => {
     if (!dateInput) return "";
     if (String(dateInput).startsWith("Dated:") || isNaN(Date.parse(dateInput))) {

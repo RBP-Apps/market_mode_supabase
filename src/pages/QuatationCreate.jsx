@@ -719,6 +719,7 @@ export default function QuatationCreate() {
           quotationCopy: row.quatation_copy || null,
           is10kv: row.is_10kv || false,
           status: row.status || null,
+          directorApproval: row.director_approval || 'Pending',
           billOfMaterial: row.bill_of_material || null,
           salesperson: row.salesperson || "",
           quotationDate: row.quotation_date || "",
@@ -1391,6 +1392,8 @@ export default function QuatationCreate() {
         return item.planned2 && !item.actual2;
       } else if (activeTab === "bom_approval") {
         return item.planned2 && item.actual2 && item.status === "Pending";
+      } else if (activeTab === "director_approval") {
+        return item.planned2 && item.actual2 && (item.directorApproval !== "Done");
       } else {
         return item.planned2 && item.actual2 && item.status !== "Pending";
       }
@@ -1401,7 +1404,8 @@ export default function QuatationCreate() {
 
       filtered = filtered.filter(i =>
         (i.enquiryNumber || "").toLowerCase().includes(t) ||
-        (i.beneficiaryName || "").toLowerCase().includes(t)
+        (i.beneficiaryName || "").toLowerCase().includes(t) ||
+        (i.contactNumber || "").toLowerCase().includes(t)
       );
     }
 
@@ -1581,6 +1585,41 @@ export default function QuatationCreate() {
     }
   };
 
+  const handleDirectorApproval = async (enquiryNumber, approvalStatus) => {
+    try {
+      const confirmAction = window.confirm(`Are you sure you want to set Director Approval to '${approvalStatus}' for Enquiry No. ${enquiryNumber}?`);
+      if (!confirmAction) return;
+
+      const updatePayload = {
+        director_approval: approvalStatus
+      };
+
+      let updateError = null;
+
+      const res1 = await supabase
+        .from('new_quatation_create')
+        .update(updatePayload)
+        .eq('enquiry_number', enquiryNumber);
+
+      if (res1.error) {
+        updateError = res1.error;
+      }
+
+      await supabase
+        .from('quatation_10kw')
+        .update(updatePayload)
+        .eq('enquiry_number', enquiryNumber);
+
+      if (updateError) throw updateError;
+
+      alert(`Director Approval set to '${approvalStatus}' for Enquiry No. ${enquiryNumber}`);
+      fetchFMSData();
+    } catch (err) {
+      console.error("Error updating director approval:", err);
+      alert("Failed to update Director Approval: " + err.message);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
@@ -1600,6 +1639,7 @@ export default function QuatationCreate() {
               onOpen10kv={() => setShow10kvModal(true)}
               productMap={productMap}
               handleApproveBOM={handleApproveBOM}
+              handleDirectorApproval={handleDirectorApproval}
             />
           ) : (
             <QuotationFormView

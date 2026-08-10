@@ -29,7 +29,8 @@ import {
   CreditCard,
   ChartColumn,
   BarChart3,
-  ListFilter
+  ListFilter,
+  Users
 } from 'lucide-react'
 
 export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
@@ -127,6 +128,13 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       showFor: ["admin", "user"]
     },
     {
+      href: "/dashboard/LeadPage",
+      label: "Lead Page",
+      icon: Users,
+      active: location.pathname === "/dashboard/LeadPage",
+      showFor: ["admin", "user"]
+    },
+    {
       href: "/dashboard/AssignServey",
       label: "Assign Survey",
       icon: FileText,
@@ -154,6 +162,13 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/Followup",
       showFor: ["admin", "user"]
     },
+     {
+      href: "/dashboard/Payment",
+      label: "Payment",
+      icon: CreditCard,
+      active: location.pathname === "/dashboard/Payment",
+      showFor: ["admin", "user"]
+    },
     {
       href: "/dashboard/DocumentsUpload",
       label: "Documents Uploads",
@@ -168,13 +183,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/RegistrationPage",
       showFor: ["admin", "user"]
     },
-    {
-      href: "/dashboard/Payment",
-      label: "Payment",
-      icon: CreditCard,
-      active: location.pathname === "/dashboard/Payment",
-      showFor: ["admin", "user"]
-    },
+   
     {
       href: "/dashboard/PaymentConfirmation",
       label: "Payment Confirmation",
@@ -196,9 +205,16 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/Dispatchmaterial",
       showFor: ["admin", "user"]
     },
+     {
+      href: "/dashboard/DCRPage",
+      label: "DCR Creation",
+      icon: CreditCard,
+      active: location.pathname === "/dashboard/DCRPage",
+      showFor: ["admin", "user"]
+    },
     {
       href: "/dashboard/Materialreceived",
-      label: "Material Received",
+      label: "IP Material Received",
       icon: Package,
       active: location.pathname === "/dashboard/Materialreceived",
       showFor: ["admin", "user"]
@@ -388,13 +404,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/BankProcess",
       showFor: ["admin", "user"]
     },
-    {
-      href: "/dashboard/DCRPage",
-      label: "DCR",
-      icon: CreditCard,
-      active: location.pathname === "/dashboard/DCRPage",
-      showFor: ["admin", "user"]
-    },
+   
 
 
   ]

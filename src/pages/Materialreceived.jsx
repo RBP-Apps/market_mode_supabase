@@ -9,7 +9,7 @@ import supabase from "../utils/supabase"
 const CONFIG = {
   // Updated page configuration
   PAGE_CONFIG: {
-    title: "Material Received In Site",
+    title: "IP Material Received In Site",
     historyTitle: "Material Receipt History",
     description: "Manage pending material receipts at site",
     historyDescription: "View completed material receipt records",

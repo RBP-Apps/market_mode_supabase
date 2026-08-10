@@ -46,6 +46,7 @@ import FinalPayment from "./pages/FinalPayment"
 import AssignServey from "./pages/AssignServey"
 import DCRPage from "./pages/DCR"
 import RegistrationPage from "./pages/Registration"
+import LeadPage from "./pages/LeadPage"
 import "./index.css"
 
 // Auth wrapper component to protect routes
@@ -97,6 +98,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["admin", "user"]}>
                 <AdminAssignTask />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Lead Page route */}
+          <Route
+            path="/dashboard/LeadPage"
+            element={
+              <ProtectedRoute>
+                <LeadPage />
               </ProtectedRoute>
             }
           />

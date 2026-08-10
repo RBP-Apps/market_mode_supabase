@@ -14,6 +14,7 @@ import {
   Download,
   Eye,
   ClipboardList,
+  ShieldCheck,
 } from "lucide-react";
 export default function QuotationListView({
   activeTab,
@@ -29,6 +30,7 @@ export default function QuotationListView({
   onOpen10kv,
   productMap = {},
   handleApproveBOM,
+  handleDirectorApproval,
 }) {
   const [sheetData, setSheetData] = React.useState({});
   const [selectedBOMRow, setSelectedBOMRow] = React.useState(null);
@@ -161,6 +163,23 @@ export default function QuotationListView({
             </span>
           </button>
           <button
+            onClick={() => setActiveTab("director_approval")}
+            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "director_approval"
+              ? "border-purple-600 text-purple-600 font-bold"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+          >
+            <ShieldCheck className="h-5 w-5 text-purple-600" />
+            Director Approval
+            <span className="ml-2 bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+              {
+                fmsData.filter(
+                  (item) => item.planned2 && item.actual2 && item.directorApproval !== "Done"
+                ).length
+              }
+            </span>
+          </button>
+          <button
             onClick={() => setActiveTab("history")}
             className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "history"
               ? "border-green-500 text-green-600"
@@ -236,6 +255,60 @@ export default function QuotationListView({
                       </div>
                     </th>
                   </>
+                ) : activeTab === "director_approval" ? (
+                  <>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-purple-900 uppercase tracking-wider w-52 bg-purple-50 whitespace-normal min-w-[200px]">
+                      Action (Director Approval)
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        Quotation No.
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <User className="h-3 w-3" />
+                        Customer Name
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        Contact No.
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <Zap className="h-3 w-3" />
+                        Product / Capacity
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <User className="h-3 w-3" />
+                        Salesperson
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Submission Date
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <ShieldCheck className="h-3 w-3 text-purple-600" />
+                        Approval Status
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <Copy className="h-3 w-3" />
+                        Quotation Copy
+                      </div>
+                    </th>
+                  </>
                 ) : (
                   <>
                     {/* Pending tab Action column */}
@@ -287,9 +360,11 @@ export default function QuotationListView({
                         ? tableColumns.length + 1
                         : activeTab === "bom_approval"
                           ? 6
-                          : (activeTab === "history" || activeTab === "10kv_history")
-                            ? tableColumns.length + 3
-                            : tableColumns.length
+                          : activeTab === "director_approval"
+                            ? 9
+                            : (activeTab === "history" || activeTab === "10kv_history")
+                              ? tableColumns.length + 3
+                              : tableColumns.length
                     }
                     className="px-6 py-12"
                   >
@@ -309,9 +384,11 @@ export default function QuotationListView({
                         ? tableColumns.length + 1
                         : activeTab === "bom_approval"
                           ? 6
-                          : (activeTab === "history" || activeTab === "10kv_history")
-                            ? tableColumns.length + 3
-                            : tableColumns.length
+                          : activeTab === "director_approval"
+                            ? 9
+                            : (activeTab === "history" || activeTab === "10kv_history")
+                              ? tableColumns.length + 3
+                              : tableColumns.length
                     }
                     className="px-6 py-12"
                   >
@@ -325,7 +402,9 @@ export default function QuotationListView({
                           ? "No pending enquiries with Planned date"
                           : activeTab === "bom_approval"
                             ? "No BOM approvals pending"
-                            : "No history records found"}
+                            : activeTab === "director_approval"
+                              ? "No Director approvals pending"
+                              : "No history records found"}
                       </p>
                     </div>
                   </td>
@@ -381,6 +460,81 @@ export default function QuotationListView({
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                             {row.status || "Pending"}
                           </span>
+                        </td>
+                      </>
+                    ) : activeTab === "director_approval" ? (
+                      <>
+                        <td className="px-6 py-4 whitespace-normal text-center min-w-[200px]">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => handleDirectorApproval && handleDirectorApproval(row.enquiryNumber, 'Done')}
+                              className={`inline-flex items-center px-3 py-1.5 rounded-lg transition-colors duration-200 text-xs font-bold shadow-xs ${
+                                row.directorApproval === 'Done'
+                                  ? 'bg-emerald-600 text-white cursor-default'
+                                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-300'
+                              }`}
+                              title="Approve Quotation (Done)"
+                            >
+                              <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                              Done
+                            </button>
+                            <button
+                              onClick={() => handleDirectorApproval && handleDirectorApproval(row.enquiryNumber, 'Not Done')}
+                              className={`inline-flex items-center px-3 py-1.5 rounded-lg transition-colors duration-200 text-xs font-bold shadow-xs ${
+                                row.directorApproval === 'Not Done'
+                                  ? 'bg-red-600 text-white cursor-default'
+                                  : 'bg-red-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-300'
+                              }`}
+                              title="Mark Not Done"
+                            >
+                              <XCircle className="h-3.5 w-3.5 mr-1" />
+                              Not Done
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal text-center text-sm font-semibold text-blue-900 min-w-[150px]">
+                          {row.enquiryNumber || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal text-center text-sm font-medium text-gray-900 min-w-[150px]">
+                          {row.beneficiaryName || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-600 min-w-[150px]">
+                          {row.contactNumber || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal text-center text-sm text-purple-700 font-medium min-w-[150px]">
+                          {row.product || row.presentLoad || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-600 min-w-[150px]">
+                          {row.salesperson || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
+                          {row.quotationDate ? new Date(row.quotationDate).toLocaleDateString('en-IN') : "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal text-center text-sm min-w-[150px]">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                            row.directorApproval === 'Done'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : row.directorApproval === 'Not Done'
+                              ? 'bg-red-100 text-red-800 border border-red-200'
+                              : 'bg-purple-100 text-purple-800 border border-purple-200'
+                          }`}>
+                            {row.directorApproval || "Pending"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal text-center text-sm min-w-[150px]">
+                          {row.quotationCopy ? (
+                            <a
+                              href={row.quotationCopy}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 font-semibold underline inline-flex items-center gap-1"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              View Copy
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">Not Generated</span>
+                          )}
                         </td>
                       </>
                     ) : (
@@ -519,9 +673,11 @@ export default function QuotationListView({
                 ? fmsData.filter((item) => item.planned2 && !item.actual2).length
                 : activeTab === "bom_approval"
                   ? fmsData.filter((item) => item.planned2 && item.actual2 && item.status === "Pending").length
-                  : activeTab === "history"
-                    ? fmsData.filter((item) => item.planned2 && item.actual2 && item.status !== "Pending" && !item.is10kv).length
-                    : fmsData.filter((item) => item.planned2 && item.actual2 && item.status !== "Pending" && item.is10kv).length}{" "}
+                  : activeTab === "director_approval"
+                    ? fmsData.filter((item) => item.planned2 && item.actual2 && item.directorApproval !== "Done").length
+                    : activeTab === "history"
+                      ? fmsData.filter((item) => item.planned2 && item.actual2 && item.status !== "Pending" && !item.is10kv).length
+                      : fmsData.filter((item) => item.planned2 && item.actual2 && item.status !== "Pending" && item.is10kv).length}{" "}
               records
             </span>
             <div className="flex items-center gap-4">
@@ -540,6 +696,15 @@ export default function QuotationListView({
                 {
                   fmsData.filter(
                     (item) => item.planned2 && item.actual2 && item.status === "Pending"
+                  ).length
+                }
+              </span>
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="h-4 w-4 text-purple-500" />
+                Director Approval:{" "}
+                {
+                  fmsData.filter(
+                    (item) => item.planned2 && item.actual2 && item.directorApproval !== "Done"
                   ).length
                 }
               </span>

@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useMemo } from "react"
-import { 
-  Search, History, FileText, CheckCircle2, X, Upload, 
-  Eye, Edit2, RefreshCw, User, Phone, MapPin, 
+import {
+  Search, History, FileText, CheckCircle2, X, Upload,
+  Eye, Edit2, RefreshCw, User, Phone, MapPin,
   Trash2, Plus, Calendar, ShieldCheck, Info, ClipboardCopy,
   Package, Truck, Users, MessageSquare
 } from "lucide-react"
@@ -27,6 +27,9 @@ export default function DispatchPlannerPage() {
 
   // Form fields
   const [whatsappNumber, setWhatsappNumber] = useState("")
+  const [ipName, setIpName] = useState("")
+  const [ipMobileNumber, setIpMobileNumber] = useState("")
+  const [ipAadharCardNumber, setIpAadharCardNumber] = useState("")
   const [challanFile, setChallanFile] = useState(null)
   const [challanPreview, setChallanPreview] = useState("")
   const [existingChallanUrl, setExistingChallanUrl] = useState("")
@@ -54,13 +57,13 @@ export default function DispatchPlannerPage() {
       const pending = []
       const history = []
 
-      ;(data || []).forEach(row => {
-        if (!row.actual) {
-          pending.push(row)
-        } else {
-          history.push(row)
-        }
-      })
+        ; (data || []).forEach(row => {
+          if (!row.actual) {
+            pending.push(row)
+          } else {
+            history.push(row)
+          }
+        })
 
       setPendingData(pending)
       setHistoryData(history)
@@ -81,6 +84,9 @@ export default function DispatchPlannerPage() {
     setSelectedRecord(record)
     setModalType(type)
     setWhatsappNumber(record.whatsapp_number || "")
+    setIpName(record.ip_name || "")
+    setIpMobileNumber(record.ip_mobile_number || "")
+    setIpAadharCardNumber(record.ip_aadhar_card_number || "")
     setExistingChallanUrl(record.challan_copy || "")
     setChallanFile(null)
     setChallanPreview("")
@@ -132,6 +138,9 @@ export default function DispatchPlannerPage() {
 
       const updatePayload = {
         whatsapp_number: whatsappNumber,
+        ip_name: ipName,
+        ip_mobile_number: ipMobileNumber,
+        ip_aadhar_card_number: ipAadharCardNumber,
         challan_copy: challanCopyUrl,
         status: "Completed",
         actual: new Date().toISOString()
@@ -200,7 +209,7 @@ export default function DispatchPlannerPage() {
   return (
     <AdminLayout>
       <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6">
-        
+
         {/* Banner header */}
         <div className="bg-white p-6 rounded-2xl border border-blue-100 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -250,22 +259,20 @@ export default function DispatchPlannerPage() {
         <div className="flex border-b border-gray-200">
           <button
             onClick={() => { setActiveTab("pending"); setSearchTerm(""); }}
-            className={`px-6 py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 ${
-              activeTab === "pending"
+            className={`px-6 py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 ${activeTab === "pending"
                 ? "border-blue-600 text-blue-700"
                 : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+              }`}
           >
             <Package className="h-4 w-4" />
             Pending Planner ({filteredPending.length})
           </button>
           <button
             onClick={() => { setActiveTab("history"); setSearchTerm(""); }}
-            className={`px-6 py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 ${
-              activeTab === "history"
+            className={`px-6 py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 ${activeTab === "history"
                 ? "border-blue-600 text-blue-700"
                 : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+              }`}
           >
             <History className="h-4 w-4" />
             History ({filteredHistory.length})
@@ -280,9 +287,9 @@ export default function DispatchPlannerPage() {
               <p className="text-sm font-semibold">Fetching dispatch details...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[400px] overflow-auto">
               <table className="min-w-full divide-y divide-gray-200 text-left">
-                <thead className="bg-gray-50 sticky top-0 z-10 text-center">
+                <thead className="sticky top-0 z-20 bg-gray-50 text-center shadow-sm">
                   <tr>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Enquiry Number</th>
@@ -295,6 +302,9 @@ export default function DispatchPlannerPage() {
                       <>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Challan Copy</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">WhatsApp Number</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">IP Name</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">IP Mobile</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">IP Aadhar</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider font-semibold text-orange-600">Delay (Days)</th>
                       </>
                     )}
@@ -378,6 +388,9 @@ export default function DispatchPlannerPage() {
                             <MessageSquare className="h-3 w.5 text-blue-500" />
                             {row.whatsapp_number || "—"}
                           </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-700 font-medium">{row.ip_name || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-700">{row.ip_mobile_number || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-700">{row.ip_aadhar_card_number || "—"}</td>
                           <td className="px-4 py-3 whitespace-nowrap font-bold text-orange-600">{row.delay !== null ? row.delay : "—"}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-700">{formatDate(row.planned)}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-700">{formatDate(row.actual)}</td>
@@ -385,7 +398,7 @@ export default function DispatchPlannerPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={12} className="px-4 py-12 text-center text-gray-400 font-medium">
+                        <td colSpan={15} className="px-4 py-12 text-center text-gray-400 font-medium">
                           No dispatch planner history records found.
                         </td>
                       </tr>
@@ -400,7 +413,7 @@ export default function DispatchPlannerPage() {
         {/* Modal for Planning / Editing Dispatch Details */}
         {showModal && selectedRecord && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-            <form 
+            <form
               onSubmit={handleSubmit}
               className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-scaleUp border border-gray-100"
             >
@@ -425,8 +438,8 @@ export default function DispatchPlannerPage() {
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 space-y-4">
-                
+              <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+
                 {/* Beneficiary details card summary */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1.5 text-2xs">
                   <div className="flex justify-between">
@@ -457,6 +470,53 @@ export default function DispatchPlannerPage() {
                     onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^0-9+]/g, ""))}
                     className="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50/30"
                     required
+                  />
+                </div>
+
+                {/* IP Name Input */}
+                <div>
+                  <label className="block text-2xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                    <User className="h-3.5 w-3.5 text-blue-600" />
+                    IP Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter IP name"
+                    value={ipName}
+                    onChange={(e) => setIpName(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50/30"
+                  />
+                </div>
+
+                {/* IP Mobile Number Input */}
+                <div>
+                  <label className="block text-2xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5 text-blue-600" />
+                    IP Mobile Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="Enter 10-digit IP mobile number"
+                    maxLength={15}
+                    value={ipMobileNumber}
+                    onChange={(e) => setIpMobileNumber(e.target.value.replace(/[^0-9+]/g, ""))}
+                    className="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50/30"
+                  />
+                </div>
+
+                {/* IP Aadhar Card Number Input */}
+                <div>
+                  <label className="block text-2xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                    IP Aadhar Card Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter 12-digit Aadhar card number"
+                    maxLength={14}
+                    value={ipAadharCardNumber}
+                    onChange={(e) => setIpAadharCardNumber(e.target.value.replace(/[^0-9\s]/g, ""))}
+                    className="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50/30"
                   />
                 </div>
 

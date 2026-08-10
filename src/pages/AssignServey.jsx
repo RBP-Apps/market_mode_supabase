@@ -43,6 +43,7 @@ export default function AssignSurveyPage() {
 
   // Survey Input Form State
   const [formData, setFormData] = useState({
+    surveyStage: "Survey 1",
     phase: "",
     backupHours: "",
     noOfFloors: "",
@@ -262,6 +263,7 @@ export default function AssignSurveyPage() {
     const systemType = selectedSurvey.enquiries?.system_type
 
     // Required Field Validations
+    if (!formData.surveyStage) return alert("Survey Stage is required.")
     if (!formData.phase) return alert("Phase is required.")
     if (systemType === "Off Grid" && !formData.backupHours) {
       return alert("Required Backup Hours is mandatory for Off Grid systems.")
@@ -294,6 +296,7 @@ export default function AssignSurveyPage() {
   const handleEditClick = (record) => {
     setEditRecord(record)
     setEditFormData({
+      surveyStage: record.survey_stage || "Survey 1",
       phase: record.phase || "",
       backupHours: record.backup_hours || "",
       noOfFloors: record.no_of_floors || "",
@@ -397,6 +400,7 @@ export default function AssignSurveyPage() {
     const systemType = editRecord.enquiries?.system_type
 
     // Required Field Validations
+    if (!editFormData.surveyStage) return alert("Survey Stage is required.")
     if (!editFormData.phase) return alert("Phase is required.")
     if (systemType === "Off Grid" && !editFormData.backupHours) {
       return alert("Required Backup Hours is mandatory for Off Grid systems.")
@@ -496,6 +500,7 @@ export default function AssignSurveyPage() {
     doc.text("2. SURVEY SPECIFICATIONS", 15, currentY)
 
     const surveyRows = [
+      ["Survey Stage", data.surveyStage || "—"],
       ["Phase", data.phase || "—"],
       ["No. of Floors", data.noOfFloors || "—"],
       ["Roof Top Area (Sq. Ft.)", data.roofTopArea || "—"],
@@ -624,6 +629,7 @@ export default function AssignSurveyPage() {
 
       // 3. Update the existing pending record in assign_survey table
       const updatePayload = {
+        survey_stage: formData.surveyStage || "Survey 1",
         phase: formData.phase,
         backup_hours: systemType === "Off Grid" ? formData.backupHours : null,
         no_of_floors: formData.noOfFloors,
@@ -712,6 +718,7 @@ export default function AssignSurveyPage() {
 
       // 3. Perform database update
       const updatePayload = {
+        survey_stage: editFormData.surveyStage || "Survey 1",
         phase: editFormData.phase,
         backup_hours: editRecord.enquiries?.system_type === "Off Grid" ? editFormData.backupHours : null,
         no_of_floors: editFormData.noOfFloors,
@@ -1149,6 +1156,18 @@ export default function AssignSurveyPage() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700">Survey Stage <span className="text-red-500">*</span></label>
+                      <select
+                        value={formData.surveyStage}
+                        onChange={(e) => handleInputChange("surveyStage", e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      >
+                        <option value="Survey 1">Survey 1</option>
+                        <option value="Survey 2">Survey 2</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700">Phase <span className="text-red-500">*</span></label>
                       <select
                         value={formData.phase}
@@ -1380,64 +1399,6 @@ export default function AssignSurveyPage() {
                       )}
                     </div>
 
-                    {/* ID Proof */}
-                    {/* <div className="border border-gray-200 rounded-xl p-4 space-y-2">
-                      <label className="block font-bold text-gray-700">ID Proof of Beneficiary</label>
-                      <input 
-                        type="file" 
-                        accept="image/*,application/pdf"
-                        onChange={(e) => handleFileChange(e, "idProof")}
-                        className="w-full text-xs text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                      />
-                      
-                      {idPreview && (
-                        <div className="relative h-12 w-20 rounded-lg overflow-hidden border border-gray-200 mt-2">
-                          {idPreview.includes("pdf") ? (
-                            <div className="h-full w-full flex items-center justify-center bg-gray-100 text-[10px] text-gray-500 font-bold">PDF</div>
-                          ) : (
-                            <img src={idPreview} alt="id proof" className="h-full w-full object-cover" />
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => removeFile(null, "idProof")}
-                            className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 shadow-xs hover:bg-red-600 transition"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div> */}
-
-                    {/* Address Proof */}
-                    {/* <div className="border border-gray-200 rounded-xl p-4 space-y-2">
-                      <label className="block font-bold text-gray-700">Address Proof of Beneficiary</label>
-                      <input 
-                        type="file" 
-                        accept="image/*,application/pdf"
-                        onChange={(e) => handleFileChange(e, "addressProof")}
-                        className="w-full text-xs text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                      />
-                      
-                      {editAddressPreview && (
-                        <div className="relative h-12 w-20 rounded-lg overflow-hidden border border-gray-200 mt-2">
-                          {addressPreview.includes("pdf") ? (
-                            <div className="h-full w-full flex items-center justify-center bg-gray-100 text-[10px] text-gray-500 font-bold">PDF</div>
-                          ) : (
-                            <img src={addressPreview} alt="address proof" className="h-full w-full object-cover" />
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => removeFile(null, "addressProof")}
-                            className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 shadow-xs hover:bg-red-600 transition"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div> */}
-
-
-                    
                   </div>
                 </div>
 
@@ -1562,6 +1523,18 @@ export default function AssignSurveyPage() {
                   <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Survey Specifications</h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700">Survey Stage</label>
+                      <select
+                        value={editFormData.surveyStage}
+                        onChange={(e) => handleEditInputChange("surveyStage", e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      >
+                        <option value="Survey 1">Survey 1</option>
+                        <option value="Survey 2">Survey 2</option>
+                      </select>
+                    </div>
+
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700">Phase</label>
                       <select
