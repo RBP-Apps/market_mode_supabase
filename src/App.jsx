@@ -47,24 +47,47 @@ import AssignServey from "./pages/AssignServey"
 import DCRPage from "./pages/DCR"
 import RegistrationPage from "./pages/Registration"
 import LeadPage from "./pages/LeadPage"
+import { getFirstAccessibleRoute } from "./utils/navigation"
 import "./index.css"
 
 // Auth wrapper component to protect routes
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+const ProtectedRoute = ({ children, allowedRoles = [], pageLabel }) => {
   const username = sessionStorage.getItem("username")
-  const userRole = sessionStorage.getItem("role")
+  const userRole = (sessionStorage.getItem("role") || "").toLowerCase()
+  const pageAccess = sessionStorage.getItem("pageAccess") || "ALL"
 
   // If no user is logged in, redirect to login
   if (!username) {
     return <Navigate to="/login" replace />
   }
 
-  // If this is an admin-only route and user is not admin, redirect to tasks
-  if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
-    return <Navigate to="/dashboard/admin" replace />
+  // If role check fails
+  if (allowedRoles.length > 0 && !allowedRoles.map(r => r.toLowerCase()).includes(userRole)) {
+    const fallback = getFirstAccessibleRoute(userRole, pageAccess)
+    return <Navigate to={fallback} replace />
+  }
+
+  // Check page level permission if pageLabel is specified and user is not admin
+  if (pageLabel && userRole !== "admin" && pageAccess !== "ALL") {
+    const allowedPages = pageAccess.split(",").map(p => p.trim()).filter(Boolean)
+    if (!allowedPages.includes(pageLabel.trim())) {
+      const fallback = getFirstAccessibleRoute(userRole, pageAccess)
+      return <Navigate to={fallback} replace />
+    }
   }
 
   return children
+}
+
+const DashboardRedirect = () => {
+  const username = sessionStorage.getItem("username")
+  if (!username) {
+    return <Navigate to="/login" replace />
+  }
+  const userRole = sessionStorage.getItem("role")
+  const pageAccess = sessionStorage.getItem("pageAccess")
+  const targetRoute = getFirstAccessibleRoute(userRole, pageAccess)
+  return <Navigate to={targetRoute} replace />
 }
 
 function App() {
@@ -80,13 +103,13 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
 
           {/* Dashboard redirect */}
-          <Route path="/dashboard" element={<Navigate to="/dashboard/admin" replace />} />
+          <Route path="/dashboard" element={<DashboardRedirect />} />
 
           {/* Admin & User Dashboard route */}
           <Route
             path="/dashboard/admin"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Dashboard">
                 <AdminDashboard />
               </ProtectedRoute>
             }
@@ -96,7 +119,7 @@ function App() {
           <Route
             path="/dashboard/assign-task"
             element={
-              <ProtectedRoute allowedRoles={["admin", "user"]}>
+              <ProtectedRoute allowedRoles={["admin", "user"]} pageLabel="Enquiry Form">
                 <AdminAssignTask />
               </ProtectedRoute>
             }
@@ -106,7 +129,7 @@ function App() {
           <Route
             path="/dashboard/LeadPage"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Lead Page">
                 <LeadPage />
               </ProtectedRoute>
             }
@@ -116,7 +139,7 @@ function App() {
           <Route
             path="/dashboard/SurveyReport"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Site Survey">
                 <SurveyReportPage />
               </ProtectedRoute>
             }
@@ -134,7 +157,7 @@ function App() {
           <Route
             path="/dashboard/Followup"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Sales Call">
                 <FollowupPage />
               </ProtectedRoute>
             }
@@ -144,7 +167,7 @@ function App() {
           <Route
             path="/dashboard/OrderPlace"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Solarkart">
                 <OrderPlacePage />
               </ProtectedRoute>
             }
@@ -164,7 +187,7 @@ function App() {
           <Route
             path="/dashboard/Dispatchmaterial"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Dispatch Material">
                 <DispatchmaterialPage />
               </ProtectedRoute>
             }
@@ -174,7 +197,7 @@ function App() {
           <Route
             path="/dashboard/InformToCustomer"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Inform To Customer">
                 <InformToCustomerPage />
               </ProtectedRoute>
             }
@@ -184,7 +207,7 @@ function App() {
           <Route
             path="/dashboard/Materialreceived"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="IP Material Received">
                 <MaterialreceivedPage />
               </ProtectedRoute>
             }
@@ -194,7 +217,7 @@ function App() {
           <Route
             path="/dashboard/Installation"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Installation">
                 <InstallationPage />
               </ProtectedRoute>
             }
@@ -204,7 +227,7 @@ function App() {
           <Route
             path="/dashboard/Billing"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Billings and Payment Details">
                 <BillingPage />
               </ProtectedRoute>
             }
@@ -214,7 +237,7 @@ function App() {
           <Route
             path="/dashboard/CspdclForSynconization"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Mandatory Documents for Synchronization">
                 <CspdclForSynconizationPage />
               </ProtectedRoute>
             }
@@ -224,7 +247,7 @@ function App() {
           <Route
             path="/dashboard/Inspection"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Inspection">
                 <InspectionPage />
               </ProtectedRoute>
             }
@@ -234,7 +257,7 @@ function App() {
           <Route
             path="/dashboard/ProjectCommission"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Project Synchronisation">
                 <ProjectCommissioningPage />
               </ProtectedRoute>
             }
@@ -244,7 +267,7 @@ function App() {
           <Route
             path="/dashboard/Redemption"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Subsidy Redemption">
                 <RedemptionPage />
               </ProtectedRoute>
             }
@@ -254,7 +277,7 @@ function App() {
           <Route
             path="/dashboard/SubsidyDisbursal"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Subsidy Disbursal">
                 <SubsidyDisbursalPage />
               </ProtectedRoute>
             }
@@ -264,7 +287,7 @@ function App() {
           <Route
             path="/dashboard/Payment"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Payment">
                 <PaymentPage />
               </ProtectedRoute>
             }
@@ -274,7 +297,7 @@ function App() {
           <Route
             path="/dashboard/Insurance"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Insurance">
                 <InsurancePage />
               </ProtectedRoute>
             }
@@ -283,7 +306,7 @@ function App() {
           <Route
             path="/dashboard/ModuleEntry"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Module Entry">
                 <ModuleEntryPage />
               </ProtectedRoute>
             }
@@ -291,7 +314,7 @@ function App() {
           <Route
             path="/dashboard/ProductList"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Product List">
                 <ProductListPage />
               </ProtectedRoute>
             }
@@ -299,7 +322,7 @@ function App() {
           <Route
             path="/dashboard/DispatchApproval"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Dispatch Approval">
                 <DispatchApprovalPage />
               </ProtectedRoute>
             }
@@ -307,7 +330,7 @@ function App() {
           <Route
             path="/dashboard/DispatchPlanne"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Dispatch Planner">
                 <DispatchPlannerPage />
               </ProtectedRoute>
             }
@@ -315,7 +338,7 @@ function App() {
           <Route
             path="/dashboard/PaymentConfirmation"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Payment Confirmation">
                 <PaymentConfirmationPage />
               </ProtectedRoute>
             }
@@ -323,7 +346,7 @@ function App() {
           <Route
             path="/dashboard/CSPDL_Inspection"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="CSPDL Inspection">
                 <CSPDLInspectionPage />
               </ProtectedRoute>
             }
@@ -331,7 +354,7 @@ function App() {
           <Route
             path="/dashboard/BankProcess"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Bank Process">
                 <BankProcessPage />
               </ProtectedRoute>
             }
@@ -339,7 +362,7 @@ function App() {
           <Route
             path="/dashboard/QCPage"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="QC">
                 <QCPage />
               </ProtectedRoute>
             }
@@ -347,7 +370,7 @@ function App() {
           <Route
             path="/dashboard/IpPayment"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="IP Payment">
                 <IpPayment />
               </ProtectedRoute>
             }
@@ -355,7 +378,7 @@ function App() {
           <Route
             path="/dashboard/DocumentsUpload"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Documents Uploads">
                 <DocumentsUpload />
               </ProtectedRoute>
             }
@@ -363,7 +386,7 @@ function App() {
           <Route
             path="/dashboard/FinalPayment"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Financial">
                 <FinalPayment />
               </ProtectedRoute>
             }
@@ -371,7 +394,7 @@ function App() {
           <Route
             path="/dashboard/AssignServey"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Assign Survey">
                 <AssignServey />
               </ProtectedRoute>
             }
@@ -379,7 +402,7 @@ function App() {
           <Route
             path="/dashboard/DCRPage"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="DCR Creation">
                 <DCRPage />
               </ProtectedRoute>
             }
@@ -387,7 +410,7 @@ function App() {
           <Route
             path="/dashboard/RegistrationPage"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Registration">
                 <RegistrationPage />
               </ProtectedRoute>
             }
@@ -395,7 +418,7 @@ function App() {
           <Route
             path="/dashboard/QuotationCreatePage"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Quotation Create">
                 <QuotationCreatePage />
               </ProtectedRoute>
             }
@@ -404,7 +427,7 @@ function App() {
           <Route
             path="/dashboard/AddUser"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Add User">
                 <AddUser />
               </ProtectedRoute>
             }
@@ -413,7 +436,7 @@ function App() {
           <Route
             path="/dashboard/Dropdown"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Dropdown">
                 <DropdownPage />
               </ProtectedRoute>
             }
@@ -431,7 +454,7 @@ function App() {
           <Route
             path="/dashboard/analysis-graph"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Analysis Graph">
                 <AnalysisGraphPage />
               </ProtectedRoute>
             }
@@ -440,7 +463,7 @@ function App() {
           <Route
             path="/dashboard/all-graph"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="All Graph">
                 <AllGraph />
               </ProtectedRoute>
             }
@@ -449,7 +472,7 @@ function App() {
           <Route
             path="/dashboard/weekly-performance-report"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Weekly Report">
                 <WeeklyPerformanceReport />
               </ProtectedRoute>
             }
@@ -457,7 +480,7 @@ function App() {
           <Route
             path="/dashboard/monthly-performance-report"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute pageLabel="Monthly Report">
                 <MonthlyPerformanceReport />
               </ProtectedRoute>
             }

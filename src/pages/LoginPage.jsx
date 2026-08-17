@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { User, Lock, Eye, EyeOff, Zap } from "lucide-react"
 import supabase from "../utils/supabase"
+import { getFirstAccessibleRoute } from "../utils/navigation"
 
 const LoginPage = () => {
   const navigate = useNavigate()
@@ -12,7 +13,8 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [masterData, setMasterData] = useState({
     userCredentials: {}, // Object where keys are usernames and values are passwords
-    userRoles: {} // Object where keys are usernames and values are roles
+    userRoles: {}, // Object where keys are usernames and values are roles
+    userPages: {} // Object where keys are usernames and values are page access string
   })
   const [formData, setFormData] = useState({
     username: "",
@@ -43,7 +45,7 @@ useEffect(() => {
       // 🔥 Supabase se data fetch
       const { data, error } = await supabase
         .from("login")
-        .select("username, password, role, access");
+        .select("username, password, role, access, page");
 
       if (error) {
         throw new Error(error.message);
@@ -51,12 +53,14 @@ useEffect(() => {
 
       const userCredentials = {};
       const userRoles = {};
+      const userPages = {};
 
       data.forEach(user => {
         const username = user.username?.trim().toLowerCase();
         const password = user.password?.trim();
         const role = user.role?.trim() || "user";
         const access = user.access;
+        const page = user.page || "ALL";
 
         // ❗ inactive users skip (same logic)
         if (!access) return;
@@ -64,10 +68,11 @@ useEffect(() => {
         if (username && password) {
           userCredentials[username] = password;
           userRoles[username] = role.toLowerCase();
+          userPages[username] = page;
         }
       });
 
-      setMasterData({ userCredentials, userRoles });
+      setMasterData({ userCredentials, userRoles, userPages });
 
       console.log("Loaded users from Supabase:", userCredentials);
 
@@ -108,11 +113,13 @@ useEffect(() => {
       if (trimmedUsername in masterData.userCredentials) {
         const correctPassword = masterData.userCredentials[trimmedUsername]
         const userRole = masterData.userRoles[trimmedUsername]
+        const pageAccess = masterData.userPages[trimmedUsername] || "ALL"
 
         console.log("Found user in credentials map")
         console.log("Expected Password:", correctPassword)
         console.log("Password Match:", correctPassword === trimmedPassword)
         console.log("User Role:", userRole)
+        console.log("User Page Access:", pageAccess)
 
         // Check if password matches
         if (correctPassword === trimmedPassword) {
@@ -125,6 +132,7 @@ useEffect(() => {
 
           // Set role based on the fetched role
           sessionStorage.setItem('role', isAdmin ? 'admin' : 'user')
+          sessionStorage.setItem('pageAccess', isAdmin ? 'ALL' : pageAccess)
 
           // For admin users, we don't want to restrict by department
           if (isAdmin) {
@@ -137,8 +145,10 @@ useEffect(() => {
             console.log("USER LOGIN - Setting restricted access");
           }
 
-          // Navigate to dashboard
-          navigate("/dashboard/admin")
+          // Navigate to first accessible page for the user
+          const targetRoute = getFirstAccessibleRoute(userRole, pageAccess)
+          console.log(`Redirecting user ${trimmedUsername} to target route: ${targetRoute}`)
+          navigate(targetRoute)
 
           showToast(`Login successful. Welcome, ${trimmedUsername}!`, "success")
           return

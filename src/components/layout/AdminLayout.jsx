@@ -102,6 +102,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     sessionStorage.removeItem('username')
     sessionStorage.removeItem('role')
     sessionStorage.removeItem('department')
+    sessionStorage.removeItem('pageAccess')
     navigate("/login")
   }
 
@@ -263,7 +264,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     },
     {
       href: "/dashboard/OrderPlace",
-      label: "Solarkart ",
+      label: "Solarkart",
       icon: ShoppingCart,
       active: location.pathname === "/dashboard/OrderPlace",
       showFor: ["admin", "user"]
@@ -410,18 +411,31 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
   ]
 
   const getAccessibleDepartments = () => {
-    const userRole = sessionStorage.getItem('role') || 'user'
+    const userRole = (sessionStorage.getItem('role') || 'user').toLowerCase()
     return dataCategories.filter(cat =>
-      !cat.showFor || cat.showFor.includes(userRole)
+      !cat.showFor || cat.showFor.map(r => r.toLowerCase()).includes(userRole)
     )
   }
 
-  // Filter routes based on user role
+  // Filter routes based on user role and page permissions
   const getAccessibleRoutes = () => {
-    const userRole = sessionStorage.getItem('role') || 'user'
-    return routes.filter(route =>
-      route.showFor.includes(userRole)
+    const userRole = (sessionStorage.getItem('role') || 'user').toLowerCase()
+    const pageAccess = sessionStorage.getItem('pageAccess') || 'ALL'
+
+    // Filter routes allowed for role
+    const accessibleByRole = routes.filter(route =>
+      route.showFor.map(r => r.toLowerCase()).includes(userRole)
     )
+
+    // Admin role OR "ALL" pageAccess shows all role accessible pages
+    if (userRole === 'admin' || pageAccess === 'ALL' || !pageAccess) {
+      return accessibleByRole
+    }
+
+    // Otherwise filter by allowed page names list
+    const allowedPages = pageAccess.split(',').map(p => p.trim()).filter(Boolean)
+
+    return accessibleByRole.filter(route => allowedPages.includes(route.label.trim()))
   }
 
   // Check if the current path is a data category page
