@@ -796,19 +796,56 @@ export default function QuatationCreate() {
 
 
 
-  const uploadPDFToDrive = async (pdfBlob, fileName) => {
-    try {
-      const filePath = `${Date.now()}_${fileName}`;
-      const { data, error } = await supabase.storage
-        .from("Quotation_file")
-        .upload(filePath, pdfBlob, { contentType: "application/pdf" });
+  const uploadPDFToDrive = async (pdfBlob, fileName, retries = 2) => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const filePath = `${Date.now()}_${fileName}`;
+        const { data, error } = await supabase.storage
+          .from("Quotation_file")
+          .upload(filePath, pdfBlob, { contentType: "application/pdf", upsert: true });
 
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("Quotation_file").getPublicUrl(filePath);
+        if (urlData?.publicUrl) return urlData.publicUrl;
+      } catch (error) {
+        console.error(`Error uploading PDF (Attempt ${attempt}/${retries}):`, error);
+        if (attempt === retries) return null;
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+    return null;
+  };
+
+  const saveToTable = async (tableName, rowData, enquiryNumber) => {
+    if (!enquiryNumber) {
+      const { error } = await supabase.from(tableName).insert(rowData);
       if (error) throw error;
-      const { data: urlData } = supabase.storage.from("Quotation_file").getPublicUrl(filePath);
-      return urlData.publicUrl;
-    } catch (error) {
-      console.error("Error uploading PDF:", error);
-      return null;
+      return;
+    }
+
+    const { data: existing, error: checkError } = await supabase
+      .from(tableName)
+      .select('id, quatation_copy')
+      .eq('enquiry_number', enquiryNumber)
+      .limit(1);
+
+    if (checkError) {
+      console.warn(`Error checking existing row in ${tableName}:`, checkError);
+    }
+
+    if (existing && existing.length > 0) {
+      const updatePayload = { ...rowData };
+      if (!updatePayload.quatation_copy && existing[0].quatation_copy) {
+        updatePayload.quatation_copy = existing[0].quatation_copy;
+      }
+      const { error } = await supabase
+        .from(tableName)
+        .update(updatePayload)
+        .eq('id', existing[0].id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from(tableName).insert(rowData);
+      if (error) throw error;
     }
   };
 
@@ -939,6 +976,7 @@ export default function QuatationCreate() {
     setShowSendModal(true);
   };
   const submitToSheet = async (formDataToSubmit, quotationCopyUrl = null, statusVal = 'Approved') => {
+    const isEdit = isEditMode || Boolean(formDataToSubmit.isEditCopy);
     if (isMoreThan10KW(formDataToSubmit.rating)) {
       const rowData = {
         enquiry_number: formDataToSubmit.enquiryNumber,
@@ -966,12 +1004,12 @@ export default function QuatationCreate() {
         price_total_b: formDataToSubmit.priceTotalB,
         price_total: formDataToSubmit.priceTotal,
         price_words: formDataToSubmit.priceWords,
-        quatation_copy: isEditMode ? null : quotationCopyUrl,
-        new_quotation_copy: isEditMode ? quotationCopyUrl : null,
+        quatation_copy: isEdit ? null : quotationCopyUrl,
+        new_quotation_copy: isEdit ? quotationCopyUrl : null,
         status: statusVal,
       };
 
-      // Also insert/upsert to new_quatation_create to maintain FMS pipeline compatibility
+      // Also insert/update to new_quatation_create to maintain FMS pipeline compatibility
       const totalCostNum = parseFloat(formDataToSubmit.priceTotal?.replace(/,/g, '')) || parseFloat(productDetails.amount) || null;
       const rateNum = parseFloat(productDetails.rate) || null;
       const amountNum = parseFloat(productDetails.amount) || null;
@@ -1006,27 +1044,16 @@ export default function QuatationCreate() {
         amount: amountNum,
         enquiry_number: formDataToSubmit.enquiryNumber,
         net_cost: totalCostNum,
-        quatation_copy: isEditMode ? null : quotationCopyUrl,
-        new_quotation_copy: isEditMode ? quotationCopyUrl : null,
+        quatation_copy: isEdit ? null : quotationCopyUrl,
+        new_quotation_copy: isEdit ? quotationCopyUrl : null,
         is_10kv: true,
         status: statusVal,
       };
 
-      if (isEditMode) {
-        const [res1, res2] = await Promise.all([
-          supabase.from('quatation_10kw').insert(rowData),
-          supabase.from('new_quatation_create').insert(quatationCreateRow)
-        ]);
-        if (res1.error) throw res1.error;
-        if (res2.error) throw res2.error;
-      } else {
-        const [res1, res2] = await Promise.all([
-          supabase.from('quatation_10kw').insert(rowData),
-          supabase.from('new_quatation_create').insert(quatationCreateRow)
-        ]);
-        if (res1.error) throw res1.error;
-        if (res2.error) throw res2.error;
-      }
+      await Promise.all([
+        saveToTable('quatation_10kw', rowData, formDataToSubmit.enquiryNumber),
+        saveToTable('new_quatation_create', quatationCreateRow, formDataToSubmit.enquiryNumber)
+      ]);
     } else {
       const amount = parseFloat(productDetails.amount || 0);
       const disc = parseFloat(formDataToSubmit.disc || 0);
@@ -1074,22 +1101,12 @@ export default function QuatationCreate() {
         amount: amount || null,
         enquiry_number: formDataToSubmit.enquiryNumber,
         net_cost: netCost,
-        quatation_copy: isEditMode ? null : quotationCopyUrl,
-        new_quotation_copy: isEditMode ? quotationCopyUrl : null,
+        quatation_copy: isEdit ? null : quotationCopyUrl,
+        new_quotation_copy: isEdit ? quotationCopyUrl : null,
         status: statusVal,
       };
 
-      if (isEditMode) {
-        const { error } = await supabase
-          .from('new_quatation_create')
-          .insert(rowData);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('new_quatation_create')
-          .insert(rowData);
-        if (error) throw error;
-      }
+      await saveToTable('new_quatation_create', rowData, formDataToSubmit.enquiryNumber);
     }
   };
 
@@ -1120,9 +1137,6 @@ export default function QuatationCreate() {
     try {
       const fileName = `Quotation_${formData.customer || "Customer"}.pdf`;
       const url = await uploadPDFToDrive(pdfBlob, fileName);
-      if (!url) {
-        throw new Error("Failed to upload PDF file to storage. Please check network connection and try again.");
-      }
 
       const originalBOM = productMap[formData.rating]?.bom || "";
       const isBOMModified = productDetails.bom && productDetails.bom !== originalBOM;
@@ -1195,6 +1209,8 @@ export default function QuatationCreate() {
       const isBOMModified = productVal.bom && productVal.bom !== originalBOM;
       const statusVal = isBOMModified ? 'Pending' : 'Approved';
 
+      const isEdit = isEditMode || Boolean(formVal.isEditCopy);
+
       const rowData = {
         enquiry_number: formVal.enquiryNumber,
         proposal_for: formVal.proposalFor || formVal.capacity || formVal.rating,
@@ -1221,12 +1237,12 @@ export default function QuatationCreate() {
         price_total_b: formVal.priceTotalB,
         price_total: formVal.priceTotal,
         price_words: formVal.priceWords,
-        quatation_copy: isEditMode ? null : url,
-        new_quotation_copy: isEditMode ? url : null,
+        quatation_copy: isEdit ? null : url,
+        new_quotation_copy: isEdit ? url : null,
         status: statusVal,
       };
 
-      // Also insert/upsert to new_quatation_create to maintain FMS pipeline compatibility and status/BOM details
+      // Also insert/update to new_quatation_create to maintain FMS pipeline compatibility and status/BOM details
       const totalCostNum = parseFloat(formVal.priceTotal?.replace(/,/g, '')) || parseFloat(productVal.amount) || null;
       const rateNum = parseFloat(productVal.rate) || null;
       const amountNum = parseFloat(productVal.amount) || null;
@@ -1261,27 +1277,16 @@ export default function QuatationCreate() {
         amount: amountNum,
         enquiry_number: formVal.enquiryNumber,
         net_cost: totalCostNum,
-        quatation_copy: isEditMode ? null : url,
-        new_quotation_copy: isEditMode ? url : null,
+        quatation_copy: isEdit ? null : url,
+        new_quotation_copy: isEdit ? url : null,
         is_10kv: true,
         status: statusVal,
       };
 
-      if (isEditMode) {
-        const [res1, res2] = await Promise.all([
-          supabase.from('quatation_10kw').insert(rowData),
-          supabase.from('new_quatation_create').insert(quatationCreateRow)
-        ]);
-        if (res1.error) throw res1.error;
-        if (res2.error) throw res2.error;
-      } else {
-        const [res1, res2] = await Promise.all([
-          supabase.from('quatation_10kw').insert(rowData),
-          supabase.from('new_quatation_create').insert(quatationCreateRow)
-        ]);
-        if (res1.error) throw res1.error;
-        if (res2.error) throw res2.error;
-      }
+      await Promise.all([
+        saveToTable('quatation_10kw', rowData, formVal.enquiryNumber),
+        saveToTable('new_quatation_create', quatationCreateRow, formVal.enquiryNumber)
+      ]);
 
       if (sendWhatsAppFlag) {
         try {
