@@ -72,8 +72,8 @@ function DispatchMaterialsPage() {
       setLoading(true)
       setError(null)
 
-      // fetch dispatch_materials and quotation in parallel
-      const [{ data: dmData, error: dmError }, { data: quotationData, error: quotationError }] =
+      // fetch dispatch_materials, quotation, and completed dispatch_planner (history) in parallel
+      const [{ data: dmData, error: dmError }, { data: quotationData, error: quotationError }, { data: dpHistoryData, error: dpError }] =
         await Promise.all([
           supabase
             .from("dispatch_materials")
@@ -91,16 +91,30 @@ function DispatchMaterialsPage() {
           supabase
             .from("new_quatation_create")
             .select("*"),
+          supabase
+            .from("dispatch_planner")
+            .select("enquiry_number, actual")
+            .not("actual", "is", null),
         ])
 
       if (dmError) throw dmError
       if (quotationError) throw quotationError
+      if (dpError) {
+        console.warn("Could not fetch dispatch_planner history for validation:", dpError)
+      }
 
-      // FAST MAP
+      // FAST MAP for quotations
       const quotationMap = {}
       quotationData.forEach((q) => {
         quotationMap[q.enquiry_number] = q
       })
+
+      // Set of enquiry_numbers available in Dispatch Planner History (actual IS NOT NULL)
+      const dpHistoryEnquiries = new Set(
+        (dpHistoryData || [])
+          .filter((dp) => dp.actual)
+          .map((dp) => String(dp.enquiry_number).trim())
+      )
 
       const pending = []
       const history = []
@@ -154,7 +168,10 @@ function DispatchMaterialsPage() {
         }
 
         if (!row.actual) {
-          pending.push(rowData)
+          // Only show in Pending if available in Dispatch Planner History
+          if (dpHistoryEnquiries.has(String(enquiryNumber).trim())) {
+            pending.push(rowData)
+          }
         } else {
           history.push(rowData)
         }

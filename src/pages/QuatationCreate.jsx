@@ -1021,8 +1021,8 @@ export default function QuatationCreate() {
         if (res2.error) throw res2.error;
       } else {
         const [res1, res2] = await Promise.all([
-          supabase.from('quatation_10kw').upsert(rowData, { onConflict: 'enquiry_number' }),
-          supabase.from('new_quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
+          supabase.from('quatation_10kw').insert(rowData),
+          supabase.from('new_quatation_create').insert(quatationCreateRow)
         ]);
         if (res1.error) throw res1.error;
         if (res2.error) throw res2.error;
@@ -1087,7 +1087,7 @@ export default function QuatationCreate() {
       } else {
         const { error } = await supabase
           .from('new_quatation_create')
-          .upsert(rowData, { onConflict: 'enquiry_number' });
+          .insert(rowData);
         if (error) throw error;
       }
     }
@@ -1120,6 +1120,9 @@ export default function QuatationCreate() {
     try {
       const fileName = `Quotation_${formData.customer || "Customer"}.pdf`;
       const url = await uploadPDFToDrive(pdfBlob, fileName);
+      if (!url) {
+        throw new Error("Failed to upload PDF file to storage. Please check network connection and try again.");
+      }
 
       const originalBOM = productMap[formData.rating]?.bom || "";
       const isBOMModified = productDetails.bom && productDetails.bom !== originalBOM;
@@ -1273,8 +1276,8 @@ export default function QuatationCreate() {
         if (res2.error) throw res2.error;
       } else {
         const [res1, res2] = await Promise.all([
-          supabase.from('quatation_10kw').upsert(rowData, { onConflict: 'enquiry_number' }),
-          supabase.from('new_quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
+          supabase.from('quatation_10kw').insert(rowData),
+          supabase.from('new_quatation_create').insert(quatationCreateRow)
         ]);
         if (res1.error) throw res1.error;
         if (res2.error) throw res2.error;

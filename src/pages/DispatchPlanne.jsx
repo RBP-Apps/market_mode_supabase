@@ -38,28 +38,49 @@ export default function DispatchPlannerPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from("dispatch_planner")
-        .select(`
-          *,
-          enquiries!left (
-            beneficiary_name,
-            address,
-            village_block,
-            district,
-            contact_number
-          )
-        `)
-        .order("id", { ascending: false })
+      const [{ data, error }, { data: salesCallsData, error: salesError }] = await Promise.all([
+        supabase
+          .from("dispatch_planner")
+          .select(`
+            *,
+            enquiries!left (
+              beneficiary_name,
+              address,
+              village_block,
+              district,
+              contact_number
+            )
+          `)
+          .order("id", { ascending: false }),
+        supabase
+          .from("sales_calls")
+          .select("enquiry_number, planned, actual")
+          .not("planned", "is", null)
+          .not("actual", "is", null)
+      ])
 
       if (error) throw error
+      if (salesError) {
+        console.warn("Could not fetch sales_calls for validation:", salesError)
+      }
+
+      // Map/Set of enquiry_numbers where sales_calls.planned IS NOT NULL and sales_calls.actual IS NOT NULL
+      const completedSalesEnquiries = new Set(
+        (salesCallsData || [])
+          .filter(sc => sc.planned && sc.actual)
+          .map(sc => String(sc.enquiry_number).trim())
+      )
 
       const pending = []
       const history = []
 
         ; (data || []).forEach(row => {
+          const enqNum = String(row.enquiry_number || "").trim()
           if (!row.actual) {
-            pending.push(row)
+            // Condition for Pending: dispatch_planner.planned IS NOT NULL && dispatch_planner.actual IS NULL && sales_calls.planned IS NOT NULL && sales_calls.actual IS NOT NULL
+            if (row.planned && completedSalesEnquiries.has(enqNum)) {
+              pending.push(row)
+            }
           } else {
             history.push(row)
           }
