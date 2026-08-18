@@ -94,7 +94,8 @@ export default function UserRegistration() {
   };
 
   const [formData, setFormData] = useState({
-    doer_name: "",
+    username: "",
+    name: "",
     email_id: "",
     wa_number: "",
     password: "",
@@ -155,6 +156,15 @@ export default function UserRegistration() {
       return;
     }
 
+    if (name === "username") {
+      setFormData((prev) => ({
+        ...prev,
+        username: value,
+        name: value,
+      }));
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -170,13 +180,22 @@ export default function UserRegistration() {
       }
       return;
     }
+    if (name === "username") {
+      setEditData((prev) => ({
+        ...prev,
+        username: value,
+        name: value,
+      }));
+      return;
+    }
     setEditData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleEdit = (user) => {
     setEditUserId(user.id);
     setEditData({
-      doer_name: user.doer_name || user.username || "",
+      username: user.username || "",
+      name: user.name || user.username || "",
       email_id: user.email_id || "",
       wa_number: user.wa_number || "",
       password: user.password || "",
@@ -200,7 +219,7 @@ export default function UserRegistration() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.doer_name || !formData.password || !formData.role) {
+    if (!formData.username || !formData.password || !formData.role) {
       alert("Please fill in all required fields: Username, Password, and User Role.");
       return;
     }
@@ -211,9 +230,8 @@ export default function UserRegistration() {
     }
 
     const payload = {
-      username: formData.doer_name,
-      doer_name: formData.doer_name,
-      name: formData.doer_name,
+      username: formData.username,
+      name: formData.name || formData.username,
       password: formData.password,
       email_id: formData.email_id || "",
       wa_number: formData.wa_number || "",
@@ -232,7 +250,8 @@ export default function UserRegistration() {
 
       setOpen(false);
       setFormData({
-        doer_name: "",
+        username: "",
+        name: "",
         email_id: "",
         wa_number: "",
         password: "",
@@ -246,6 +265,7 @@ export default function UserRegistration() {
       fetchUsers();
     } catch (error) {
       console.error("Error adding user:", error);
+      alert("Error adding user: " + error.message);
     }
   };
 
@@ -253,7 +273,7 @@ export default function UserRegistration() {
   const handleUpdate = async (e) => {
     if (e) e.preventDefault();
 
-    if (!editData.doer_name || !editData.password || !editData.role) {
+    if (!editData.username || !editData.password || !editData.role) {
       alert("Please fill in required fields: Username, Password, and User Role.");
       return;
     }
@@ -264,9 +284,8 @@ export default function UserRegistration() {
     }
 
     const payload = {
-      username: editData.doer_name,
-      doer_name: editData.doer_name,
-      name: editData.doer_name,
+      username: editData.username,
+      name: editData.name || editData.username,
       password: editData.password,
       email_id: editData.email_id || "",
       wa_number: editData.wa_number || "",
@@ -290,6 +309,7 @@ export default function UserRegistration() {
       fetchUsers();
     } catch (error) {
       console.error("Error updating user:", error);
+      alert("Error updating user: " + error.message);
     }
   };
 
@@ -312,7 +332,7 @@ export default function UserRegistration() {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
     return (
-      (u.doer_name && u.doer_name.toLowerCase().includes(q)) ||
+      (u.name && u.name.toLowerCase().includes(q)) ||
       (u.username && u.username.toLowerCase().includes(q)) ||
       (u.email_id && u.email_id.toLowerCase().includes(q)) ||
       (u.wa_number && u.wa_number.toLowerCase().includes(q)) ||
@@ -551,9 +571,9 @@ export default function UserRegistration() {
                       <td className="px-3 py-3 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-xs">
-                            {(u.doer_name || u.username || "U").charAt(0).toUpperCase()}
+                            {(u.username || u.name || "U").charAt(0).toUpperCase()}
                           </div>
-                          <span className="font-medium text-gray-900">{u.doer_name || u.username}</span>
+                          <span className="font-medium text-gray-900">{u.username || u.name}</span>
                         </div>
                       </td>
 
@@ -661,12 +681,12 @@ export default function UserRegistration() {
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-indigo-100 flex items-center justify-center mr-3">
                           <span className="font-bold text-purple-700">
-                            {(u.doer_name || u.username || "U").charAt(0).toUpperCase()}
+                            {(u.username || u.name || "U").charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900">
-                            {u.doer_name || u.username}
+                            {u.username || u.name}
                           </h3>
                           <div className="flex items-center mt-1">
                             <span
@@ -780,8 +800,8 @@ export default function UserRegistration() {
                   </label>
                   <input
                     className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                    name="doer_name"
-                    value={formData.doer_name}
+                    name="username"
+                    value={formData.username}
                     placeholder="Enter username"
                     onChange={handleChange}
                     required
@@ -1012,8 +1032,8 @@ export default function UserRegistration() {
                   </label>
                   <input
                     className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                    name="doer_name"
-                    value={editData.doer_name}
+                    name="username"
+                    value={editData.username}
                     placeholder="Enter username"
                     onChange={handleEditChange}
                     required
@@ -1201,4 +1221,3 @@ export default function UserRegistration() {
     </AdminLayout>
   );
 }
-

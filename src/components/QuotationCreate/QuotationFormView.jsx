@@ -8,6 +8,7 @@ import CostCalculationSection from "./CostCalculationSection";
 import HybridSelector from "./HybridSelector";
 
 export default function QuotationFormView({
+  isEditMode,
   formData,
   setFormData,
   productDetails,
@@ -54,13 +55,17 @@ export default function QuotationFormView({
           </button>
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              {selectedEnquiry
-                ? `Create Quotation for ${selectedEnquiry.beneficiaryName}`
-                : "Create New Quotation"}
+              {isEditMode
+                ? `Edit Quotation for ${formData.customer || selectedEnquiry?.beneficiaryName || "Customer"}`
+                : selectedEnquiry
+                  ? `Create Quotation for ${selectedEnquiry.beneficiaryName}`
+                  : "Create New Quotation"}
             </h1>
             <p className="text-gray-500 mt-1 flex items-center gap-2">
               <FileSignature className="h-4 w-4" />
-              Fill in the details to generate a professional quotation
+              {isEditMode
+                ? "Modify prefilled quotation data. Saving will create a new quotation copy."
+                : "Fill in the details to generate a professional quotation"}
             </p>
           </div>
         </div>
@@ -144,16 +149,17 @@ export default function QuotationFormView({
           if (isMoreThan10KW(rating)) {
             return (
               <>
-                {/* Card 1: General Proposal Metadata */}
-                {/* <div className={`${sectionClass} z-[23]`}>
+
+                <div className={`${sectionClass} z-[23]`}>
                   <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 rounded-t-xl">
                     <h2 className={sectionTitleClass}>
                       <FileText className="h-5 w-5 mr-2" />
-                      PRIMARY INPUTS  (edit every proposal)
+                      PRIMARY INPUTS (Edit Every Proposal)
                     </h2>
                   </div>
+
                   <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                   
+                    {/* Prepared For */}
                     <div>
                       <label className={labelClass}>Prepared For</label>
                       <input
@@ -165,6 +171,8 @@ export default function QuotationFormView({
                         className={inputClass}
                       />
                     </div>
+
+                    {/* Proposal Date */}
                     <div>
                       <label className={labelClass}>Proposal Date</label>
                       <input
@@ -175,742 +183,543 @@ export default function QuotationFormView({
                         className={inputClass}
                       />
                     </div>
+
+                    {/* Plant Capacity */}
+                    <div>
+                      <label className={labelClass}>Plant Capacity (MWp)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="plantCapacity"
+                        value={formData.plantCapacity || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 1.5"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* EPC Rate */}
+                    <div>
+                      <label className={labelClass}>EPC Rate (₹ per Wp)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="epcRate"
+                        value={formData.epcRate || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 32"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* Comprehensive O&M */}
+                    <div>
+                      <label className={labelClass}>Comprehensive O&M – Lump Sum (₹)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="comprehensiveOM"
+                        value={formData.comprehensiveOM || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 500000"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* Grid Tariff Conservative */}
+                    <div>
+                      <label className={labelClass}>Grid Tariff – Conservative (₹/unit)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="gridTariffConservative"
+                        value={formData.gridTariffConservative || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 7.50"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* Grid Tariff Higher */}
+                    <div>
+                      <label className={labelClass}>Grid Tariff – Higher (₹/unit)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="gridTariffHigher"
+                        value={formData.gridTariffHigher || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 9.00"
+                        className={inputClass}
+                      />
+                    </div>
                   </div>
-                </div> */}
-                <div className={`${sectionClass} z-[23]`}>
-  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 rounded-t-xl">
-    <h2 className={sectionTitleClass}>
-      <FileText className="h-5 w-5 mr-2" />
-      PRIMARY INPUTS (Edit Every Proposal)
-    </h2>
-  </div>
+                </div>
 
-  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-    {/* Prepared For */}
-    <div>
-      <label className={labelClass}>Prepared For</label>
-      <input
-        type="text"
-        name="preparedFor"
-        value={formData.preparedFor || ""}
-        onChange={handleChange}
-        placeholder="e.g. Mr. Subham Singhal"
-        className={inputClass}
-      />
-    </div>
 
-    {/* Proposal Date */}
-    <div>
-      <label className={labelClass}>Proposal Date</label>
-      <input
-        type="date"
-        name="dated"
-        value={formData.dated || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    {/* Plant Capacity */}
-    <div>
-      <label className={labelClass}>Plant Capacity (MWp)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="plantCapacity"
-        value={formData.plantCapacity || ""}
-        onChange={handleChange}
-        placeholder="e.g. 1.5"
-        className={inputClass}
-      />
-    </div>
-
-    {/* EPC Rate */}
-    <div>
-      <label className={labelClass}>EPC Rate (₹ per Wp)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="epcRate"
-        value={formData.epcRate || ""}
-        onChange={handleChange}
-        placeholder="e.g. 32"
-        className={inputClass}
-      />
-    </div>
-
-    {/* Comprehensive O&M */}
-    <div>
-      <label className={labelClass}>Comprehensive O&M – Lump Sum (₹)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="comprehensiveOM"
-        value={formData.comprehensiveOM || ""}
-        onChange={handleChange}
-        placeholder="e.g. 500000"
-        className={inputClass}
-      />
-    </div>
-
-    {/* Grid Tariff Conservative */}
-    <div>
-      <label className={labelClass}>Grid Tariff – Conservative (₹/unit)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="gridTariffConservative"
-        value={formData.gridTariffConservative || ""}
-        onChange={handleChange}
-        placeholder="e.g. 7.50"
-        className={inputClass}
-      />
-    </div>
-
-    {/* Grid Tariff Higher */}
-    <div>
-      <label className={labelClass}>Grid Tariff – Higher (₹/unit)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="gridTariffHigher"
-        value={formData.gridTariffHigher || ""}
-        onChange={handleChange}
-        placeholder="e.g. 9.00"
-        className={inputClass}
-      />
-    </div>
-  </div>
-</div>
-
-                {/* Card 2: Project Specifications & Projections */}
-                {/* <div className={`${sectionClass} z-[22]`}>
+                <div className={`${sectionClass} z-[22]`}>
                   <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4 rounded-t-xl">
                     <h2 className={sectionTitleClass}>
                       <Zap className="h-5 w-5 mr-2" />
                       Assumptions
                     </h2>
                   </div>
+
                   <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Generation Guarantee */}
                     <div>
-                      <label className={labelClass}>Capacity (MWp)</label>
+                      <label className={labelClass}>
+                        Generation Guarantee (kWh per kWp / yr)
+                      </label>
                       <input
-                        type="text"
-                        name="capacityMwp"
-                        value={formData.capacityMwp || ""}
+                        type="number"
+                        step="0.01"
+                        name="generationGuarantee"
+                        value={formData.generationGuarantee || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 2.500 MWp"
+                        placeholder="e.g. 1500"
                         className={inputClass}
                       />
                     </div>
+
+                    {/* Module Wattage */}
                     <div>
-                      <label className={labelClass}>Capacity (Wp)</label>
+                      <label className={labelClass}>Module Wattage (Wp)</label>
                       <input
-                        type="text"
-                        name="capacityWp"
-                        value={formData.capacityWp || ""}
+                        type="number"
+                        step="0.01"
+                        name="moduleWattage"
+                        value={formData.moduleWattage || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 25,00,000 Wp"
+                        placeholder="e.g. 600"
                         className={inputClass}
                       />
                     </div>
+
+                    {/* Land Needed */}
                     <div>
-                      <label className={labelClass}>Module Count</label>
+                      <label className={labelClass}>Land Needed (Acres per MW)</label>
                       <input
-                        type="text"
-                        name="moduleCount"
-                        value={formData.moduleCount || ""}
+                        type="number"
+                        step="0.01"
+                        name="landNeeded"
+                        value={formData.landNeeded || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 4166"
+                        placeholder="e.g. 4.5"
                         className={inputClass}
                       />
                     </div>
+
+                    {/* Grid Emission Factor */}
                     <div>
-                      <label className={labelClass}>Land Required (Acres/Sq Ft)</label>
+                      <label className={labelClass}>
+                        Grid Emission Factor (kg CO₂ / kWh)
+                      </label>
                       <input
-                        type="text"
-                        name="landAcres"
-                        value={formData.landAcres || ""}
+                        type="number"
+                        step="0.001"
+                        name="gridEmissionFactor"
+                        value={formData.gridEmissionFactor || ""}
                         onChange={handleChange}
-                        placeholder="e.g. ~7.5 acres"
+                        placeholder="e.g. 0.716"
                         className={inputClass}
                       />
                     </div>
+
+                    {/* Effective GST */}
                     <div>
-                      <label className={labelClass}>Est. Annual Generation (Units/Year)</label>
+                      <label className={labelClass}>
+                        Effective GST on Supply & Install (%)
+                      </label>
                       <input
-                        type="text"
-                        name="annualGen"
-                        value={formData.annualGen || ""}
+                        type="number"
+                        step="0.01"
+                        name="effectiveGST"
+                        value={formData.effectiveGST || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 37.5 Lakh"
+                        placeholder="e.g. 13.8"
                         className={inputClass}
                       />
                     </div>
+
+                    {/* GST on O&M */}
                     <div>
-                      <label className={labelClass}>CO2 Tonnes Avoided / Year</label>
+                      <label className={labelClass}>GST on O&M (%)</label>
                       <input
-                        type="text"
-                        name="co2Tonnes"
-                        value={formData.co2Tonnes || ""}
+                        type="number"
+                        step="0.01"
+                        name="gstOnOM"
+                        value={formData.gstOnOM || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 3000"
+                        placeholder="e.g. 18"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* Plant Life */}
+                    <div>
+                      <label className={labelClass}>
+                        Plant Life for Savings (Years)
+                      </label>
+                      <input
+                        type="number"
+                        name="plantLife"
+                        value={formData.plantLife || ""}
+                        onChange={handleChange}
+                        placeholder="e.g. 25"
                         className={inputClass}
                       />
                     </div>
                   </div>
-                </div> */}
-                <div className={`${sectionClass} z-[22]`}>
-  <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4 rounded-t-xl">
-    <h2 className={sectionTitleClass}>
-      <Zap className="h-5 w-5 mr-2" />
-      Assumptions
-    </h2>
-  </div>
+                </div>
 
-  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-    {/* Generation Guarantee */}
-    <div>
-      <label className={labelClass}>
-        Generation Guarantee (kWh per kWp / yr)
-      </label>
-      <input
-        type="number"
-        step="0.01"
-        name="generationGuarantee"
-        value={formData.generationGuarantee || ""}
-        onChange={handleChange}
-        placeholder="e.g. 1500"
-        className={inputClass}
-      />
-    </div>
 
-    {/* Module Wattage */}
-    <div>
-      <label className={labelClass}>Module Wattage (Wp)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="moduleWattage"
-        value={formData.moduleWattage || ""}
-        onChange={handleChange}
-        placeholder="e.g. 600"
-        className={inputClass}
-      />
-    </div>
-
-    {/* Land Needed */}
-    <div>
-      <label className={labelClass}>Land Needed (Acres per MW)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="landNeeded"
-        value={formData.landNeeded || ""}
-        onChange={handleChange}
-        placeholder="e.g. 4.5"
-        className={inputClass}
-      />
-    </div>
-
-    {/* Grid Emission Factor */}
-    <div>
-      <label className={labelClass}>
-        Grid Emission Factor (kg CO₂ / kWh)
-      </label>
-      <input
-        type="number"
-        step="0.001"
-        name="gridEmissionFactor"
-        value={formData.gridEmissionFactor || ""}
-        onChange={handleChange}
-        placeholder="e.g. 0.716"
-        className={inputClass}
-      />
-    </div>
-
-    {/* Effective GST */}
-    <div>
-      <label className={labelClass}>
-        Effective GST on Supply & Install (%)
-      </label>
-      <input
-        type="number"
-        step="0.01"
-        name="effectiveGST"
-        value={formData.effectiveGST || ""}
-        onChange={handleChange}
-        placeholder="e.g. 13.8"
-        className={inputClass}
-      />
-    </div>
-
-    {/* GST on O&M */}
-    <div>
-      <label className={labelClass}>GST on O&M (%)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="gstOnOM"
-        value={formData.gstOnOM || ""}
-        onChange={handleChange}
-        placeholder="e.g. 18"
-        className={inputClass}
-      />
-    </div>
-
-    {/* Plant Life */}
-    <div>
-      <label className={labelClass}>
-        Plant Life for Savings (Years)
-      </label>
-      <input
-        type="number"
-        name="plantLife"
-        value={formData.plantLife || ""}
-        onChange={handleChange}
-        placeholder="e.g. 25"
-        className={inputClass}
-      />
-    </div>
-  </div>
-</div>
-
-                {/* Card 3: Indicative Savings & Tariffs */}
-                {/* <div className={`${sectionClass} z-[21]`}>
+                <div className={`${sectionClass} z-[21]`}>
                   <div className="bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-4 rounded-t-xl">
                     <h2 className={sectionTitleClass}>
                       <TrendingUp className="h-5 w-5 mr-2" />
                       CALCULATED OUTPUTS
-
                     </h2>
                   </div>
+
                   <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+
                     <div>
-                      <label className={labelClass}>Tariff (Low) (₹/unit)</label>
+                      <label className={labelClass}>Capacity (Wp)</label>
                       <input
-                        type="text"
-                        name="tariffLow"
-                        value={formData.tariffLow || ""}
+                        type="number"
+                        name="capacityWp"
+                        value={formData.capacityWp || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 6.5"
                         className={inputClass}
                       />
                     </div>
+
                     <div>
-                      <label className={labelClass}>Savings (Low) (₹/year)</label>
+                      <label className={labelClass}>Capacity (kWp)</label>
                       <input
-                        type="text"
-                        name="savingsLow"
-                        value={formData.savingsLow || ""}
+                        type="number"
+                        name="capacityKwp"
+                        value={formData.capacityKwp || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 2,43,75,000"
                         className={inputClass}
                       />
                     </div>
+
                     <div>
-                      <label className={labelClass}>Tariff (High) (₹/unit)</label>
+                      <label className={labelClass}>Module Count (Exact)</label>
                       <input
-                        type="text"
-                        name="tariffHigh"
-                        value={formData.tariffHigh || ""}
+                        type="number"
+                        name="moduleCountExact"
+                        value={formData.moduleCountExact || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 8.0"
                         className={inputClass}
                       />
                     </div>
+
                     <div>
-                      <label className={labelClass}>Savings (High) (₹/year)</label>
+                      <label className={labelClass}>Module Count (Rounded)</label>
                       <input
-                        type="text"
-                        name="savingsHigh"
-                        value={formData.savingsHigh || ""}
+                        type="number"
+                        name="moduleCountRounded"
+                        value={formData.moduleCountRounded || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 3,00,00,000"
                         className={inputClass}
                       />
                     </div>
+
                     <div>
-                      <label className={labelClass}>Capex (Cr) (₹)</label>
+                      <label className={labelClass}>Annual Generation (kWh)</label>
                       <input
-                        type="text"
-                        name="capexCr"
-                        value={formData.capexCr || ""}
+                        type="number"
+                        name="annualGeneration"
+                        value={formData.annualGeneration || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 10.29"
                         className={inputClass}
                       />
                     </div>
+
+                    <div>
+                      <label className={labelClass}>Annual Generation (Lakh Units)</label>
+                      <input
+                        type="number"
+                        name="annualGenerationLakhUnits"
+                        value={formData.annualGenerationLakhUnits || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Land Required (Acres)</label>
+                      <input
+                        type="number"
+                        name="landRequired"
+                        value={formData.landRequired || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>CO₂ Avoided (Tonnes / Yr)</label>
+                      <input
+                        type="number"
+                        name="co2Avoided"
+                        value={formData.co2Avoided || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Material Cost (₹)</label>
+                      <input
+                        type="number"
+                        name="materialCost"
+                        value={formData.materialCost || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>GST on Material (₹)</label>
+                      <input
+                        type="number"
+                        name="gstOnMaterial"
+                        value={formData.gstOnMaterial || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Total A – System (₹)</label>
+                      <input
+                        type="number"
+                        name="totalASystem"
+                        value={formData.totalASystem || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>O&M (₹)</label>
+                      <input
+                        type="number"
+                        name="omCost"
+                        value={formData.omCost || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>GST on O&M (₹)</label>
+                      <input
+                        type="number"
+                        name="gstOnOMAmount"
+                        value={formData.gstOnOMAmount || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Total B – COMC (₹)</label>
+                      <input
+                        type="number"
+                        name="totalBComc"
+                        value={formData.totalBComc || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
                     <div className="md:col-span-2">
-                      <label className={labelClass}>Savings over 25 Years (Low) (₹)</label>
+                      <label className={labelClass}>TOTAL PROJECT COST A+B (₹)</label>
                       <input
-                        type="text"
-                        name="savings25Low"
-                        value={formData.savings25Low || ""}
+                        type="number"
+                        name="totalProjectCost"
+                        value={formData.totalProjectCost || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 61 Cr"
                         className={inputClass}
                       />
                     </div>
+
                     <div>
-                      <label className={labelClass}>Savings over 25 Years (High) (₹)</label>
+                      <label className={labelClass}>Annual Savings – Conservative (₹)</label>
                       <input
-                        type="text"
-                        name="savings25High"
-                        value={formData.savings25High || ""}
+                        type="number"
+                        name="annualSavingsConservative"
+                        value={formData.annualSavingsConservative || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 75 Cr"
                         className={inputClass}
                       />
                     </div>
+
+                    <div>
+                      <label className={labelClass}>Annual Savings – Higher (₹)</label>
+                      <input
+                        type="number"
+                        name="annualSavingsHigher"
+                        value={formData.annualSavingsHigher || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Simple Payback – Conservative (Yrs)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="simplePaybackConservative"
+                        value={formData.simplePaybackConservative || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Simple Payback – Higher (Yrs)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="simplePaybackHigher"
+                        value={formData.simplePaybackHigher || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>25-Year Gross Savings – Conservative (₹)</label>
+                      <input
+                        type="number"
+                        name="grossSavings25Conservative"
+                        value={formData.grossSavings25Conservative || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>25-Year Gross Savings – Higher (₹)</label>
+                      <input
+                        type="number"
+                        name="grossSavings25Higher"
+                        value={formData.grossSavings25Higher || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
                   </div>
-                </div> */}
-                <div className={`${sectionClass} z-[21]`}>
-  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-4 rounded-t-xl">
-    <h2 className={sectionTitleClass}>
-      <TrendingUp className="h-5 w-5 mr-2" />
-      CALCULATED OUTPUTS
-    </h2>
-  </div>
-
-  <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
-
-    <div>
-      <label className={labelClass}>Capacity (Wp)</label>
-      <input
-        type="number"
-        name="capacityWp"
-        value={formData.capacityWp || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Capacity (kWp)</label>
-      <input
-        type="number"
-        name="capacityKwp"
-        value={formData.capacityKwp || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Module Count (Exact)</label>
-      <input
-        type="number"
-        name="moduleCountExact"
-        value={formData.moduleCountExact || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Module Count (Rounded)</label>
-      <input
-        type="number"
-        name="moduleCountRounded"
-        value={formData.moduleCountRounded || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Annual Generation (kWh)</label>
-      <input
-        type="number"
-        name="annualGeneration"
-        value={formData.annualGeneration || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Annual Generation (Lakh Units)</label>
-      <input
-        type="number"
-        name="annualGenerationLakhUnits"
-        value={formData.annualGenerationLakhUnits || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Land Required (Acres)</label>
-      <input
-        type="number"
-        name="landRequired"
-        value={formData.landRequired || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>CO₂ Avoided (Tonnes / Yr)</label>
-      <input
-        type="number"
-        name="co2Avoided"
-        value={formData.co2Avoided || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Material Cost (₹)</label>
-      <input
-        type="number"
-        name="materialCost"
-        value={formData.materialCost || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>GST on Material (₹)</label>
-      <input
-        type="number"
-        name="gstOnMaterial"
-        value={formData.gstOnMaterial || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Total A – System (₹)</label>
-      <input
-        type="number"
-        name="totalASystem"
-        value={formData.totalASystem || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>O&M (₹)</label>
-      <input
-        type="number"
-        name="omCost"
-        value={formData.omCost || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>GST on O&M (₹)</label>
-      <input
-        type="number"
-        name="gstOnOMAmount"
-        value={formData.gstOnOMAmount || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Total B – COMC (₹)</label>
-      <input
-        type="number"
-        name="totalBComc"
-        value={formData.totalBComc || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div className="md:col-span-2">
-      <label className={labelClass}>TOTAL PROJECT COST A+B (₹)</label>
-      <input
-        type="number"
-        name="totalProjectCost"
-        value={formData.totalProjectCost || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Annual Savings – Conservative (₹)</label>
-      <input
-        type="number"
-        name="annualSavingsConservative"
-        value={formData.annualSavingsConservative || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Annual Savings – Higher (₹)</label>
-      <input
-        type="number"
-        name="annualSavingsHigher"
-        value={formData.annualSavingsHigher || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Simple Payback – Conservative (Yrs)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="simplePaybackConservative"
-        value={formData.simplePaybackConservative || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div>
-      <label className={labelClass}>Simple Payback – Higher (Yrs)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="simplePaybackHigher"
-        value={formData.simplePaybackHigher || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div className="md:col-span-2">
-      <label className={labelClass}>25-Year Gross Savings – Conservative (₹)</label>
-      <input
-        type="number"
-        name="grossSavings25Conservative"
-        value={formData.grossSavings25Conservative || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-    <div className="md:col-span-2">
-      <label className={labelClass}>25-Year Gross Savings – Higher (₹)</label>
-      <input
-        type="number"
-        name="grossSavings25Higher"
-        value={formData.grossSavings25Higher || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
-
-  </div>
-</div>
+                </div>
 
                 {/* Card 4: Pricing Schedule */}
-              <div className={`${sectionClass} z-[20]`}>
-  <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 rounded-t-xl">
-    <h2 className={sectionTitleClass}>
-      <Coins className="h-5 w-5 mr-2" />
-      Amount in words — helper
-    </h2>
-  </div>
+                <div className={`${sectionClass} z-[20]`}>
+                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 rounded-t-xl">
+                    <h2 className={sectionTitleClass}>
+                      <Coins className="h-5 w-5 mr-2" />
+                      Amount in words — helper
+                    </h2>
+                  </div>
 
-  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
 
-    <div>
-      <label className={labelClass}>Crore</label>
-      <input
-        type="text"
-        name="crore"
-        value={formData.crore || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
+                    <div>
+                      <label className={labelClass}>Crore</label>
+                      <input
+                        type="text"
+                        name="crore"
+                        value={formData.crore || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
 
-    <div>
-      <label className={labelClass}>Lakh</label>
-      <input
-        type="text"
-        name="lakh"
-        value={formData.lakh || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
+                    <div>
+                      <label className={labelClass}>Lakh</label>
+                      <input
+                        type="text"
+                        name="lakh"
+                        value={formData.lakh || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
 
-    <div>
-      <label className={labelClass}>Thousand</label>
-      <input
-        type="text"
-        name="thousand"
-        value={formData.thousand || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
+                    <div>
+                      <label className={labelClass}>Thousand</label>
+                      <input
+                        type="text"
+                        name="thousand"
+                        value={formData.thousand || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
 
-    <div>
-      <label className={labelClass}>Hundred</label>
-      <input
-        type="text"
-        name="hundred"
-        value={formData.hundred || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
+                    <div>
+                      <label className={labelClass}>Hundred</label>
+                      <input
+                        type="text"
+                        name="hundred"
+                        value={formData.hundred || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
 
-    <div>
-      <label className={labelClass}>Rest</label>
-      <input
-        type="text"
-        name="rest"
-        value={formData.rest || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
+                    <div>
+                      <label className={labelClass}>Rest</label>
+                      <input
+                        type="text"
+                        name="rest"
+                        value={formData.rest || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
 
-    <div>
-      <label className={labelClass}>Crore Hundreds</label>
-      <input
-        type="text"
-        name="croreHundreds"
-        value={formData.croreHundreds || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
+                    <div>
+                      <label className={labelClass}>Crore Hundreds</label>
+                      <input
+                        type="text"
+                        name="croreHundreds"
+                        value={formData.croreHundreds || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
 
-    <div className="md:col-span-2">
-      <label className={labelClass}>Crore Remainder</label>
-      <input
-        type="text"
-        name="croreRemainder"
-        value={formData.croreRemainder || ""}
-        onChange={handleChange}
-        className={inputClass}
-      />
-    </div>
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>Crore Remainder</label>
+                      <input
+                        type="text"
+                        name="croreRemainder"
+                        value={formData.croreRemainder || ""}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
 
-    <div className="md:col-span-3">
-      <label className={labelClass}>Amount in Words</label>
-      <textarea
-        name="amountInWords"
-        value={formData.amountInWords || ""}
-        onChange={handleChange}
-        className={`${inputClass} h-20 resize-none`}
-      />
-    </div>
+                    <div className="md:col-span-3">
+                      <label className={labelClass}>Amount in Words</label>
+                      <textarea
+                        name="amountInWords"
+                        value={formData.amountInWords || ""}
+                        onChange={handleChange}
+                        className={`${inputClass} h-20 resize-none`}
+                      />
+                    </div>
 
-  </div>
-</div>
+                  </div>
+                </div>
               </>
             );
           } else {
@@ -982,7 +791,7 @@ export default function QuotationFormView({
                   termsConditions:
                     "On Grid:\n1. We will process for approval from competent authority for net metering. Any other approval is in your scope.\n2. Processing fee payable to CREDA/CSPDCL as applicable.\n3. Generation Guarantee of 1.5kWh/W per annum",
                   generalTerms:
-                    "1. Power output from Control Panel will be in customers scope.\n2. Civil work other than Module Mounting Structure will be in customer's scope.\n3. Our offer is valid for 15 Days. Any custom specifications will be charged extra.\n4. Regular cleaning of Modules with plain water (soft) for desired generation guarantee in customer's scope.\n5. Detailed Quotation with engineering document will be provided on finalisation, for systems above 10KW.\n6. Subsidy (if any) is subject to government approval and will be directly credited in customer's account.\n7. Transportation inclusive. Insurance inclusive upto site and thereafter in customer's scope.\n8. Payment 50% advance on booking, Balance 50% against PI before dispatch of material.\n9. Delivery within 2 weeks from sanction and installation immediately thereafter.\n10. AMC inclusive for 5 years and chargeable thereafter.\n11. Structure height consider 5 feet, for additional height should charge extra.\n12. DC, AC, Earthing cable length considered 30 meter, for additional length should charge extra.",
+                    "1. Power output from Control Panel will be in customers scope.\n2. Civil work other than Module Mounting Structure will be in customer's scope.\n3. Our offer is valid for 15 Days. Any custom specifications will be charged extra.\n4. Regular cleaning of Modules with plain water (soft) for desired generation guarantee in customer's scope.\n5. Detailed Quotation with engineering document will be provided on finalisation, for systems above 10KW.\n6. Subsidy (if any) is subject to government approval and will be directly credited in customer's account.\n7. Transportation inclusive. Insurance inclusive upto site and thereafter in customer's scope.\n8. Payment 50% advance on booking, Balance 50% against PI before dispatch of material.\n9. Delivery within 2 weeks from sanction and installation immediately thereafter.\n10. AMC inclusive for 5 years and chargeable thereafter.\n11. Structure height consider 5 feet, for additional height should charge extra.\n12. DC cable length 40 meter, AC cable length 30 meter, and earthing cable length 50 meter considered; any additional length will be charged extra.",
                   rating: "",
                   qty: "",
                   subCentral: "",

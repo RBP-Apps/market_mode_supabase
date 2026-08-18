@@ -13,6 +13,7 @@ import {
   XCircle,
   Download,
   Eye,
+  Edit,
   ClipboardList,
   ShieldCheck,
 } from "lucide-react";
@@ -26,6 +27,7 @@ export default function QuotationListView({
   setSearchTerm,
   handleRefresh,
   handleViewClick,
+  handleEditClick,
   handleViewQuotation,
   onOpen10kv,
   productMap = {},
@@ -103,7 +105,7 @@ export default function QuotationListView({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Enquiry Management
+            Quotation Creation
           </h1>
           <p className="text-gray-500 mt-1 flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -318,20 +320,28 @@ export default function QuotationListView({
                       </th>
                     )}
 
-                    {/* History tab Action column */}
+                    {/* History or 10kv History tab Action column */}
                     {(activeTab === "history" || activeTab === "10kv_history") && (
-                      <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28 bg-gray-50 whitespace-normal min-w-[100px]">
+                      <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-40 bg-gray-50 whitespace-normal min-w-[160px]">
                         Action
                       </th>
                     )}
 
                     {(activeTab === "history" || activeTab === "10kv_history") && (
-                      <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50 whitespace-normal min-w-[120px]">
-                        <div className="flex items-center justify-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          PDF Generate From Sheet
-                        </div>
-                      </th>
+                      <>
+                        <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-36 bg-gray-50 whitespace-normal min-w-[140px]">
+                          <div className="flex items-center justify-center gap-1">
+                            <Copy className="h-3 w-3 text-blue-600" />
+                            Quotation Copy
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-40 bg-gray-50 whitespace-normal min-w-[150px]">
+                          <div className="flex items-center justify-center gap-1">
+                            <Copy className="h-3 w-3 text-purple-600" />
+                            New Quotation Copy
+                          </div>
+                        </th>
+                      </>
                     )}
 
                     {/* Baaki saare columns */}
@@ -555,35 +565,66 @@ export default function QuotationListView({
 
                         {/* History or 10kv History tab ka Action button */}
                         {(activeTab === "history" || activeTab === "10kv_history") && (
-                          <td className="px-6 py-4 whitespace-normal text-center min-w-[100px]">
-                            <button
-                              onClick={() => handleViewQuotation(row)}
-                              className="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors duration-200 text-sm font-medium"
-                              title="Send Quotation"
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              Send
-                            </button>
+                          <td className="px-6 py-4 whitespace-normal text-center min-w-[160px]">
+                            <div className="flex justify-center items-center gap-2">
+                              <button
+                                onClick={() => handleViewQuotation(row)}
+                                className="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-600 border border-green-200 rounded-lg hover:bg-green-100 transition-colors duration-200 text-sm font-medium shadow-xs"
+                                title="Send Quotation"
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Send
+                              </button>
+                              <button
+                                onClick={() => handleEditClick && handleEditClick(row)}
+                                className="inline-flex items-center px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors duration-200 text-sm font-medium shadow-xs"
+                                title="Edit Quotation"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
+                              </button>
+                            </div>
                           </td>
                         )}
 
                         {(activeTab === "history" || activeTab === "10kv_history") && (
-                          <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[120px]">
-                            {row.quotationCopy &&
+                          <>
+                            {/* Quotation Copy */}
+                            <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[140px]">
+                              {row.quotationCopy &&
                               row.quotationCopy !== "Not Generated" ? (
-                              <a
-                                href={row.quotationCopy}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1 justify-center"
-                              >
-                                <Copy className="h-4 w-4" />
-                                View Quotation
-                              </a>
-                            ) : (
-                              <span className="text-gray-400">Not Generated</span>
-                            )}
-                          </td>
+                                <a
+                                  href={row.quotationCopy}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1 justify-center font-medium"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                  View Copy
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">Not Generated</span>
+                              )}
+                            </td>
+
+                            {/* New Quotation Copy */}
+                            <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-500 min-w-[150px]">
+                              {row.newQuotationCopy &&
+                              row.newQuotationCopy !== "Not Generated" ? (
+                                <a
+                                  href={row.newQuotationCopy}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-purple-600 hover:text-purple-800 underline inline-flex items-center gap-1 justify-center font-medium"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                  View New Copy
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">Not Generated</span>
+                              )}
+                            </td>
+                          </>
                         )}
 
                         {/* Baaki ke columns */}

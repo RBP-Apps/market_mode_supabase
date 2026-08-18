@@ -255,6 +255,7 @@ export default function QuatationCreate() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dealerBankMap, setDealerBankMap] = useState({});
   const [show10kvModal, setShow10kvModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Send Modal States
   const [showSendModal, setShowSendModal] = useState(false);
@@ -327,7 +328,7 @@ export default function QuatationCreate() {
     needType: "",
     enquiryNumber: "",
     generalTerms:
-      "1. Power output from Control Panel will be in customers scope.\n2. Civil work other than Module Mounting Structure will be in customer's scope.\n3. Our offer is valid for 15 Days. Any custom specifications will be charged extra.\n4. Regular cleaning of Modules with plain water (soft) for desired generation guarantee in customer's scope.\n5. Detailed Quotation with engineering document will be provided on finalisation, for systems above 10KW.\n6. Subsidy (if any) is subject to government approval and will be directly credited in customer's account.\n7. Transportation inclusive. Insurance inclusive upto site and thereafter in customer's scope.\n8. Payment 50% advance on booking, Balance 50% against PI before dispatch of material.\n9. Delivery within 2 weeks from sanction and installation immediately thereafter.\n10. AMC inclusive for 5 years and chargeable thereafter.\n11. Structure height consider 5 feet, for additional height should charge extra.\n12. DC, AC, Earthing cable length considered 30 meter, for additional length should charge extra.",
+      "1. Power output from Control Panel will be in customers scope.\n2. Civil work other than Module Mounting Structure will be in customer's scope.\n3. Our offer is valid for 15 Days. Any custom specifications will be charged extra.\n4. Regular cleaning of Modules with plain water (soft) for desired generation guarantee in customer's scope.\n5. Detailed Quotation with engineering document will be provided on finalisation, for systems above 10KW.\n6. Subsidy (if any) is subject to government approval and will be directly credited in customer's account.\n7. Transportation inclusive. Insurance inclusive upto site and thereafter in customer's scope.\n8. Payment 50% advance on booking, Balance 50% against PI before dispatch of material.\n9. Delivery within 2 weeks from sanction and installation immediately thereafter.\n10. AMC inclusive for 5 years and chargeable thereafter.\n11. Structure height consider 5 feet, for additional height should charge extra.\n12. DC cable length 40 meter, AC cable length 30 meter, and earthing cable length 50 meter considered; any additional length will be charged extra.",
 
     // 10 kW+ specific fields
     proposalFor: "",
@@ -717,6 +718,7 @@ export default function QuatationCreate() {
           planned2: row.planned || null,
           actual2: row.actual || null,
           quotationCopy: row.quatation_copy || null,
+          newQuotationCopy: row.new_quotation_copy || null,
           is10kv: row.is_10kv || false,
           status: row.status || null,
           directorApproval: row.director_approval || 'Pending',
@@ -724,6 +726,25 @@ export default function QuatationCreate() {
           salesperson: row.salesperson || "",
           quotationDate: row.quotation_date || "",
           product: row.product || "",
+          customer: row.customer || "",
+          email: row.email || "",
+          dealer: row.dealer || "",
+          phoneNo: row.alternative_phone_no || "",
+          termsConditions: row.terms_conditions || "",
+          generalTermsConditions: row.general_terms_conditions || "",
+          centralSubsidy: row.central_subsidy || null,
+          stateSubsidy: row.state_subsidy || null,
+          discountPercent: row.discount_percent || null,
+          referenceBy: row.reference_by || "",
+          bankName: row.bank_name || "",
+          accountNo: row.account_no || "",
+          ifscCode: row.ifsc_code || "",
+          branch: row.branch || "",
+          productName: row.product_name || "",
+          size: row.size || "",
+          gst: row.gst || null,
+          rate: row.rate || null,
+          amount: row.amount || null,
 
           planned1: "",
           actual1: "",
@@ -911,11 +932,12 @@ export default function QuatationCreate() {
         price_total_b: formDataToSubmit.priceTotalB,
         price_total: formDataToSubmit.priceTotal,
         price_words: formDataToSubmit.priceWords,
-        quatation_copy: quotationCopyUrl,
+        quatation_copy: isEditMode ? null : quotationCopyUrl,
+        new_quotation_copy: isEditMode ? quotationCopyUrl : null,
         status: statusVal,
       };
 
-      // Also upsert to new_quatation_create to maintain FMS pipeline compatibility
+      // Also insert/upsert to new_quatation_create to maintain FMS pipeline compatibility
       const totalCostNum = parseFloat(formDataToSubmit.priceTotal?.replace(/,/g, '')) || parseFloat(productDetails.amount) || null;
       const rateNum = parseFloat(productDetails.rate) || null;
       const amountNum = parseFloat(productDetails.amount) || null;
@@ -950,20 +972,28 @@ export default function QuatationCreate() {
         amount: amountNum,
         enquiry_number: formDataToSubmit.enquiryNumber,
         net_cost: totalCostNum,
-        quatation_copy: quotationCopyUrl,
+        quatation_copy: isEditMode ? null : quotationCopyUrl,
+        new_quotation_copy: isEditMode ? quotationCopyUrl : null,
         is_10kv: true,
         status: statusVal,
       };
 
-      const [res1, res2] = await Promise.all([
-        supabase.from('quatation_10kw').upsert(rowData, { onConflict: 'enquiry_number' }),
-        supabase.from('new_quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
-      ]);
-
-      if (res1.error) throw res1.error;
-      if (res2.error) throw res2.error;
+      if (isEditMode) {
+        const [res1, res2] = await Promise.all([
+          supabase.from('quatation_10kw').insert(rowData),
+          supabase.from('new_quatation_create').insert(quatationCreateRow)
+        ]);
+        if (res1.error) throw res1.error;
+        if (res2.error) throw res2.error;
+      } else {
+        const [res1, res2] = await Promise.all([
+          supabase.from('quatation_10kw').upsert(rowData, { onConflict: 'enquiry_number' }),
+          supabase.from('new_quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
+        ]);
+        if (res1.error) throw res1.error;
+        if (res2.error) throw res2.error;
+      }
     } else {
-      const currentTimestamp = new Date();
       const amount = parseFloat(productDetails.amount || 0);
       const disc = parseFloat(formDataToSubmit.disc || 0);
       const gst = parseFloat(productDetails.gst || 0);
@@ -1010,14 +1040,22 @@ export default function QuatationCreate() {
         amount: amount || null,
         enquiry_number: formDataToSubmit.enquiryNumber,
         net_cost: netCost,
-        quatation_copy: quotationCopyUrl,
+        quatation_copy: isEditMode ? null : quotationCopyUrl,
+        new_quotation_copy: isEditMode ? quotationCopyUrl : null,
         status: statusVal,
       };
 
-      const { error } = await supabase
-        .from('new_quatation_create')
-        .upsert(rowData, { onConflict: 'enquiry_number' });
-      if (error) throw error;
+      if (isEditMode) {
+        const { error } = await supabase
+          .from('new_quatation_create')
+          .insert(rowData);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('new_quatation_create')
+          .upsert(rowData, { onConflict: 'enquiry_number' });
+        if (error) throw error;
+      }
     }
   };
 
@@ -1146,11 +1184,12 @@ export default function QuatationCreate() {
         price_total_b: formVal.priceTotalB,
         price_total: formVal.priceTotal,
         price_words: formVal.priceWords,
-        quatation_copy: url,
+        quatation_copy: isEditMode ? null : url,
+        new_quotation_copy: isEditMode ? url : null,
         status: statusVal,
       };
 
-      // Also upsert to new_quatation_create to maintain FMS pipeline compatibility and status/BOM details
+      // Also insert/upsert to new_quatation_create to maintain FMS pipeline compatibility and status/BOM details
       const totalCostNum = parseFloat(formVal.priceTotal?.replace(/,/g, '')) || parseFloat(productVal.amount) || null;
       const rateNum = parseFloat(productVal.rate) || null;
       const amountNum = parseFloat(productVal.amount) || null;
@@ -1185,18 +1224,27 @@ export default function QuatationCreate() {
         amount: amountNum,
         enquiry_number: formVal.enquiryNumber,
         net_cost: totalCostNum,
-        quatation_copy: url,
+        quatation_copy: isEditMode ? null : url,
+        new_quotation_copy: isEditMode ? url : null,
         is_10kv: true,
         status: statusVal,
       };
 
-      const [res1, res2] = await Promise.all([
-        supabase.from('quatation_10kw').upsert(rowData, { onConflict: 'enquiry_number' }),
-        supabase.from('new_quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
-      ]);
-
-      if (res1.error) throw res1.error;
-      if (res2.error) throw res2.error;
+      if (isEditMode) {
+        const [res1, res2] = await Promise.all([
+          supabase.from('quatation_10kw').insert(rowData),
+          supabase.from('new_quatation_create').insert(quatationCreateRow)
+        ]);
+        if (res1.error) throw res1.error;
+        if (res2.error) throw res2.error;
+      } else {
+        const [res1, res2] = await Promise.all([
+          supabase.from('quatation_10kw').upsert(rowData, { onConflict: 'enquiry_number' }),
+          supabase.from('new_quatation_create').upsert(quatationCreateRow, { onConflict: 'enquiry_number' })
+        ]);
+        if (res1.error) throw res1.error;
+        if (res2.error) throw res2.error;
+      }
 
       if (sendWhatsAppFlag) {
         try {
@@ -1414,7 +1462,7 @@ export default function QuatationCreate() {
   }, [fmsData, activeTab, searchTerm]);
 
   useEffect(() => {
-    if (selectedEnquiry && viewMode === "form") {
+    if (selectedEnquiry && viewMode === "form" && !isEditMode) {
       setFormData(prev => ({
         ...prev,
         customer: selectedEnquiry.beneficiaryName,
@@ -1441,7 +1489,7 @@ export default function QuatationCreate() {
         comprehensiveOM: "",
       }));
     }
-  }, [selectedEnquiry, viewMode]);
+  }, [selectedEnquiry, viewMode, isEditMode]);
 
   // Product Autofill Logic
   useEffect(() => {
@@ -1561,8 +1609,111 @@ export default function QuatationCreate() {
     }));
   };
 
-  const handleViewClick = (enquiry) => { setSelectedEnquiry(enquiry); setViewMode("form"); };
-  const handleBackToList = () => { setViewMode("list"); setSelectedEnquiry(null); };
+  const handleViewClick = (enquiry) => {
+    setIsEditMode(false);
+    setSelectedEnquiry(enquiry);
+    setViewMode("form");
+  };
+
+  const handleEditClick = (row) => {
+    setIsEditMode(true);
+    setSelectedEnquiry(row);
+
+    let manualInputs = {};
+    if (row.billOfMaterial) {
+      try {
+        const parsed = JSON.parse(row.billOfMaterial);
+        if (parsed && parsed.manualInputs) {
+          manualInputs = parsed.manualInputs;
+        }
+      } catch (e) {}
+    }
+
+    setFormData({
+      date: row.quotationDate || getCurrentDate(),
+      salesperson: row.salesperson || "",
+      customer: row.beneficiaryName || row.customer || "",
+      contactNo: row.contactNumber || row.contactNo || "",
+      email: row.email || "",
+      dealer: row.dealer || "",
+      phoneNo: row.phoneNo || row.alternativePhoneNo || "",
+      structureType: row.structureType || "",
+      placeOfInstallation: row.address || "",
+      termsConditions: row.termsConditions || "On Grid:\n1. We will process for approval...",
+      rating: row.product || row.presentLoad || "",
+      qty: row.qty ? String(row.qty) : "1",
+      subCentral: row.centralSubsidy !== null && row.centralSubsidy !== undefined ? String(row.centralSubsidy) : "",
+      subState: row.stateSubsidy !== null && row.stateSubsidy !== undefined ? String(row.stateSubsidy) : "",
+      disc: row.discountPercent !== null && row.discountPercent !== undefined ? String(row.discountPercent) : "",
+      referenceBy: row.referenceBy || "",
+      bankAccount: row.bankName || "",
+      accountNo: row.accountNo || "",
+      ifscCode: row.ifscCode || "",
+      branch: row.branch || "",
+      loadDetails: row.loadDetails || "",
+      failureHours: row.hoursOfFailure || "",
+      needType: row.needType || "",
+      enquiryNumber: row.enquiryNumber || "",
+      generalTerms: row.generalTermsConditions || "1. Power output from Control Panel...",
+
+      plantCapacity: manualInputs.plantCapacity || "",
+      epcRate: manualInputs.epcRate || "",
+      comprehensiveOM: manualInputs.comprehensiveOM || "",
+      gridTariffConservative: manualInputs.gridTariffConservative || "",
+      gridTariffHigher: manualInputs.gridTariffHigher || "",
+      generationGuarantee: manualInputs.generationGuarantee || "",
+      moduleWattage: manualInputs.moduleWattage || "",
+      landNeeded: manualInputs.landNeeded || "",
+      gridEmissionFactor: manualInputs.gridEmissionFactor || "",
+      effectiveGST: manualInputs.effectiveGST || "",
+      gstOnOM: manualInputs.gstOnOM || "",
+      plantLife: manualInputs.plantLife || "",
+
+      proposalFor: "",
+      preparedFor: row.beneficiaryName || row.customer || "",
+      dated: row.quotationDate || getCurrentDate(),
+      capacityMwp: "",
+      moduleCount: "",
+      landAcres: "",
+      annualGen: "",
+      co2Tonnes: "",
+      capacityWp: "",
+      tariffLow: "",
+      savingsLow: "",
+      tariffHigh: "",
+      savingsHigh: "",
+      capexCr: "",
+      savings25Low: "",
+      savings25High: "",
+      priceMaterial: "",
+      priceGstSupply: "",
+      priceTotalA: "",
+      priceOm: "",
+      priceOmGst: "",
+      priceTotalB: "",
+      priceTotal: "",
+      priceWords: "",
+    });
+
+    if (row.productName || row.billOfMaterial || row.rate || row.amount) {
+      setProductDetails({
+        productName: row.productName || row.product || "",
+        bom: row.billOfMaterial || "",
+        size: row.size || "",
+        gst: row.gst || "",
+        rate: row.rate || "",
+        amount: row.amount || "",
+      });
+    }
+
+    setViewMode("form");
+  };
+
+  const handleBackToList = () => {
+    setViewMode("list");
+    setSelectedEnquiry(null);
+    setIsEditMode(false);
+  };
   const handleRefresh = () => fetchFMSData();
 
   const handleApproveBOM = async (enquiryNumber, is10kv) => {
@@ -1635,15 +1786,16 @@ export default function QuatationCreate() {
               setSearchTerm={setSearchTerm}
               handleRefresh={handleRefresh}
               handleViewClick={handleViewClick}
+              handleEditClick={handleEditClick}
               handleViewQuotation={handleViewQuotation}
-              onOpen10kv={() => setShow10kvModal(true)}
+              onOpen10kv={() => { setIsEditMode(false); setShow10kvModal(true); }}
               productMap={productMap}
               handleApproveBOM={handleApproveBOM}
               handleDirectorApproval={handleDirectorApproval}
             />
           ) : (
             <QuotationFormView
-              formData={formData} setFormData={setFormData} productDetails={productDetails} setProductDetails={setProductDetails} handleProductDetailsChange={handleProductDetailsChange} selectedEnquiry={selectedEnquiry} handleBackToList={handleBackToList} successMessage={successMessage} dropdownOptions={dropdownOptions} salespersons={salespersons} handleCustomerChange={handleCustomerChange} handleDealerChange={handleDealerChange} handleChange={handleChange} handleProductChange={handleProductChange} handleQuantityChange={handleQuantityChange} handlePreview={handlePreview} getCurrentDate={getCurrentDate}
+              isEditMode={isEditMode} formData={formData} setFormData={setFormData} productDetails={productDetails} setProductDetails={setProductDetails} handleProductDetailsChange={handleProductDetailsChange} selectedEnquiry={selectedEnquiry} handleBackToList={handleBackToList} successMessage={successMessage} dropdownOptions={dropdownOptions} salespersons={salespersons} handleCustomerChange={handleCustomerChange} handleDealerChange={handleDealerChange} handleChange={handleChange} handleProductChange={handleProductChange} handleQuantityChange={handleQuantityChange} handlePreview={handlePreview} getCurrentDate={getCurrentDate}
             />
           )}
           <SendQuotationModal

@@ -690,18 +690,21 @@ function AllGraph() {
 
                 {/* 4. Main Inverter Insights (The Table) */}
                 <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-100">
-                            <thead className="bg-gray-50/50">
+                    <div 
+                        className="overflow-auto relative" 
+                        style={{ height: '500px', maxHeight: '500px' }}
+                    >
+                        <table className="min-w-full border-separate border-spacing-0">
+                            <thead className="sticky top-0 z-30">
                                 <tr>
-                                    <th className="px-8 py-6 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">SN</th>
-                                    <th className="px-8 py-6 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Hardware ID</th>
-                                    <th className="px-8 py-6 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Beneficiary</th>
-                                    <th className="px-8 py-6 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Cloud Status</th>
-                                    <th className="px-8 py-6 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Lifecycle Total</th>
+                                    <th className="sticky top-0 z-30 bg-gray-50 border-b border-gray-200 px-8 py-5 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">SN</th>
+                                    <th className="sticky top-0 z-30 bg-gray-50 border-b border-gray-200 px-8 py-5 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Hardware ID</th>
+                                    <th className="sticky top-0 z-30 bg-gray-50 border-b border-gray-200 px-8 py-5 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Beneficiary</th>
+                                    <th className="sticky top-0 z-30 bg-gray-50 border-b border-gray-200 px-8 py-5 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Cloud Status</th>
+                                    <th className="sticky top-0 z-30 bg-gray-50 border-b border-gray-200 px-8 py-5 text-left text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Lifecycle Total</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody className="divide-y divide-gray-50 bg-white">
                                 {loading ? (
                                     <tr>
                                         <td colSpan="5" className="px-8 py-20 text-center">
@@ -719,19 +722,19 @@ function AllGraph() {
 
                                         return (
                                             <tr key={index} className="hover:bg-gray-50/50 transition-colors group">
-                                                <td className="px-8 py-8 text-base text-gray-500 font-black">{item.serialNo || index + 1}</td>
-                                                <td className="px-8 py-8 text-lg font-black text-gray-900">{item.inverterId}</td>
-                                                <td className="px-8 py-8 text-base text-gray-700 font-bold group-hover:text-black transition-colors">
+                                                <td className="px-8 py-6 text-base text-gray-500 font-black border-b border-gray-50">{item.serialNo || index + 1}</td>
+                                                <td className="px-8 py-6 text-lg font-black text-gray-900 border-b border-gray-50">{item.inverterId}</td>
+                                                <td className="px-8 py-6 text-base text-gray-700 font-bold group-hover:text-black transition-colors border-b border-gray-50">
                                                     {item.beneficiaryName}
                                                 </td>
-                                                <td className="px-8 py-8">
+                                                <td className="px-8 py-6 border-b border-gray-50">
                                                     <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider ${isConnected ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'
                                                         }`}>
                                                         <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
                                                         {isConnected ? 'Online' : 'Standby'}
                                                     </span>
                                                 </td>
-                                                <td className="px-8 py-8">
+                                                <td className="px-8 py-6 border-b border-gray-50">
                                                     {solarLoading ? (
                                                         <div className="h-8 w-32 bg-gray-100 animate-pulse rounded-lg" />
                                                     ) : lifetimeVal !== undefined ? (
