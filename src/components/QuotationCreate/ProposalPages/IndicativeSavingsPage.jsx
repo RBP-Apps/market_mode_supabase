@@ -6,9 +6,11 @@ export default function IndicativeSavingsPage({ formData = {}, productDetails = 
   const capNum = parseFloat(capacity) || 2.5;
   const isKW = capacity.toLowerCase().includes("kw");
   const capacityKW = isKW ? capNum : capNum * 1000;
-  const annualGen = formData.annualGen 
-    ? parseFloat(String(formData.annualGen).replace(/,/g, "")) 
-    : (capacityKW * 1500); // in kWh per annum
+  const annualGen = formData.annualGeneration
+    ? parseFloat(String(formData.annualGeneration).replace(/,/g, ""))
+    : (formData.annualGen 
+        ? parseFloat(String(formData.annualGen).replace(/[^0-9.]/g, "")) 
+        : (capacityKW * 1500));
   const lakhUnits = annualGen / 100000;
 
   // Parse cost
@@ -45,7 +47,8 @@ export default function IndicativeSavingsPage({ formData = {}, productDetails = 
   const lifeSavings2Str = formData.savings25High ? `₹${formData.savings25High}` : (lifeSavings2 >= 10000000 ? `₹${Math.round(lifeSavings2 / 10000000)} Cr` : `₹${(lifeSavings2 / 100000).toFixed(1)} Lakh`);
 
   // CO2 avoided (0.8 kg/kWh)
-  const co2Avoided = formData.co2Tonnes ? parseFloat(String(formData.co2Tonnes).replace(/,/g, "")) : Math.round(annualGen * 0.0008);
+  const co2RawVal = formData.co2Avoided || formData.co2Tonnes;
+  const co2Avoided = co2RawVal ? parseFloat(String(co2RawVal).replace(/,/g, "")) : (annualGen * 0.0008);
 
   const tableData = [
     {

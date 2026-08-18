@@ -13,18 +13,16 @@ import {
   User,
   Zap,
   Building2,
-  CheckCircle2,
   X,
   AlertCircle,
   Loader2,
-  Calendar,
   Filter,
   Download,
-  DollarSign,
-  Tag
 } from "lucide-react"
 import AdminLayout from "../components/layout/AdminLayout"
 import supabase from "../utils/supabase"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 // Debounce hook for smooth search
 function useDebounce(value, delay) {
@@ -157,6 +155,215 @@ export default function LeadPage() {
     })
   }, [leadData, debouncedSearchTerm, districtFilter, systemFilter])
 
+  // Export table data to Excel / CSV
+  const exportToExcel = useCallback(() => {
+    if (filteredLeads.length === 0) {
+      alert("No lead data available to export.")
+      return
+    }
+
+    const headers = [
+      "Enquiry No",
+      "Date / Time",
+      "Beneficiary Name",
+      "Beneficiary Number",
+      "Contact Number",
+      "Address",
+      "Village / Block",
+      "District",
+      "Present Load",
+      "BP Number",
+      "CSPDCL Demand",
+      "Future Load",
+      "Load Details",
+      "Structure Type",
+      "Roof Type",
+      "System Type",
+      "Need Type",
+      "Project Mode",
+      "Payment Type",
+      "Firm / Vendor",
+      "Assigned By",
+      "Reference",
+      "Stage"
+    ]
+
+    const rows = filteredLeads.map((lead) => [
+      lead.enquiryNumber,
+      formatDateTime(lead.timestamp),
+      lead.beneficiaryName,
+      lead.beneficiaryNumber,
+      lead.contactNumber,
+      lead.address,
+      lead.villageBlock,
+      lead.district,
+      lead.presentLoad,
+      lead.bpNumber,
+      lead.cspdclContractDemand,
+      lead.futureLoadRequirement,
+      lead.loadDetails,
+      lead.structureType,
+      lead.roofType,
+      lead.systemType,
+      lead.needType,
+      lead.projectMode,
+      lead.paymentType,
+      lead.firmName,
+      lead.assignedBy,
+      lead.reference,
+      lead.stage
+    ])
+
+    const formatValue = (val) => {
+      if (val === undefined || val === null) return '""'
+      const str = String(val)
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return `"${str}"`
+    }
+
+    const csvContent = "\uFEFF" + [
+      headers.map(formatValue).join(','),
+      ...rows.map((row) => row.map(formatValue).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    const timestamp = new Date().toISOString().split("T")[0]
+    link.download = `Leads_Summary_${timestamp}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  }, [filteredLeads, formatDateTime])
+
+  // Export Summary Report to PDF
+  const exportToPDF = useCallback(() => {
+    if (filteredLeads.length === 0) {
+      alert("No lead data available to export PDF.")
+      return
+    }
+
+    const doc = new jsPDF("landscape")
+
+    // Title & Header
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(16)
+    doc.setTextColor(37, 99, 235) // Blue-600
+    doc.text("RBP ENERGY INDIA PVT LTD", 14, 15)
+
+    doc.setFontSize(11)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(100, 100, 100)
+    doc.text("CUSTOMER LEADS SUMMARY REPORT", 14, 22)
+
+    const now = new Date().toLocaleString("en-IN")
+    doc.setFontSize(9)
+    doc.text(`Generated: ${now} | Filtered Records: ${filteredLeads.length} of ${leadData.length} total leads`, 14, 28)
+    doc.text(`Filters — District: ${districtFilter} | System: ${systemFilter} | Search: "${searchTerm || "None"}"`, 14, 33)
+
+    doc.setLineWidth(0.5)
+    doc.setDrawColor(220, 224, 230)
+    doc.line(14, 36, 283, 36)
+
+    // Summary Section - Key Metrics
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(10)
+    doc.setTextColor(30, 41, 59)
+    doc.text("1. EXECUTIVE SUMMARY & BREAKDOWN", 14, 43)
+
+    // District Breakdown
+    const distCounts = {}
+    filteredLeads.forEach(l => {
+      distCounts[l.district || "Unspecified"] = (distCounts[l.district || "Unspecified"] || 0) + 1
+    })
+    const distSummaryStr = Object.entries(distCounts).map(([k, v]) => `${k}: ${v}`).join(" | ")
+
+    // System Breakdown
+    const sysCounts = {}
+    filteredLeads.forEach(l => {
+      sysCounts[l.systemType || "Unspecified"] = (sysCounts[l.systemType || "Unspecified"] || 0) + 1
+    })
+    const sysSummaryStr = Object.entries(sysCounts).map(([k, v]) => `${k}: ${v}`).join(" | ")
+
+    // Payment Breakdown
+    const payCounts = {}
+    filteredLeads.forEach(l => {
+      payCounts[l.paymentType || "Unspecified"] = (payCounts[l.paymentType || "Unspecified"] || 0) + 1
+    })
+    const paySummaryStr = Object.entries(payCounts).map(([k, v]) => `${k}: ${v}`).join(" | ")
+
+    const summaryData = [
+      ["Total Records Evaluated", `${filteredLeads.length} leads`],
+      ["District-wise Breakdown", distSummaryStr || "N/A"],
+      ["System Type Breakdown", sysSummaryStr || "N/A"],
+      ["Payment Mode Breakdown", paySummaryStr || "N/A"]
+    ]
+
+    autoTable(doc, {
+      startY: 46,
+      head: [["Summary Metric", "Details"]],
+      body: summaryData,
+      theme: "grid",
+      headStyles: { fillColor: [37, 99, 235], fontStyle: "bold", fontSize: 9 },
+      styles: { fontSize: 8.5, font: "helvetica", cellPadding: 2.5 },
+      columnStyles: {
+        0: { cellWidth: 50, fontStyle: "bold" },
+        1: { cellWidth: "auto" }
+      },
+      margin: { left: 14, right: 14 }
+    })
+
+    // Lead Details Table
+    const startTableY = doc.lastAutoTable.finalY + 8
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(10)
+    doc.setTextColor(30, 41, 59)
+    doc.text("2. DETAILED LEAD RECORDS TABLE", 14, startTableY)
+
+    const tableHeaders = [
+      ["S.No", "Enquiry No", "Date", "Beneficiary Name", "Contact No", "District", "Present Load", "System", "Roof/Structure", "Payment", "Vendor/Firm"]
+    ]
+
+    const tableRows = filteredLeads.map((lead, idx) => [
+      idx + 1,
+      lead.enquiryNumber,
+      formatDateTime(lead.timestamp).split(' ')[0],
+      lead.beneficiaryName,
+      lead.contactNumber,
+      lead.district,
+      lead.presentLoad,
+      lead.systemType,
+      `${lead.roofType} / ${lead.structureType}`,
+      lead.paymentType,
+      lead.firmName
+    ])
+
+    autoTable(doc, {
+      startY: startTableY + 3,
+      head: tableHeaders,
+      body: tableRows,
+      theme: "striped",
+      headStyles: { fillColor: [30, 58, 138], fontStyle: "bold", fontSize: 8.5 },
+      styles: { fontSize: 8, font: "helvetica", cellPadding: 2 },
+      margin: { left: 14, right: 14 },
+      didDrawPage: (data) => {
+        const pageCount = doc.internal.getNumberOfPages()
+        doc.setFontSize(8)
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(150, 150, 150)
+        doc.text(`Page ${data.pageNumber} of ${pageCount}`, 283 - 25, 200, { align: "right" })
+        doc.text("RBP Energy India Pvt Ltd — Confidential Lead Summary Report", 14, 200)
+      }
+    })
+
+    const timestamp = new Date().toISOString().split("T")[0]
+    doc.save(`Leads_Summary_Report_${timestamp}.pdf`)
+  }, [filteredLeads, leadData, districtFilter, systemFilter, searchTerm, formatDateTime])
+
   const handleViewLead = (lead) => {
     setSelectedLead(lead)
     setShowDetailModal(true)
@@ -178,11 +385,31 @@ export default function LeadPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
+            <button
+              onClick={exportToPDF}
+              disabled={loading || filteredLeads.length === 0}
+              className="inline-flex items-center px-3.5 py-2 border border-rose-200 text-xs font-semibold rounded-lg text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+              title="Download Lead Summary PDF Report"
+            >
+              <FileText className="h-3.5 w-3.5 mr-1.5 text-rose-600" />
+              PDF Summary
+            </button>
+
+            <button
+              onClick={exportToExcel}
+              disabled={loading || filteredLeads.length === 0}
+              className="inline-flex items-center px-3.5 py-2 border border-emerald-200 text-xs font-semibold rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+              title="Download Table Data in Excel/CSV"
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />
+              Excel Export
+            </button>
+
             <button
               onClick={fetchLeads}
               disabled={loading}
-              className="inline-flex items-center px-3.5 py-2 border border-blue-200 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shadow-xs"
+              className="inline-flex items-center px-3.5 py-2 border border-blue-200 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shadow-xs cursor-pointer"
             >
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
               Refresh

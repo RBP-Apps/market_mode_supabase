@@ -70,16 +70,45 @@ export default function ProjectGlancePage({ formData = {} }) {
   
   const kWp = isKW ? capacityNum : capacityNum * 1000;
   const annualGenKwh = kWp * 1500;
-  const estAnnualGeneration = formData.annualGen 
-    ? `${formData.annualGen} units / year`
-    : (annualGenKwh >= 100000 
-      ? `${(annualGenKwh / 100000).toFixed(1)}+ lakh units / year (minimum guarantee of 1,500 kWh per kWp)` 
-      : `${annualGenKwh.toLocaleString("en-IN")}+ kWh / year (minimum guarantee of 1,500 kWh per kWp)`);
   
-  const co2AvoidedVal = Math.round((annualGenKwh * 0.8) / 1000);
-  const co2Avoided = formData.co2Tonnes 
-    ? `${formData.co2Tonnes} tonnes / year`
-    : `~${co2AvoidedVal.toLocaleString("en-IN")}+ tonnes per year`;
+  // 1) Est. annual generation: fetched directly from "Annual Generation (kWh)" field or formatted
+  const rawAnnualGen = formData.annualGeneration || formData.annualGen;
+  let estAnnualGeneration = "";
+  if (rawAnnualGen) {
+    const strGen = String(rawAnnualGen).trim();
+    if (strGen.toLowerCase().includes("kwh") || strGen.toLowerCase().includes("unit")) {
+      estAnnualGeneration = strGen.endsWith("/ year") ? strGen : `${strGen} / year`;
+    } else {
+      const numGen = parseFloat(strGen.replace(/,/g, ""));
+      estAnnualGeneration = !isNaN(numGen)
+        ? `${Math.round(numGen).toLocaleString("en-IN")} kWh / year`
+        : `${strGen} units / year`;
+    }
+  } else {
+    estAnnualGeneration = `${annualGenKwh.toLocaleString("en-IN")}+ kWh / year (minimum guarantee of 1,500 kWh per kWp)`;
+  }
+
+  // 2) CO2 Avoided (Tonnes / Yr): full precise value without integer truncation
+  const rawCo2 = formData.co2Avoided || formData.co2Tonnes;
+  let co2Avoided = "";
+  if (rawCo2) {
+    const strCo2 = String(rawCo2).trim();
+    if (strCo2.toLowerCase().includes("tonne")) {
+      co2Avoided = strCo2.endsWith("/ year") ? strCo2 : `${strCo2} / year`;
+    } else {
+      const numCo2 = parseFloat(strCo2.replace(/,/g, ""));
+      if (!isNaN(numCo2)) {
+        const formattedCo2Num = numCo2 % 1 !== 0 ? numCo2.toFixed(2) : numCo2.toString();
+        co2Avoided = `${formattedCo2Num} tonnes / year`;
+      } else {
+        co2Avoided = `${strCo2} tonnes / year`;
+      }
+    }
+  } else {
+    const defaultCo2Val = (annualGenKwh * 0.8) / 1000;
+    const formattedDefaultCo2 = defaultCo2Val % 1 !== 0 ? defaultCo2Val.toFixed(2) : defaultCo2Val.toString();
+    co2Avoided = `~${formattedDefaultCo2}+ tonnes per year`;
+  }
 
   // Dynamic table specifications array
   const specs = [

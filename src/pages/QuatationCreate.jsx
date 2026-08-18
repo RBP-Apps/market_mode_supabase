@@ -371,24 +371,39 @@ export default function QuatationCreate() {
     comprehensiveOM: "",
   });
 
-  const isMoreThan10KW = (rating) => {
-    if (!rating) return false;
-    const match = rating.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
-    if (match) {
-      const value = parseFloat(match[1]);
-      const isMW = /MW/i.test(rating);
-      if (isMW) return true;
-      return value >= 10;
+  const getProductUnit = (rating, pMap = productMap) => {
+    const pData = pMap[rating] || {};
+    const pUnit = (pData.unit || "").trim();
+    if (pUnit) {
+      if (/MW/i.test(pUnit)) return "MWp";
+      if (/KW/i.test(pUnit)) return "KW";
+      if (/Wp/i.test(pUnit)) return "Wp";
+      return pUnit;
     }
-    return false;
+    if (!rating) return "KW";
+    if (/MW/i.test(rating)) return "MWp";
+    if (/KW/i.test(rating)) return "KW";
+    if (/Wp/i.test(rating)) return "Wp";
+    return "KW";
   };
 
-  const getParsedCapacityMwp = (rating) => {
-    if (!rating) return 2.5;
-    const match = rating.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
-    const val = match ? parseFloat(match[1]) : 2.5;
-    const isMW = rating.toLowerCase().includes("mw");
-    return isMW ? val : val / 1000;
+  const isMoreThan10KW = (rating) => {
+    if (!rating) return false;
+    const pData = productMap[rating] || {};
+    const pUnit = (pData.unit || "").trim();
+    const pSize = (pData.size || "").trim();
+
+    const strToTest = `${rating} ${pSize} ${pUnit}`;
+    const match = strToTest.match(/(\d+(?:\.\d+)?)\s*(MWp|MW|KWp|KW|KVp|KV|Wp|W)?/i);
+    if (match) {
+      const val = parseFloat(match[1]);
+      const matchedUnit = (match[2] || pUnit || "").toUpperCase();
+
+      if (matchedUnit.includes("MW")) return true;
+      if (matchedUnit.includes("W") && !matchedUnit.includes("K")) return val >= 10000;
+      return val >= 10;
+    }
+    return false;
   };
 
   useEffect(() => {
@@ -407,13 +422,31 @@ export default function QuatationCreate() {
       const go = parseFloat(formData.gstOnOM) || 0;
       const pl = parseFloat(formData.plantLife) || 0;
 
-      const capWp = pc * 1000000;
-      const capKwp = pc * 1000;
+      const unit = getProductUnit(formData.rating, productMap);
+      let capWp = 0;
+      let capKwp = 0;
+      let capMwp = 0;
+
+      if (/MW/i.test(unit)) {
+        capMwp = pc;
+        capKwp = pc * 1000;
+        capWp = pc * 1000000;
+      } else if (/Wp/i.test(unit) && !/KW|MW/i.test(unit)) {
+        capWp = pc;
+        capKwp = pc / 1000;
+        capMwp = pc / 1000000;
+      } else {
+        // Default: KW / KWp basis
+        capKwp = pc;
+        capWp = pc * 1000;
+        capMwp = pc / 1000;
+      }
+
       const modExact = mw > 0 ? Math.round(capWp / mw) : 0;
       const modRounded = Math.round(modExact / 10) * 10;
       const annualGen = capKwp * gg;
       const annualGenLakh = annualGen / 100000;
-      const landRequiredVal = pc * ln;
+      const landRequiredVal = capKwp * ln;
       const co2AvoidedVal = (annualGen * gef) / 1000;
 
       const materialCostVal = capWp * er;
@@ -438,6 +471,8 @@ export default function QuatationCreate() {
       const remainingValue = Math.round(totalProjectCostVal % 100);
       const croreHundredsVal = Math.floor(croreVal / 100);
       const croreRemainderVal = croreVal % 100;
+
+      const unitLabel = /MW/i.test(unit) ? "MWp" : /Wp/i.test(unit) && !/KW/i.test(unit) ? "Wp" : "KW";
 
       const newFields = {
         capacityWp: String(capWp),
@@ -471,15 +506,14 @@ export default function QuatationCreate() {
         croreRemainder: getPartWords(croreRemainderVal),
         amountInWords: convertNumberToWordsExcel(totalProjectCostVal),
 
-        // Also set the old fields to keep template generation working!
-        proposalFor: `${pc} MWp`,
+        proposalFor: `${pc} ${unitLabel}`,
         preparedFor: formData.preparedFor || formData.customer || "",
         dated: formData.dated || formData.date || new Date().toISOString().split("T")[0],
-        capacityMwp: `${pc} MWp`,
+        capacityMwp: `${pc} ${unitLabel}`,
         moduleCount: modRounded.toString(),
-        landAcres: `~${landRequiredVal.toFixed(1)} acres`,
-        annualGen: `${annualGenLakh.toFixed(1)} Lakh`,
-        co2Tonnes: Math.round(co2AvoidedVal).toString(),
+        landAcres: `~${Math.round(landRequiredVal).toLocaleString("en-IN")} sq. ft.`,
+        annualGen: `${Math.round(annualGen).toLocaleString("en-IN")} kWh`,
+        co2Tonnes: co2AvoidedVal % 1 !== 0 ? co2AvoidedVal.toFixed(2) : String(co2AvoidedVal),
         tariffLow: gtc.toString(),
         savingsLow: Math.round(savingsConsVal).toLocaleString("en-IN"),
         tariffHigh: gth.toString(),
@@ -1292,6 +1326,7 @@ export default function QuatationCreate() {
             productName: name || code,
             bom: row.bill_of_material || "",
             size: row.size || "",
+            unit: row.units || row.unit || row.uom || "",
             rate: row.selling_price || 0,
             gst: row.tax_percent || 0,
             centerSubsidy: row.center_subsidy || 0,
@@ -1583,7 +1618,20 @@ export default function QuatationCreate() {
 
   const handleProductChange = (e) => {
     const v = e.target.value;
-    setFormData(prev => ({ ...prev, rating: v }));
+    const p = productMap[v] || {};
+    let defaultCap = "";
+    if (p.size) {
+      const m = String(p.size).match(/(\d+(?:\.\d+)?)/);
+      if (m) defaultCap = m[1];
+    } else if (v) {
+      const m = String(v).match(/(\d+(?:\.\d+)?)/);
+      if (m) defaultCap = m[1];
+    }
+    setFormData(prev => ({
+      ...prev,
+      rating: v,
+      plantCapacity: defaultCap || prev.plantCapacity || ""
+    }));
   };
 
   const handleProductDetailsChange = (e) => {
@@ -1795,7 +1843,7 @@ export default function QuatationCreate() {
             />
           ) : (
             <QuotationFormView
-              isEditMode={isEditMode} formData={formData} setFormData={setFormData} productDetails={productDetails} setProductDetails={setProductDetails} handleProductDetailsChange={handleProductDetailsChange} selectedEnquiry={selectedEnquiry} handleBackToList={handleBackToList} successMessage={successMessage} dropdownOptions={dropdownOptions} salespersons={salespersons} handleCustomerChange={handleCustomerChange} handleDealerChange={handleDealerChange} handleChange={handleChange} handleProductChange={handleProductChange} handleQuantityChange={handleQuantityChange} handlePreview={handlePreview} getCurrentDate={getCurrentDate}
+              isEditMode={isEditMode} formData={formData} setFormData={setFormData} productDetails={productDetails} setProductDetails={setProductDetails} handleProductDetailsChange={handleProductDetailsChange} selectedEnquiry={selectedEnquiry} handleBackToList={handleBackToList} successMessage={successMessage} dropdownOptions={dropdownOptions} salespersons={salespersons} handleCustomerChange={handleCustomerChange} handleDealerChange={handleDealerChange} handleChange={handleChange} handleProductChange={handleProductChange} handleQuantityChange={handleQuantityChange} handlePreview={handlePreview} getCurrentDate={getCurrentDate} productMap={productMap}
             />
           )}
           <SendQuotationModal

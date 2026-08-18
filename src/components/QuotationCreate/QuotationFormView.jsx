@@ -26,6 +26,7 @@ export default function QuotationFormView({
   handleQuantityChange,
   handlePreview,
   getCurrentDate,
+  productMap = {},
 }) {
   // Enhanced styling classes
   const sectionClass =
@@ -134,17 +135,41 @@ export default function QuotationFormView({
 
         {(() => {
           const rating = formData.rating;
+          const getProductUnit = (r) => {
+            const pUnit = (productMap[r]?.unit || "").trim();
+            if (pUnit) {
+              if (/MW/i.test(pUnit)) return "MWp";
+              if (/KW/i.test(pUnit)) return "KW";
+              if (/Wp/i.test(pUnit)) return "Wp";
+              return pUnit;
+            }
+            if (!r) return "KW";
+            if (/MW/i.test(r)) return "MWp";
+            if (/KW/i.test(r)) return "KW";
+            if (/Wp/i.test(r)) return "Wp";
+            return "KW";
+          };
+
           const isMoreThan10KW = (r) => {
             if (!r) return false;
-            const match = r.match(/(\d+(?:\.\d+)?)\s*(?:KW|MW|KV|KVp|KWp|Wp|W)/i);
+            const pData = productMap[r] || {};
+            const pUnit = (pData.unit || "").trim();
+            const pSize = (pData.size || "").trim();
+
+            const strToTest = `${r} ${pSize} ${pUnit}`;
+            const match = strToTest.match(/(\d+(?:\.\d+)?)\s*(MWp|MW|KWp|KW|KVp|KV|Wp|W)?/i);
             if (match) {
-              const value = parseFloat(match[1]);
-              const isMW = /MW/i.test(r);
-              if (isMW) return true;
-              return value >= 10;
+              const val = parseFloat(match[1]);
+              const matchedUnit = (match[2] || pUnit || "").toUpperCase();
+
+              if (matchedUnit.includes("MW")) return true;
+              if (matchedUnit.includes("W") && !matchedUnit.includes("K")) return val >= 10000;
+              return val >= 10;
             }
             return false;
           };
+
+          const currentUnit = getProductUnit(rating);
 
           if (isMoreThan10KW(rating)) {
             return (
@@ -186,14 +211,14 @@ export default function QuotationFormView({
 
                     {/* Plant Capacity */}
                     <div>
-                      <label className={labelClass}>Plant Capacity (MWp)</label>
+                      <label className={labelClass}>Plant Capacity ({currentUnit})</label>
                       <input
                         type="number"
                         step="0.01"
                         name="plantCapacity"
                         value={formData.plantCapacity || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 1.5"
+                        placeholder={`e.g. ${currentUnit === 'MWp' ? '1.5' : '10'}`}
                         className={inputClass}
                       />
                     </div>
@@ -298,14 +323,14 @@ export default function QuotationFormView({
 
                     {/* Land Needed */}
                     <div>
-                      <label className={labelClass}>Land Needed (Acres per MW)</label>
+                      <label className={labelClass}>Land Needed (Sq. Ft. per kW)</label>
                       <input
                         type="number"
                         step="0.01"
                         name="landNeeded"
                         value={formData.landNeeded || ""}
                         onChange={handleChange}
-                        placeholder="e.g. 4.5"
+                        placeholder="e.g. 100"
                         className={inputClass}
                       />
                     </div>
