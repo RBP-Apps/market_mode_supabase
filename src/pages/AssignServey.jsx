@@ -148,6 +148,7 @@ export default function AssignSurveyPage() {
   const handleStartSurvey = (surveyRecord) => {
     setSelectedSurvey(surveyRecord)
     setFormData({
+      surveyStage: "Survey 1",
       phase: "",
       backupHours: "",
       noOfFloors: "",
@@ -1158,7 +1159,7 @@ export default function AssignSurveyPage() {
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700">Survey Stage <span className="text-red-500">*</span></label>
                       <select
-                        value={formData.surveyStage}
+                        value={formData.surveyStage || "Survey 1"}
                         onChange={(e) => handleInputChange("surveyStage", e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
                       >
