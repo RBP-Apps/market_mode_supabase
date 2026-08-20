@@ -610,10 +610,10 @@ export default function QuatationCreate() {
       // 1. Fetch from new_quatation_create
       const { data, error } = await supabase
         .from('new_quatation_create')
-        .select('enquiry_number, planned, actual, quatation_copy, is_10kv, status, bill_of_material, salesperson, customer, quotation_date, product');
+        .select('enquiry_number, planned, actual, quatation_copy, status, bill_of_material, salesperson, customer, quotation_date, product');
 
       if (error) {
-        console.warn("is_10kv column query failed, falling back without new columns:", error);
+        console.warn("quotation copy query failed, falling back without new columns:", error);
         const { data: fbData, error: fbError } = await supabase
           .from('new_quatation_create')
           .select('enquiry_number, planned, actual, quatation_copy');
@@ -642,7 +642,7 @@ export default function QuatationCreate() {
             planned2: row.planned,
             actual2: row.actual,
             quotationCopy: row.quatation_copy,
-            is10kv: row.is_10kv || false,
+            is10kv: false,
             status: row.status || 'Approved',
             billOfMaterial: row.bill_of_material,
             salesperson: row.salesperson || "",
@@ -695,6 +695,11 @@ export default function QuatationCreate() {
     setLoading(true);
 
     try {
+      const { data: q10Data } = await supabase
+        .from('quatation_10kw')
+        .select('enquiry_number');
+      const q10Set = new Set((q10Data || []).map(r => r.enquiry_number).filter(Boolean));
+
       const { data: rows, error: fmsError } = await supabase
         .from("new_quatation_create")
         .select(`
@@ -753,7 +758,7 @@ export default function QuatationCreate() {
           actual2: row.actual || null,
           quotationCopy: row.quatation_copy || null,
           newQuotationCopy: row.new_quotation_copy || null,
-          is10kv: row.is_10kv || false,
+          is10kv: q10Set.has(row.enquiry_number) || Boolean(row.is_10kv),
           status: row.status || null,
           directorApproval: row.director_approval || 'Pending',
           billOfMaterial: row.bill_of_material || null,
@@ -1046,7 +1051,6 @@ export default function QuatationCreate() {
         net_cost: totalCostNum,
         quatation_copy: isEdit ? null : quotationCopyUrl,
         new_quotation_copy: isEdit ? quotationCopyUrl : null,
-        is_10kv: true,
         status: statusVal,
       };
 
@@ -1145,6 +1149,7 @@ export default function QuatationCreate() {
       await submitToSheet(formData, url, statusVal);
 
       setSuccessMessage("Quotation created successfully!");
+      alert("Quotation saved successfully!");
 
       if (sendWhatsAppFlag) {
         try {
@@ -1162,32 +1167,7 @@ export default function QuatationCreate() {
         }
       }
 
-      setFormData(prev => ({
-        ...prev,
-        customer: "",
-        salesperson: "",
-        contactNo: "",
-        email: "",
-        phoneNo: "",
-        rating: "",
-        qty: "1",
-        enquiryNumber: "",
-        generationGuarantee: "",
-        moduleWattage: "",
-        landNeeded: "",
-        gridEmissionFactor: "",
-        effectiveGST: "",
-        gstOnOM: "",
-        plantLife: "",
-        gridTariffConservative: "",
-        gridTariffHigher: "",
-        plantCapacity: "",
-        epcRate: "",
-        comprehensiveOM: "",
-      }));
-
-      setShowPreview(false);
-      fetchFMSData();
+      window.location.reload();
 
     } catch (error) {
       console.error("ERROR 👉", error);
@@ -1279,7 +1259,6 @@ export default function QuatationCreate() {
         net_cost: totalCostNum,
         quatation_copy: isEdit ? null : url,
         new_quotation_copy: isEdit ? url : null,
-        is_10kv: true,
         status: statusVal,
       };
 
@@ -1305,9 +1284,7 @@ export default function QuatationCreate() {
       }
 
       alert("10kv Quotation saved successfully!");
-      setShow10kvModal(false);
-      setViewMode("list");
-      fetchFMSData();
+      window.location.reload();
     } catch (err) {
       console.error("Error saving 10kv quotation:", err);
       alert("Failed to save 10kv quotation: " + err.message);

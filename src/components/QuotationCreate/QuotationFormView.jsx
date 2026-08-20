@@ -220,6 +220,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder={`e.g. ${currentUnit === 'MWp' ? '1.5' : '10'}`}
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
 
@@ -234,6 +235,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder="e.g. 32"
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
 
@@ -248,6 +250,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder="e.g. 500000"
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
 
@@ -262,6 +265,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder="e.g. 7.50"
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
 
@@ -276,6 +280,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder="e.g. 9.00"
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
                   </div>
@@ -304,6 +309,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder="e.g. 1500"
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
 
@@ -318,6 +324,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder="e.g. 600"
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
 
@@ -331,6 +338,7 @@ export default function QuotationFormView({
                         value={formData.landNeeded || ""}
                         onChange={handleChange}
                         placeholder="e.g. 100"
+                        onWheel={(e) => e.currentTarget.blur()}
                         className={inputClass}
                       />
                     </div>
@@ -347,6 +355,7 @@ export default function QuotationFormView({
                         value={formData.gridEmissionFactor || ""}
                         onChange={handleChange}
                         placeholder="e.g. 0.716"
+                        onWheel={(e) => e.currentTarget.blur()}
                         className={inputClass}
                       />
                     </div>
@@ -364,6 +373,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder="e.g. 13.8"
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
 
@@ -378,6 +388,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder="e.g. 18"
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
 
@@ -393,6 +404,7 @@ export default function QuotationFormView({
                         onChange={handleChange}
                         placeholder="e.g. 25"
                         className={inputClass}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
                   </div>

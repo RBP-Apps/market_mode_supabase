@@ -16,13 +16,6 @@ export default function AcceptancePage({ formData = {} }) {
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        `}
-      </style>
-
       {/* Main Page Layout Wrapper */}
       <div className="flex flex-col flex-1">
         
@@ -73,7 +66,7 @@ export default function AcceptancePage({ formData = {} }) {
         <div className="flex-1 flex flex-col justify-start overflow-hidden">
           
           {/* Acceptance Statement */}
-          <p className="text-gray-700 text-[11px] leading-relaxed text-justify mb-20 px-0.5">
+          <p className="text-gray-700 text-[11px] leading-relaxed text-left mb-20 px-0.5">
             Agreed to all the terms and conditions mentioned herein above, with the best of health and spirit.
           </p>
 

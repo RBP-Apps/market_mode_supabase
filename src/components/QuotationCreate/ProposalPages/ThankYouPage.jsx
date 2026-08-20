@@ -21,13 +21,6 @@ export default function ThankYouPage() {
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        `}
-      </style>
-
       {/* Decorative Circular Outlines (Background Graphic) */}
       <div
         className="absolute rounded-full"
@@ -70,7 +63,7 @@ export default function ThankYouPage() {
         <div
           className="bg-white rounded-2xl shadow-xl flex flex-col items-center justify-center p-6 mb-16"
           style={{
-            width: "320px",
+            width: "370px",
             height: "160px"
           }}
         >
@@ -84,10 +77,10 @@ export default function ThankYouPage() {
               marginBottom: "8px"
             }}
           />
-          <div className="text-[11px] font-bold text-[#00695C] tracking-wider uppercase">
+          <div className="text-[11px] font-bold text-[#00695C] tracking-wider uppercase whitespace-nowrap leading-none mb-1.5">
             RBP Energy (India) Pvt. Ltd.
           </div>
-          <div className="text-[9.5px] text-gray-500 font-medium">
+          <div className="text-[9.5px] text-gray-500 font-medium whitespace-nowrap leading-none">
             Central India's Solar EPC Leader
           </div>
         </div>
@@ -108,7 +101,7 @@ export default function ThankYouPage() {
         </p>
 
         {/* CONTACT CARDS */}
-        <div className="flex justify-between w-full gap-4 mt-4">
+        <div className="flex justify-between w-full space-x-4 mt-4">
           {contacts.map((contact, idx) => (
             <div
               key={idx}
@@ -139,7 +132,7 @@ export default function ThankYouPage() {
         }}
       >
         {/* Contact Links */}
-        <div className="text-white text-[10.5px] font-semibold flex items-center justify-center gap-4 mb-2">
+        <div className="text-white text-[10.5px] font-semibold flex items-center justify-center space-x-4 mb-2">
           <span>info@rbpindia.com</span>
           <span className="opacity-50">•</span>
           <span>www.rbpindia.com</span>

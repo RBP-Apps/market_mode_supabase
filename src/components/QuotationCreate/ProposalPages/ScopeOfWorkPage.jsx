@@ -3,16 +3,16 @@ import React from "react";
 // Reusable BulletItem Component
 function BulletItem({ text }) {
   return (
-    <li className="flex items-start gap-2.5 mb-2.5 last:mb-0">
+    <li className="flex items-start mb-2.5 last:mb-0">
       {/* Orange square bullet */}
       <span
-        className="w-1.5 h-1.5 mt-1.5 shrink-0"
+        className="w-1.5 h-1.5 mt-1.5 mr-2.5 shrink-0"
         style={{
           backgroundColor: "#F7941D"
         }}
       />
       {/* Bullet Text */}
-      <span className="text-gray-700 text-[11px] leading-relaxed font-normal">
+      <span className="text-gray-700 text-[11px] leading-relaxed font-normal text-left">
         {text}
       </span>
     </li>
@@ -53,13 +53,6 @@ export default function ScopeOfWorkPage() {
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        `}
-      </style>
-
       {/* Main Page Layout Wrapper */}
       <div className="flex flex-col flex-1">
         

@@ -159,13 +159,6 @@ export default function ProjectGlancePage({ formData = {} }) {
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        `}
-      </style>
-
       {/* Main Page Layout Wrapper */}
       <div className="flex flex-col flex-1">
         
@@ -216,7 +209,7 @@ export default function ProjectGlancePage({ formData = {} }) {
         <div className="flex-1 flex flex-col justify-start">
           
           {/* Introduction Paragraph */}
-          <p className="text-gray-700 text-[11px] leading-relaxed text-justify mb-5">
+          <p className="text-gray-700 text-[11px] leading-relaxed text-left mb-5">
             A summary of the proposed {capacityStr} grid-connected solar PV power plant. Detailed technical 
             specifications follow in the next section.
           </p>
@@ -239,6 +232,7 @@ export default function ProjectGlancePage({ formData = {} }) {
           <div>Page 5 of 14</div>
         </div>
       </div>
+      
     </div>
   );
 }

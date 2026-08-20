@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useMemo } from "react"
-import { 
-  Search, History, FileText, CheckCircle2, X, Upload, 
-  Eye, Edit2, RefreshCw, User, Phone, MapPin, 
+import {
+  Search, History, FileText, CheckCircle2, X, Upload,
+  Eye, Edit2, RefreshCw, User, Phone, MapPin,
   Trash2, Plus, Calendar, ShieldCheck, Info, ClipboardCopy
 } from "lucide-react"
 import AdminLayout from "../components/layout/AdminLayout"
@@ -43,7 +43,6 @@ export default function AssignSurveyPage() {
 
   // Survey Input Form State
   const [formData, setFormData] = useState({
-    surveyStage: "Survey 1",
     phase: "",
     backupHours: "",
     noOfFloors: "",
@@ -80,13 +79,17 @@ export default function AssignSurveyPage() {
   const [showPdfPreview, setShowPdfPreview] = useState(false)
   const [pdfPreviewType, setPdfPreviewType] = useState("create") // "create" or "edit"
 
+  // Actual Survey table state
+  const [actualSurveys, setActualSurveys] = useState([])
+  const [pendingActualSearchTerm, setPendingActualSearchTerm] = useState("")
+  const [isActualSurvey, setIsActualSurvey] = useState(false)
 
-  // Fetch surveys and joined enquiries from assign_survey table
+  // Fetch surveys and joined enquiries from assign_survey & assign_survey_actual tables
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
-      
-      const { data, error } = await supabase
+
+      const { data: estData, error: estError } = await supabase
         .from("assign_survey")
         .select(`
           *,
@@ -94,8 +97,27 @@ export default function AssignSurveyPage() {
         `)
         .order("id", { ascending: false })
 
-      if (error) throw error
-      setSurveys(data || [])
+      if (estError) throw estError
+      setSurveys(estData || [])
+
+      try {
+        const { data: actData, error: actError } = await supabase
+          .from("assign_survey_actual")
+          .select(`
+            *,
+            enquiries:enquiry_id (*)
+          `)
+          .order("id", { ascending: false })
+
+        if (!actError && actData) {
+          setActualSurveys(actData)
+        } else {
+          setActualSurveys([])
+        }
+      } catch (e) {
+        console.warn("Notice: assign_survey_actual fetch warning:", e)
+        setActualSurveys([])
+      }
     } catch (err) {
       console.error("Error fetching survey data:", err)
       alert("Error loading data: " + err.message)
@@ -108,18 +130,39 @@ export default function AssignSurveyPage() {
     fetchData()
   }, [fetchData])
 
-  // Split surveys:
-  // pending: planned_1 is not null and actual_1 is null
+  // 1. Pending (Estimate Surveys): planned_1 IS NOT NULL AND actual_1 IS NULL in assign_survey
   const pendingSurveys = useMemo(() => {
-    return surveys.filter(srv => srv.planned_1 !== null && srv.actual_1 === null)
+    return surveys.filter(srv => srv.planned_1 && !srv.actual_1)
   }, [surveys])
 
-  // history: planned_1 is not null and actual_1 is not null
+  // 2. Pending (Actual Surveys): planned_2 IS NOT NULL AND actual_2 IS NULL in assign_survey_actual
+  const pendingActualSurveys = useMemo(() => {
+    const actualEnquiryIds = new Set(actualSurveys.map(a => a.enquiry_id).filter(Boolean))
+
+    // Pending in assign_survey_actual (actual_2 is null)
+    const pendingInActualTable = actualSurveys.filter(srv => !srv.actual_2)
+
+    // Estimate completed in assign_survey but not yet created in assign_survey_actual
+    const completedEstNotYetInActualTable = surveys.filter(srv =>
+      srv.actual_1 && !srv.actual_2 && !actualEnquiryIds.has(srv.enquiry_id)
+    )
+
+    return [...pendingInActualTable, ...completedEstNotYetInActualTable]
+  }, [surveys, actualSurveys])
+
+  // 3. Survey Complete: actual_2 IS NOT NULL in assign_survey_actual
   const completedSurveys = useMemo(() => {
-    return surveys.filter(srv => srv.planned_1 !== null && srv.actual_1 !== null)
-  }, [surveys])
+    const completedInActualTable = actualSurveys.filter(srv => Boolean(srv.actual_2))
+    const actualEnquiryIds = new Set(completedInActualTable.map(a => a.enquiry_id).filter(Boolean))
 
-  // Filter pending table list based on search
+    const completedInEstTable = surveys.filter(srv =>
+      Boolean(srv.actual_2) && !actualEnquiryIds.has(srv.enquiry_id)
+    )
+
+    return [...completedInActualTable, ...completedInEstTable]
+  }, [surveys, actualSurveys])
+
+  // Filter pending Estimate table list based on search
   const filteredPending = useMemo(() => {
     if (!pendingSearchTerm) return pendingSurveys
     const lower = pendingSearchTerm.toLowerCase()
@@ -130,6 +173,18 @@ export default function AssignSurveyPage() {
       srv.enquiries?.system_type?.toLowerCase().includes(lower)
     )
   }, [pendingSurveys, pendingSearchTerm])
+
+  // Filter pending Actual table list based on search
+  const filteredPendingActual = useMemo(() => {
+    if (!pendingActualSearchTerm) return pendingActualSurveys
+    const lower = pendingActualSearchTerm.toLowerCase()
+    return pendingActualSurveys.filter(srv =>
+      srv.enquiries?.beneficiary_name?.toLowerCase().includes(lower) ||
+      srv.enquiries?.enquiry_number?.toLowerCase().includes(lower) ||
+      srv.enquiries?.district?.toLowerCase().includes(lower) ||
+      srv.enquiries?.system_type?.toLowerCase().includes(lower)
+    )
+  }, [pendingActualSurveys, pendingActualSearchTerm])
 
   // Filter completed history table based on search
   const filteredHistory = useMemo(() => {
@@ -145,10 +200,11 @@ export default function AssignSurveyPage() {
   }, [completedSurveys, searchTerm])
 
   // Open Survey filling modal for a pending row
-  const handleStartSurvey = (surveyRecord) => {
+  const handleStartSurvey = (surveyRecord, isActual = false) => {
     setSelectedSurvey(surveyRecord)
+    setIsActualSurvey(isActual)
     setFormData({
-      surveyStage: "Survey 1",
+      surveyStage: isActual ? "survey2" : "survey1",
       phase: "",
       backupHours: "",
       noOfFloors: "",
@@ -165,14 +221,16 @@ export default function AssignSurveyPage() {
       surveyorName: "",
       surveyorContact: "",
     })
-    setGeotagPhotos([])
-    setElectricityBills([])
-    setIdProof(null)
-    setAddressProof(null)
+
     setGeotagPreviews([])
     setBillPreviews([])
     setIdPreview("")
     setAddressPreview("")
+
+    setGeotagPhotos([])
+    setElectricityBills([])
+    setIdProof(null)
+    setAddressProof(null)
 
     // Reset PDF States
     setPdfBlob(null)
@@ -181,7 +239,7 @@ export default function AssignSurveyPage() {
     }
     setPdfPreviewUrl("")
     setShowPdfPreview(false)
-    
+
     setShowSurveyModal(true)
   }
 
@@ -297,7 +355,6 @@ export default function AssignSurveyPage() {
   const handleEditClick = (record) => {
     setEditRecord(record)
     setEditFormData({
-      surveyStage: record.survey_stage || "Survey 1",
       phase: record.phase || "",
       backupHours: record.backup_hours || "",
       noOfFloors: record.no_of_floors || "",
@@ -600,24 +657,24 @@ export default function AssignSurveyPage() {
       const enqNum = selectedSurvey.enquiries?.enquiry_number || "GEN"
 
       // 1. Upload files
-      let geotagUrls = []
+      let geotagUrls = isActualSurvey ? [...(selectedSurvey.geotag_photos || [])] : []
       for (const file of geotagPhotos) {
         const url = await uploadFileToStorage(file, "geotag", enqNum)
         geotagUrls.push(url)
       }
 
-      let billUrls = []
+      let billUrls = isActualSurvey ? [...(selectedSurvey.electricity_bills_3months || [])] : []
       for (const file of electricityBills) {
         const url = await uploadFileToStorage(file, "bill", enqNum)
         billUrls.push(url)
       }
 
-      let idProofUrl = ""
+      let idProofUrl = isActualSurvey ? (selectedSurvey.id_proof || "") : ""
       if (idProof) {
         idProofUrl = await uploadFileToStorage(idProof, "id_proof", enqNum)
       }
 
-      let addressProofUrl = ""
+      let addressProofUrl = isActualSurvey ? (selectedSurvey.address_proof || "") : ""
       if (addressProof) {
         addressProofUrl = await uploadFileToStorage(addressProof, "address_proof", enqNum)
       }
@@ -628,41 +685,122 @@ export default function AssignSurveyPage() {
 
       const systemType = selectedSurvey.enquiries?.system_type
 
-      // 3. Update the existing pending record in assign_survey table
-      const updatePayload = {
-        survey_stage: formData.surveyStage || "Survey 1",
-        phase: formData.phase,
-        backup_hours: systemType === "Off Grid" ? formData.backupHours : null,
-        no_of_floors: formData.noOfFloors,
-        roof_top_area: formData.roofTopArea,
-        grid_supply_available: formData.gridSupplyAvailable,
-        control_room_space: formData.controlRoomSpace,
-        control_room_area: formData.controlRoomSpace === "Yes" ? formData.controlRoomArea : null,
-        distance_modules_to_control_room: formData.distanceModulesToControlRoom,
-        distance_module_to_dcdb_earthing: formData.distanceModuleToDcdbEarthing,
-        distance_inverter_acdb_to_earthing: formData.distanceInverterAcdbToEarthing,
-        distance_la_to_earthing: formData.distanceLaToEarthing,
-        distance_inverter_mcb_meter: formData.distanceInverterMcbMeter,
-        shadow_free_area_terrace: formData.shadowFreeAreaTerrace,
-        surveyor_name: formData.surveyorName,
-        surveyor_contact: formData.surveyorContact,
-        geotag_photos: geotagUrls,
-        electricity_bills_3months: billUrls,
-        id_proof: idProofUrl,
-        address_proof: addressProofUrl,
-        pdf_generate: pdfUrl,
-        actual_1: new Date().toISOString(),
-        survey_date: new Date().toISOString()
+      if (isActualSurvey) {
+        // --- COMPLETING ACTUAL SURVEY ---
+        const today = new Date().toISOString().split("T")[0]
+        const actualUpdatePayload = {
+          enquiry_id: selectedSurvey.enquiry_id,
+          planned_2: selectedSurvey.planned_2 || today,
+          survey_stage: "survey2",
+          phase: formData.phase,
+          backup_hours: systemType === "Off Grid" ? formData.backupHours : null,
+          no_of_floors: formData.noOfFloors,
+          roof_top_area: formData.roofTopArea,
+          grid_supply_available: formData.gridSupplyAvailable,
+          control_room_space: formData.controlRoomSpace,
+          control_room_area: formData.controlRoomSpace === "Yes" ? formData.controlRoomArea : null,
+          distance_modules_to_control_room: formData.distanceModulesToControlRoom,
+          distance_module_to_dcdb_earthing: formData.distanceModuleToDcdbEarthing,
+          distance_inverter_acdb_to_earthing: formData.distanceInverterAcdbToEarthing,
+          distance_la_to_earthing: formData.distanceLaToEarthing,
+          distance_inverter_mcb_meter: formData.distanceInverterMcbMeter,
+          shadow_free_area_terrace: formData.shadowFreeAreaTerrace,
+          surveyor_name: formData.surveyorName,
+          surveyor_contact: formData.surveyorContact,
+          geotag_photos: geotagUrls,
+          electricity_bills_3months: billUrls,
+          id_proof: idProofUrl,
+          address_proof: addressProofUrl,
+          pdf_generate: pdfUrl,
+          actual_2: new Date().toISOString(), // Actual survey complete condition!
+          survey_date: new Date().toISOString()
+        }
+
+        const { data: existingActualRec } = await supabase
+          .from("assign_survey_actual")
+          .select("id")
+          .eq("enquiry_id", selectedSurvey.enquiry_id)
+
+        if (existingActualRec && existingActualRec.length > 0) {
+          const { error: actualErr } = await supabase
+            .from("assign_survey_actual")
+            .update(actualUpdatePayload)
+            .eq("id", existingActualRec[0].id)
+          if (actualErr) throw actualErr
+        } else {
+          const { error: actualErr } = await supabase
+            .from("assign_survey_actual")
+            .insert(actualUpdatePayload)
+          if (actualErr) throw actualErr
+        }
+
+        setSuccessMessage("Actual survey completed! Record moved to Survey Complete.")
+        setActiveTab("completed")
+
+      } else {
+        // --- COMPLETING ESTIMATE SURVEY ---
+        // 1. Update assign_survey record (satisfies DB Trigger condition: planned_1 NOT NULL AND actual_1 NOT NULL)
+        const estPayload = {
+          survey_stage: "survey1",
+          phase: formData.phase,
+          backup_hours: systemType === "Off Grid" ? formData.backupHours : null,
+          no_of_floors: formData.noOfFloors,
+          roof_top_area: formData.roofTopArea,
+          grid_supply_available: formData.gridSupplyAvailable,
+          control_room_space: formData.controlRoomSpace,
+          control_room_area: formData.controlRoomSpace === "Yes" ? formData.controlRoomArea : null,
+          distance_modules_to_control_room: formData.distanceModulesToControlRoom,
+          distance_module_to_dcdb_earthing: formData.distanceModuleToDcdbEarthing,
+          distance_inverter_acdb_to_earthing: formData.distanceInverterAcdbToEarthing,
+          distance_la_to_earthing: formData.distanceLaToEarthing,
+          distance_inverter_mcb_meter: formData.distanceInverterMcbMeter,
+          shadow_free_area_terrace: formData.shadowFreeAreaTerrace,
+          surveyor_name: formData.surveyorName,
+          surveyor_contact: formData.surveyorContact,
+          geotag_photos: geotagUrls,
+          electricity_bills_3months: billUrls,
+          id_proof: idProofUrl,
+          address_proof: addressProofUrl,
+          pdf_generate: pdfUrl,
+          actual_1: new Date().toISOString(),
+          survey_date: new Date().toISOString()
+        }
+
+        const { error: estErr } = await supabase
+          .from("assign_survey")
+          .update(estPayload)
+          .eq("id", selectedSurvey.id)
+
+        if (estErr) throw estErr
+
+        // 2. Fallback upsert into assign_survey_actual for Actual Survey stage (planned_2 = CURRENT_DATE, actual_2 = null)
+        try {
+          const { data: existingRecords } = await supabase
+            .from("assign_survey_actual")
+            .select("id")
+            .eq("enquiry_id", selectedSurvey.enquiry_id)
+
+          const today = new Date().toISOString().split("T")[0]
+          const actualPayload = {
+            enquiry_id: selectedSurvey.enquiry_id,
+            planned_2: today,
+            actual_2: null, // Pending Actual Survey!
+            survey_stage: "survey2"
+          }
+
+          if (!existingRecords || existingRecords.length === 0) {
+            await supabase
+              .from("assign_survey_actual")
+              .insert(actualPayload)
+          }
+        } catch (e) {
+          console.error("Notice: error creating record in assign_survey_actual:", e)
+        }
+
+        setSuccessMessage("Estimate survey completed! Automatically moved to Pending (Actual Surveys).")
+        setActiveTab("pending_actual")
       }
 
-      const { error: updateError } = await supabase
-        .from("assign_survey")
-        .update(updatePayload)
-        .eq("id", selectedSurvey.id)
-
-      if (updateError) throw updateError
-
-      setSuccessMessage("Survey details saved and marked as Completed!")
       setShowPdfPreview(false)
       setShowSurveyModal(false)
       setSelectedSurvey(null)
@@ -717,9 +855,9 @@ export default function AssignSurveyPage() {
       const pdfFile = new File([pdfBlob], `${enqNum}_survey_report_${Date.now()}.pdf`, { type: "application/pdf" })
       const pdfUrl = await uploadFileToStorage(pdfFile, "pdf_generate", enqNum)
 
-      // 3. Perform database update
+      // 3. Perform database update on target table
       const updatePayload = {
-        survey_stage: editFormData.surveyStage || "Survey 1",
+        survey_stage: editFormData.surveyStage || "survey1",
         phase: editFormData.phase,
         backup_hours: editRecord.enquiries?.system_type === "Off Grid" ? editFormData.backupHours : null,
         no_of_floors: editFormData.noOfFloors,
@@ -742,8 +880,12 @@ export default function AssignSurveyPage() {
         pdf_generate: pdfUrl
       }
 
+      const targetTable = (editRecord.planned_2 !== undefined || actualSurveys.some(a => a.id === editRecord.id || (a.enquiry_id && a.enquiry_id === editRecord.enquiry_id)))
+        ? "assign_survey_actual"
+        : "assign_survey"
+
       const { error: updateError } = await supabase
-        .from("assign_survey")
+        .from(targetTable)
         .update(updatePayload)
         .eq("id", editRecord.id)
 
@@ -788,7 +930,7 @@ export default function AssignSurveyPage() {
   return (
     <AdminLayout>
       <div className="p-4 max-w-7xl mx-auto space-y-6">
-        
+
         {/* Top Header Card */}
         <div className=" p-6 rounded-2xl  shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -800,9 +942,9 @@ export default function AssignSurveyPage() {
               Complete details of pending beneficiary site surveys, or check history reports.
             </p>
           </div>
-          
+
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={fetchData}
               className="flex items-center gap-2 bg-white/10 hover:bg-white/20 active:bg-white/30  px-4 py-2 rounded-xl text-sm font-semibold transition border border-white/10"
               disabled={loading}
@@ -814,28 +956,36 @@ export default function AssignSurveyPage() {
         </div>
 
         {/* Tab Selection */}
-        <div className="flex space-x-2 border-b border-gray-200">
+        <div className="flex space-x-2 border-b border-gray-200 overflow-x-auto">
           <button
             onClick={() => { setActiveTab("pending"); setPendingSearchTerm("") }}
-            className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === "pending"
+            className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "pending"
                 ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
                 : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+              }`}
           >
             <FileText className="h-4 w-4" />
-            Pending Surveys ({pendingSurveys.length})
+            Pending (Estimate Surveys) ({pendingSurveys.length})
+          </button>
+          <button
+            onClick={() => { setActiveTab("pending_actual"); setPendingActualSearchTerm("") }}
+            className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "pending_actual"
+                ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+          >
+            <FileText className="h-4 w-4" />
+            Pending (Actual Surveys) ({pendingActualSurveys.length})
           </button>
           <button
             onClick={() => { setActiveTab("history"); setSearchTerm("") }}
-            className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === "history"
+            className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "history"
                 ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
                 : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+              }`}
           >
             <History className="h-4 w-4" />
-            Completed History ({completedSurveys.length})
+            Survey Completed ({completedSurveys.length})
           </button>
         </div>
 
@@ -852,10 +1002,10 @@ export default function AssignSurveyPage() {
           </div>
         )}
 
-        {/* TAB 1: PENDING SURVEY LIST */}
+        {/* TAB 1: PENDING (ESTIMATE SURVEYS) LIST */}
         {activeTab === "pending" && (
           <div className="space-y-4">
-            
+
             {/* Search filter block */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-xs">
               <div className="relative w-full md:max-w-md">
@@ -864,19 +1014,19 @@ export default function AssignSurveyPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search pending by beneficiary, district, system type..."
+                  placeholder="Search pending estimate surveys by beneficiary, district..."
                   value={pendingSearchTerm}
                   onChange={(e) => setPendingSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm focus:outline-none transition"
                 />
               </div>
-              
+
               <div className="text-xs text-gray-500 font-semibold">
-                Showing {filteredPending.length} pending surveys
+                Showing {filteredPending.length} pending estimate surveys
               </div>
             </div>
 
-            {/* Pending Surveys Table */}
+            {/* Pending Estimate Surveys Table */}
             <div className="rounded-xl border border-gray-200 shadow-sm bg-white overflow-hidden">
               <div className="overflow-x-auto" style={{ maxHeight: "60vh" }}>
                 <table className="min-w-full divide-y divide-gray-200">
@@ -892,13 +1042,13 @@ export default function AssignSurveyPage() {
                       <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">System Type</th>
                     </tr>
                   </thead>
-                  
+
                   <tbody className="bg-white divide-y divide-gray-200 text-center">
                     {loading ? (
                       <tr>
                         <td colSpan={8} className="py-8 text-center text-gray-500">
                           <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mb-2"></div>
-                          <p className="text-xs">Loading pending list...</p>
+                          <p className="text-xs">Loading pending estimate list...</p>
                         </td>
                       </tr>
                     ) : filteredPending.length > 0 ? (
@@ -907,11 +1057,11 @@ export default function AssignSurveyPage() {
                           <td className="px-4 py-3 whitespace-nowrap text-xs">
                             <button
                               type="button"
-                              onClick={() => handleStartSurvey(srv)}
+                              onClick={() => handleStartSurvey(srv, false)}
                               className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg font-bold transition shadow-xs"
                             >
                               <ClipboardCopy className="h-3.5 w-3.5" />
-                              Start Survey
+                              Start Estimate Survey
                             </button>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-medium">SRV-{String(srv.id).padStart(3, '0')}</td>
@@ -928,7 +1078,95 @@ export default function AssignSurveyPage() {
                     ) : (
                       <tr>
                         <td colSpan={8} className="py-8 text-center text-gray-400 text-sm">
-                          No pending surveys found matching your search.
+                          No pending estimate surveys found matching your search.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 2: PENDING (ACTUAL SURVEYS) LIST */}
+        {activeTab === "pending_actual" && (
+          <div className="space-y-4">
+
+            {/* Search filter block */}
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-xs">
+              <div className="relative w-full md:max-w-md">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search pending actual surveys by beneficiary, district..."
+                  value={pendingActualSearchTerm}
+                  onChange={(e) => setPendingActualSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm focus:outline-none transition"
+                />
+              </div>
+
+              <div className="text-xs text-gray-500 font-semibold">
+                Showing {filteredPendingActual.length} pending actual surveys
+              </div>
+            </div>
+
+            {/* Pending Actual Surveys Table */}
+            <div className="rounded-xl border border-gray-200 shadow-sm bg-white overflow-hidden">
+              <div className="overflow-x-auto" style={{ maxHeight: "60vh" }}>
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0 z-10 text-center">
+                    <tr>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Survey No</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Enquiry Number</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Beneficiary Name</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Planned Date</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">District</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact Number</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">System Type</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="bg-white divide-y divide-gray-200 text-center">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-gray-500">
+                          <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mb-2"></div>
+                          <p className="text-xs">Loading pending actual list...</p>
+                        </td>
+                      </tr>
+                    ) : filteredPendingActual.length > 0 ? (
+                      filteredPendingActual.map((srv) => (
+                        <tr key={srv.id} className="hover:bg-slate-50 transition">
+                          <td className="px-4 py-3 whitespace-nowrap text-xs">
+                            <button
+                              type="button"
+                              onClick={() => handleStartSurvey(srv, true)}
+                              className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg font-bold transition shadow-xs"
+                            >
+                              <ClipboardCopy className="h-3.5 w-3.5" />
+                              Start Actual Survey
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-medium">SRV-ACT-{String(srv.id).padStart(3, '0')}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs text-blue-600 font-semibold">{srv.enquiries?.enquiry_number || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-bold">{srv.enquiries?.beneficiary_name || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{formatDate(srv.planned_1)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">{srv.enquiries?.district || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">{srv.enquiries?.contact_number || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-semibold text-indigo-700">
+                            {srv.enquiries?.system_type || "—"}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-gray-400 text-sm">
+                          No pending actual surveys found matching your search.
                         </td>
                       </tr>
                     )}
@@ -943,7 +1181,7 @@ export default function AssignSurveyPage() {
         {/* TAB 2: HISTORY LIST */}
         {activeTab === "history" && (
           <div className="space-y-4">
-            
+
             {/* Search filter block */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-xs">
               <div className="relative w-full md:max-w-md">
@@ -958,7 +1196,7 @@ export default function AssignSurveyPage() {
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm focus:outline-none transition"
                 />
               </div>
-              
+
               <div className="text-xs text-gray-500 font-semibold">
                 Showing {filteredHistory.length} completed surveys
               </div>
@@ -971,7 +1209,8 @@ export default function AssignSurveyPage() {
                   <thead className="bg-gray-50 sticky top-0 z-10 text-center">
                     <tr>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">PDF</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-blue-600 uppercase tracking-wider">Estimate PDF</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-emerald-600 uppercase tracking-wider">Actual PDF</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Survey No</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Enquiry Number</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Beneficiary Name</th>
@@ -985,73 +1224,89 @@ export default function AssignSurveyPage() {
                       <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Phase</th>
                     </tr>
                   </thead>
-                  
+
                   <tbody className="bg-white divide-y divide-gray-200 text-center">
                     {loading ? (
                       <tr>
-                        <td colSpan={12} className="py-8 text-center text-gray-500">
+                        <td colSpan={14} className="py-8 text-center text-gray-500">
                           <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mb-2"></div>
                           <p className="text-xs">Loading survey history...</p>
                         </td>
                       </tr>
                     ) : filteredHistory.length > 0 ? (
-                      filteredHistory.map((srv) => (
-                        <tr key={srv.id} className="hover:bg-slate-50 transition">
-                          <td className="px-4 py-3 whitespace-nowrap text-xs">
-                            <button
-                              type="button"
-                              onClick={() => handleEditClick(srv)}
-                              className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-semibold transition"
-                            >
-                              <Edit2 className="h-3 w-3" />
-                              Edit
-                            </button>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs">
-                            {srv.pdf_generate ? (
-                              <a
-                                href={srv.pdf_generate}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg font-semibold transition"
+                      filteredHistory.map((srv) => {
+                        const estRecord = surveys.find(s => s.enquiry_id === srv.enquiry_id && !s.is_actual)
+                        return (
+                          <tr key={srv.id} className="hover:bg-slate-50 transition">
+                            <td className="px-4 py-3 whitespace-nowrap text-xs">
+                              <button
+                                type="button"
+                                onClick={() => handleEditClick(srv)}
+                                className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-semibold transition"
                               >
-                                <Eye className="h-3 w-3" />
-                                View PDF
-                              </a>
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-medium">SRV-{String(srv.id).padStart(3, '0')}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-blue-600 font-semibold">{srv.enquiries?.enquiry_number || "—"}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-bold">{srv.enquiries?.beneficiary_name || "—"}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{formatDate(srv.planned_1)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{formatDate(srv.actual_1)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700 font-medium">
-                            {srv.delay_1 ? (
-                              <span className={`px-2 py-0.5 rounded-full ${
-                                parseInt(srv.delay_1, 10) > 0 ? "bg-rose-50 text-rose-700 font-semibold" : "bg-emerald-50 text-emerald-700"
-                              }`}>
-                                {srv.delay_1}
+                                <Edit2 className="h-3 w-3" />
+                                Edit
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs">
+                              {estRecord?.pdf_generate ? (
+                                <a
+                                  href={estRecord.pdf_generate}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg font-bold transition shadow-2xs"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  Estimate PDF
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs">
+                              {srv.pdf_generate ? (
+                                <a
+                                  href={srv.pdf_generate}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg font-bold transition shadow-2xs"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  Actual PDF
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-medium">SRV-{String(srv.id).padStart(3, '0')}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-blue-600 font-semibold">{srv.enquiries?.enquiry_number || "—"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-bold">{srv.enquiries?.beneficiary_name || "—"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{formatDate(srv.planned_1)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{formatDate(srv.actual_1)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700 font-medium">
+                              {srv.delay_1 ? (
+                                <span className={`px-2 py-0.5 rounded-full ${parseInt(srv.delay_1, 10) > 0 ? "bg-rose-50 text-rose-700 font-semibold" : "bg-emerald-50 text-emerald-700"
+                                  }`}>
+                                  {srv.delay_1}
+                                </span>
+                              ) : "0"}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">{srv.enquiries?.district || "—"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">{srv.surveyor_name || "—"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">{srv.surveyor_contact || "—"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${srv.enquiries?.system_type === "On Grid" ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"
+                                }`}>
+                                {srv.enquiries?.system_type || "—"}
                               </span>
-                            ) : "0"}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">{srv.enquiries?.district || "—"}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">{srv.surveyor_name || "—"}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">{srv.surveyor_contact || "—"}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              srv.enquiries?.system_type === "On Grid" ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"
-                            }`}>
-                              {srv.enquiries?.system_type || "—"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{srv.phase || "—"}</td>
-                        </tr>
-                      ))
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{srv.phase || "—"}</td>
+                          </tr>
+                        )
+                      })
                     ) : (
                       <tr>
-                        <td colSpan={12} className="py-8 text-center text-gray-400 text-sm">
+                        <td colSpan={14} className="py-8 text-center text-gray-400 text-sm">
                           No completed survey records match your search
                         </td>
                       </tr>
@@ -1068,14 +1323,17 @@ export default function AssignSurveyPage() {
         {showSurveyModal && selectedSurvey && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col animate-scaleUp overflow-hidden">
-              
+
               {/* Modal Header */}
-              <div className="bg-blue-700 text-white px-6 py-4 flex justify-between items-center">
+              <div className={`${isActualSurvey ? "bg-indigo-700" : "bg-blue-700"} text-white px-6 py-4 flex justify-between items-center transition-colors`}>
                 <div>
-                  <h3 className="font-bold text-lg">Perform Site Survey: SRV-{String(selectedSurvey.id).padStart(3, '0')}</h3>
+                  <h3 className="font-bold text-lg">
+                    {isActualSurvey ? "Perform Actual Site Survey: SRV-ACT-" : "Perform Estimate Site Survey: SRV-"}
+                    {String(selectedSurvey.id).padStart(3, '0')}
+                  </h3>
                   <p className="text-xs text-blue-100">Enquiry No: {selectedSurvey.enquiries?.enquiry_number} | Beneficiary: {selectedSurvey.enquiries?.beneficiary_name}</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowSurveyModal(false)}
                   className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition"
                 >
@@ -1085,7 +1343,7 @@ export default function AssignSurveyPage() {
 
               {/* Modal Body */}
               <form onSubmit={handleSubmitSurvey} className="flex-1 overflow-y-auto p-6 space-y-6">
-                
+
                 {/* 1. Read-Only Beneficiary info inside Modal */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                   <div>
@@ -1124,13 +1382,13 @@ export default function AssignSurveyPage() {
                     <span className="font-semibold text-gray-500 block">System Type</span>
                     <span className="text-indigo-700 font-semibold">{selectedSurvey.enquiries?.system_type || "—"}</span>
                   </div>
-                  
+
                   {selectedSurvey.enquiries?.avg_electricity_bill && (
                     <div className="md:col-span-3 flex items-center gap-2 pt-2 border-t border-gray-100">
                       <span className="font-semibold text-gray-500">Electricity Bill Copy:</span>
-                      <a 
-                        href={selectedSurvey.enquiries.avg_electricity_bill} 
-                        target="_blank" 
+                      <a
+                        href={selectedSurvey.enquiries.avg_electricity_bill}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-bold"
                       >
@@ -1139,7 +1397,7 @@ export default function AssignSurveyPage() {
                       </a>
                     </div>
                   )}
-                  
+
                   <div className="md:col-span-3">
                     <span className="font-semibold text-gray-500 block">Address</span>
                     <span className="text-gray-900">{selectedSurvey.enquiries?.address || "—"}</span>
@@ -1154,18 +1412,17 @@ export default function AssignSurveyPage() {
                 {/* 2. Survey specs form */}
                 <div className="space-y-4">
                   <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Survey Specifications</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700">Survey Stage <span className="text-red-500">*</span></label>
-                      <select
-                        value={formData.surveyStage || "Survey 1"}
-                        onChange={(e) => handleInputChange("surveyStage", e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      >
-                        <option value="Survey 1">Survey 1</option>
-                        <option value="Survey 2">Survey 2</option>
-                      </select>
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        value={isActualSurvey ? "survey2" : "survey1"}
+                        className="w-full border border-gray-300 bg-gray-100 font-bold text-gray-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none cursor-not-allowed"
+                      />
                     </div>
 
                     <div className="space-y-1">
@@ -1273,7 +1530,7 @@ export default function AssignSurveyPage() {
                 {/* 3. Distances form */}
                 <div className="space-y-4">
                   <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Distance Specifications (Meters)</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700">Modules to Control Room</label>
@@ -1335,20 +1592,20 @@ export default function AssignSurveyPage() {
                 {/* 4. Uploads Section */}
                 <div className="space-y-4">
                   <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Media & Documents</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    
+
                     {/* Geotags */}
                     <div className="border border-gray-200 rounded-xl p-4 space-y-2">
                       <label className="block font-bold text-gray-700">Geotag Photos of Site (Multiple)</label>
-                      <input 
-                        type="file" 
-                        multiple 
+                      <input
+                        type="file"
+                        multiple
                         accept="image/*"
                         onChange={(e) => handleFileChange(e, "geotag")}
                         className="w-full text-xs text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                       />
-                      
+
                       {geotagPreviews.length > 0 && (
                         <div className="grid grid-cols-4 gap-2 pt-2">
                           {geotagPreviews.map((url, i) => (
@@ -1370,14 +1627,14 @@ export default function AssignSurveyPage() {
                     {/* Bills */}
                     <div className="border border-gray-200 rounded-xl p-4 space-y-2">
                       <label className="block font-bold text-gray-700">Electricity Bills of Last 3 Months (Multiple)</label>
-                      <input 
-                        type="file" 
-                        multiple 
+                      <input
+                        type="file"
+                        multiple
                         accept="image/*,application/pdf"
                         onChange={(e) => handleFileChange(e, "bills")}
                         className="w-full text-xs text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                       />
-                      
+
                       {billPreviews.length > 0 && (
                         <div className="grid grid-cols-4 gap-2 pt-2">
                           {billPreviews.map((url, i) => (
@@ -1406,7 +1663,7 @@ export default function AssignSurveyPage() {
                 {/* 5. Surveyor Credentials */}
                 <div className="space-y-4">
                   <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Surveyor Info</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700">Surveyor Name <span className="text-red-500">*</span></label>
@@ -1469,14 +1726,14 @@ export default function AssignSurveyPage() {
         {showEditModal && editRecord && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col animate-scaleUp overflow-hidden">
-              
+
               {/* Modal Header */}
               <div className="bg-indigo-700 text-white px-6 py-4 flex justify-between items-center">
                 <div>
                   <h3 className="font-bold text-lg">Edit Survey: SRV-{String(editRecord.id).padStart(3, '0')}</h3>
                   <p className="text-xs text-indigo-100">Enquiry No: {editRecord.enquiries?.enquiry_number} | Beneficiary: {editRecord.enquiries?.beneficiary_name}</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowEditModal(false)}
                   className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition"
                 >
@@ -1486,7 +1743,7 @@ export default function AssignSurveyPage() {
 
               {/* Modal Body */}
               <form onSubmit={handleUpdateSurvey} className="flex-1 overflow-y-auto p-6 space-y-6">
-                
+
                 {/* 1. Read-Only Enquiry Block inside Modal */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                   <div>
@@ -1522,18 +1779,17 @@ export default function AssignSurveyPage() {
                 {/* 2. Survey Specs Edit */}
                 <div className="space-y-4">
                   <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Survey Specifications</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700">Survey Stage</label>
-                      <select
-                        value={editFormData.surveyStage}
-                        onChange={(e) => handleEditInputChange("surveyStage", e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      >
-                        <option value="Survey 1">Survey 1</option>
-                        <option value="Survey 2">Survey 2</option>
-                      </select>
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        value={editFormData.surveyStage || "survey1"}
+                        className="w-full border border-gray-300 bg-gray-100 font-bold text-gray-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none cursor-not-allowed"
+                      />
                     </div>
 
                     <div className="space-y-1">
@@ -1637,7 +1893,7 @@ export default function AssignSurveyPage() {
                 {/* 3. Distances Edit */}
                 <div className="space-y-4">
                   <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Distance Specifications (Meters)</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700">Modules to Control Room</label>
@@ -1694,20 +1950,20 @@ export default function AssignSurveyPage() {
                 {/* 4. Edit Media Uploads */}
                 <div className="space-y-4">
                   <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Media & Documents</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-                    
+
                     {/* Geotags */}
                     <div className="border border-gray-200 rounded-xl p-4 space-y-2">
                       <label className="block font-bold text-gray-700">Geotag Photos</label>
-                      <input 
-                        type="file" 
-                        multiple 
+                      <input
+                        type="file"
+                        multiple
                         accept="image/*"
                         onChange={(e) => handleEditFileChange(e, "geotag")}
                         className="w-full text-xs text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                       />
-                      
+
                       {editGeotagPreviews.length > 0 && (
                         <div className="grid grid-cols-4 gap-2 pt-2">
                           {editGeotagPreviews.map((url, i) => (
@@ -1729,14 +1985,14 @@ export default function AssignSurveyPage() {
                     {/* Bills */}
                     <div className="border border-gray-200 rounded-xl p-4 space-y-2">
                       <label className="block font-bold text-gray-700">Electricity Bills</label>
-                      <input 
-                        type="file" 
-                        multiple 
+                      <input
+                        type="file"
+                        multiple
                         accept="image/*,application/pdf"
                         onChange={(e) => handleEditFileChange(e, "bills")}
                         className="w-full text-xs text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                       />
-                      
+
                       {editBillPreviews.length > 0 && (
                         <div className="grid grid-cols-4 gap-2 pt-2">
                           {editBillPreviews.map((url, i) => (
@@ -1762,13 +2018,13 @@ export default function AssignSurveyPage() {
                     {/* ID Proof */}
                     <div className="border border-gray-200 rounded-xl p-4 space-y-2">
                       <label className="block font-bold text-gray-700">ID Proof</label>
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         accept="image/*,application/pdf"
                         onChange={(e) => handleEditFileChange(e, "idProof")}
                         className="w-full text-xs text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                       />
-                      
+
                       {editIdPreview && (
                         <div className="relative h-12 w-20 rounded-lg overflow-hidden border border-gray-200 mt-2">
                           {editIdPreview.includes("pdf") ? (
@@ -1790,13 +2046,13 @@ export default function AssignSurveyPage() {
                     {/* Address Proof */}
                     <div className="border border-gray-200 rounded-xl p-4 space-y-2">
                       <label className="block font-bold text-gray-700">Address Proof</label>
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         accept="image/*,application/pdf"
                         onChange={(e) => handleEditFileChange(e, "addressProof")}
                         className="w-full text-xs text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                       />
-                      
+
                       {editAddressPreview && (
                         <div className="relative h-12 w-20 rounded-lg overflow-hidden border border-gray-200 mt-2">
                           {editAddressPreview.includes("pdf") ? (
@@ -1820,7 +2076,7 @@ export default function AssignSurveyPage() {
                 {/* 5. Surveyor Credentials */}
                 <div className="space-y-4">
                   <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Surveyor Info</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700">Surveyor Name</label>
@@ -1881,14 +2137,14 @@ export default function AssignSurveyPage() {
         {showPdfPreview && pdfPreviewUrl && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
             <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden animate-scaleUp">
-              
+
               {/* Preview Modal Header */}
               <div className="bg-blue-700 text-white px-6 py-4 flex justify-between items-center shrink-0">
                 <div>
                   <h3 className="font-bold text-lg">Survey PDF Preview</h3>
                   <p className="text-xs text-blue-100 font-medium">Review the generated survey report PDF before final submission.</p>
                 </div>
-                <button 
+                <button
                   onClick={handleClosePreview}
                   className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition"
                 >

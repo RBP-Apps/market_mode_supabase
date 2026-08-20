@@ -250,13 +250,6 @@ export default function TechnicalSpecsContPage({
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        `}
-      </style>
-
       {/* Main Page Layout Wrapper */}
       <div className="flex flex-col flex-1">
         
@@ -365,14 +358,14 @@ export default function TechnicalSpecsContPage({
               <textarea
                 value={description}
                 onChange={(e) => onUpdateDescription(e.target.value)}
-                className="bg-transparent border-0 outline-none w-full text-gray-700 text-[10px] leading-relaxed text-justify resize-none focus:bg-gray-50 p-1 rounded focus:ring-1 focus:ring-[#008C95]/30"
+                className="bg-transparent border-0 outline-none w-full text-gray-700 text-[10px] leading-relaxed text-left resize-none focus:bg-gray-50 p-1 rounded focus:ring-1 focus:ring-[#008C95]/30"
                 rows={3}
                 style={{ display: "block" }}
               />
             </div>
           ) : (
             description && (
-              <p className="text-gray-700 text-[10px] leading-relaxed text-justify mt-2 mb-4">
+              <p className="text-gray-700 text-[10px] leading-relaxed text-left mt-2 mb-4">
                 {description}
               </p>
             )

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { X, Eye, Save, Sparkles, RefreshCw } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { toCanvas } from "html-to-image";
 import CoverPage from "./ProposalPages/CoverPage";
 import AboutPage from "./ProposalPages/AboutPage";
 import TrackRecordPage from "./ProposalPages/TrackRecordPage";
@@ -428,26 +429,29 @@ export default function Quotation10kvModal({
       if (!el || el.ownerDocument === document) {
         return style;
       }
-      const cleanValue = (val) => {
-        if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
-          return val
-            .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
-            .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
-        }
-        return val;
-      };
       return new Proxy(style, {
         get(target, prop) {
+          const val = target[prop];
+          if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
+            return val
+              .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
+              .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
+          }
           if (prop === 'getPropertyValue') {
             return function(name) {
-              return cleanValue(target.getPropertyValue(name));
+              const pVal = target.getPropertyValue(name);
+              if (typeof pVal === 'string' && (pVal.includes('oklch') || pVal.includes('oklab'))) {
+                return pVal
+                  .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
+                  .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
+              }
+              return pVal;
             };
           }
-          const val = target[prop];
           if (typeof val === 'function') {
             return val.bind(target);
           }
-          return cleanValue(val);
+          return val;
         }
       });
     };
@@ -456,60 +460,45 @@ export default function Quotation10kvModal({
       // Ensure all web fonts are loaded before capturing
       await document.fonts.ready;
 
-      // Capture all pages in parallel to maximize speed
-      const pagePromises = Array.from(pages).map(async (pageEl, index) => {
-        const canvas = await html2canvas(pageEl, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-          scrollX: 0,
-          scrollY: 0,
-          windowWidth: 794,
-          windowHeight: 1123,
-          onclone: (clonedDoc) => {
-            // Find the page in cloned document to reset transforms if any
-            const clonedPage = clonedDoc.querySelector(`[data-pdf-page="${index + 1}"]`);
-            if (clonedPage) {
-              clonedPage.style.transform = "none";
-              clonedPage.style.margin = "0";
-              clonedPage.style.boxShadow = "none";
-              clonedPage.style.border = "none";
+      // Sequential fast page rendering loop to avoid browser thread starvation and memory spikes
+      const imagesData = [];
+      for (let i = 0; i < pages.length; i++) {
+        const pageEl = pages[i];
+        const editControls = pageEl.querySelectorAll(".spec-edit-controls, .spec-btn");
+        editControls.forEach((el) => { el.style.display = "none"; });
 
-              // Hide edit controls and buttons in cloned page
-              const editControls = clonedPage.querySelectorAll(".spec-edit-controls, .spec-btn");
-              editControls.forEach(el => {
-                el.style.display = "none";
-              });
-
-              // Replace input and textarea elements with standard text/spans
-              const inputs = clonedPage.querySelectorAll("input, textarea");
-              inputs.forEach(input => {
-                const span = clonedDoc.createElement("span");
-                span.textContent = input.value;
-                span.className = input.className;
-                span.style.cssText = input.style.cssText;
-
-                // If it is a textarea, preserve whitespaces
-                if (input.tagName.toLowerCase() === "textarea") {
-                  span.style.whiteSpace = "pre-wrap";
-                }
-
-                span.style.border = "none";
-                span.style.background = "none";
-                span.style.padding = "4px";
-                span.style.display = "block";
-
-                input.parentNode.replaceChild(span, input);
-              });
+        let canvas;
+        try {
+          canvas = await toCanvas(pageEl, {
+            pixelRatio: 1.5,
+            backgroundColor: "#ffffff",
+            width: 794,
+            height: 1123,
+            skipFonts: true,
+            fontEmbedCSS: '',
+            cacheBust: false,
+            filter: (node) => {
+              if (node.classList && (node.classList.contains('spec-edit-controls') || node.classList.contains('spec-btn'))) {
+                return false;
+              }
+              return true;
             }
-          }
-        });
-        return canvas.toDataURL("image/jpeg", 1.0);
-      });
+          });
+        } catch (e) {
+          console.warn("toCanvas fallback to html2canvas:", e);
+          canvas = await html2canvas(pageEl, {
+            scale: 1.5,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: "#ffffff",
+            logging: false,
+          });
+        } finally {
+          editControls.forEach((el) => { el.style.display = ""; });
+        }
 
-      const imagesData = await Promise.all(pagePromises);
+        imagesData.push(canvas.toDataURL("image/jpeg", 0.85));
+      }
 
       const pdf = new jsPDF({
         orientation: "p",
@@ -549,6 +538,9 @@ export default function Quotation10kvModal({
       return;
     }
     setIsGenerating(true);
+    // Yield execution to allow React to paint the spinning loading button immediately
+    await new Promise((r) => setTimeout(r, 100));
+
     try {
       const pdfBlob = await buildPDFBlob();
       
@@ -787,17 +779,17 @@ export default function Quotation10kvModal({
           <button
             onClick={handleSaveClick}
             disabled={isGenerating}
-            className="px-6 py-2.5 bg-gradient-to-r from-teal-700 to-emerald-800 text-white rounded-xl hover:from-teal-800 hover:to-emerald-900 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 text-sm font-bold shadow-lg hover:shadow-xl"
+            className="px-6 py-2.5 bg-gradient-to-r from-teal-700 to-emerald-800 text-white rounded-xl hover:from-teal-800 hover:to-emerald-900 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 text-sm font-bold shadow-lg hover:shadow-xl cursor-pointer disabled:cursor-not-allowed"
           >
             {isGenerating ? (
               <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Generating PDF...
+                <RefreshCw className="h-4 w-4 animate-spin text-white" />
+                <span>Saving & Generating 10kV...</span>
               </>
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                Save & Generate 10kV Quotation
+                <span>Save & Generate 10kV Quotation</span>
               </>
             )}
           </button>

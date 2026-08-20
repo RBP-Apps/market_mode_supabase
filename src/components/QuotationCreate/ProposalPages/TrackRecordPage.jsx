@@ -41,13 +41,6 @@ export default function TrackRecordPage() {
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        `}
-      </style>
-
       {/* Main Page Layout Wrapper */}
       <div className="flex flex-col flex-1">
         
@@ -102,7 +95,7 @@ export default function TrackRecordPage() {
             {stats.map((stat, index) => (
               <div
                 key={index}
-                className="flex flex-col items-center justify-center p-5 text-center"
+                className="flex flex-col items-center justify-center p-3 text-center"
                 style={{
                   backgroundColor: "rgba(0, 140, 149, 0.06)",
                   height: "82px",
@@ -110,12 +103,12 @@ export default function TrackRecordPage() {
                 }}
               >
                 <div
-                  className="font-extrabold text-[18px] leading-tight"
+                  className="font-extrabold text-[17px] leading-none mb-1.5 whitespace-nowrap"
                   style={{ color: "#008C95" }}
                 >
                   {stat.value}
                 </div>
-                <div className="text-gray-600 font-medium text-[9.5px] mt-1 leading-normal">
+                <div className="text-gray-600 font-medium text-[9.5px] leading-none whitespace-nowrap">
                   {stat.label}
                 </div>
               </div>
@@ -149,7 +142,7 @@ export default function TrackRecordPage() {
                     
                     {/* Right Column: Description */}
                     <td
-                      className="text-gray-700 text-[10px] p-4 text-justify leading-relaxed"
+                      className="text-gray-700 text-[10px] p-4 text-left leading-relaxed"
                       style={{
                         backgroundColor: "#ffffff",
                         verticalAlign: "middle"

@@ -240,13 +240,6 @@ export default function TechnicalSpecsPage({
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        `}
-      </style>
-
       {/* Main Page Layout Wrapper */}
       <div className="flex flex-col flex-1">
         
@@ -297,7 +290,7 @@ export default function TechnicalSpecsPage({
         <div className="flex-1 flex flex-col justify-start overflow-hidden">
           
           {/* Introduction Paragraph */}
-          <p className="text-gray-700 text-[11px] leading-relaxed text-justify mb-4">
+          <p className="text-gray-700 text-[11px] leading-relaxed text-left mb-4">
             Technical details of the solar power system shall be as under:
           </p>
 

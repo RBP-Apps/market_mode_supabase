@@ -78,13 +78,6 @@ export default function IndicativeSavingsPage({ formData = {}, productDetails = 
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        `}
-      </style>
-
       {/* Main Page Layout Wrapper */}
       <div className="flex flex-col flex-1">
         
@@ -135,7 +128,7 @@ export default function IndicativeSavingsPage({ formData = {}, productDetails = 
         <div className="flex-1 flex flex-col justify-start overflow-hidden">
           
           {/* Introduction Paragraph */}
-          <p className="text-gray-700 text-[11px] leading-relaxed text-justify mb-6">
+          <p className="text-gray-700 text-[11px] leading-relaxed text-left mb-6">
             Based on RBP’s minimum generation guarantee of 1,500 kWh per kWp per annum, the {capacity} plant is expected to generate approximately {lakhUnits.toFixed(1)} lakh units (kWh) per year. The figures below are illustrative, to help you assess returns; actual savings depend on your applicable tariff, consumption pattern and the prevailing net-metering / open-access policy.
           </p>
 
@@ -183,7 +176,7 @@ export default function IndicativeSavingsPage({ formData = {}, productDetails = 
           </div>
 
           {/* Bottom Description Paragraph */}
-          <p className="text-gray-700 text-[11px] leading-relaxed text-justify mt-2">
+          <p className="text-gray-700 text-[11px] leading-relaxed text-left mt-2">
             Simple payback is calculated on the EPC capital cost of ₹{costCrStr} (excluding O&M). Over a 25-year life, indicative gross savings range from roughly {lifeSavings1Str} to {lifeSavings2Str} at flat tariffs — materially higher once annual tariff escalation is considered. A {capacity} plant also avoids an estimated {co2Avoided.toLocaleString("en-IN")}+ tonnes of CO2 per year. These projections are indicative engineering estimates and not a financial guarantee or investment advice.
           </p>
 

@@ -14,9 +14,9 @@ function DirectorCard({ name, designation, description }) {
       }}
     >
       {/* Profile Header: Name & Designation on the same line */}
-      <div className="flex items-baseline gap-2 mb-2">
+      <div className="flex items-baseline mb-2">
         <span
-          className="font-bold text-[13px]"
+          className="font-bold text-[13px] mr-2"
           style={{ color: "#00695C" }}
         >
           {name}
@@ -30,7 +30,7 @@ function DirectorCard({ name, designation, description }) {
       </div>
       
       {/* Profile Description */}
-      <p className="text-gray-700 text-[10px] leading-relaxed text-justify m-0">
+      <p className="text-gray-700 text-[10px] leading-relaxed text-left m-0">
         {description}
       </p>
     </div>
@@ -74,13 +74,6 @@ export default function BoardroomPage() {
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        `}
-      </style>
-
       {/* Main Page Layout Wrapper */}
       <div className="flex flex-col flex-1">
         
@@ -128,7 +121,7 @@ export default function BoardroomPage() {
         </div>
 
         {/* CONTENT AREA: Stacked Director Cards */}
-        <div className="flex-1 flex flex-col gap-4 justify-start">
+        <div className="flex-1 flex flex-col space-y-4 justify-start">
           {directors.map((director, index) => (
             <DirectorCard
               key={index}

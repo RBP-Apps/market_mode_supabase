@@ -46,60 +46,7 @@ export default function CoverPage({ formData }) {
         flexShrink: 0
       }}
     >
-      {/* Import Poppins Font */}
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-          
-          /* Fade Down for Logo Card */
-          @keyframes fadeDown {
-            from {
-              opacity: 0;
-              transform: translateY(-20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
 
-          /* Fade Up for Titles */
-          @keyframes fadeUp {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          /* Scale In for Stats */
-          @keyframes scaleIn {
-            from {
-              opacity: 0;
-              transform: scale(0.9);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1);
-            }
-          }
-
-          .animate-fade-down {
-            animation: fadeDown 300ms ease-out forwards;
-          }
-
-          .animate-fade-up {
-            animation: fadeUp 300ms ease-out forwards;
-          }
-
-          .animate-scale-in {
-            animation: scaleIn 300ms ease-out forwards;
-          }
-        `}
-      </style>
 
       {/* Abstract Background Shapes (Opacity 5-8%) */}
       {/* Top Right large circle */}
@@ -179,7 +126,7 @@ export default function CoverPage({ formData }) {
       <div className="flex flex-col items-center justify-center flex-1 px-[50px] z-10 -mt-[20px]">
         {/* Floating White Logo Card */}
         <div
-          className="bg-white rounded-[18px] flex flex-col items-center justify-center p-[25px] shadow-2xl animate-fade-down"
+          className="bg-white rounded-[18px] flex flex-col items-center justify-center p-[25px] shadow-2xl"
           style={{
             width: "390px",
             height: "170px",
@@ -200,41 +147,37 @@ export default function CoverPage({ formData }) {
         </div>
 
         {/* Proposal Details */}
-        <div className="text-center mt-[60px] space-y-[30px] animate-fade-up">
-          <div className="space-y-[10px]">
-            <div className="text-[18px] text-white font-medium opacity-95">
-              Proposal for
-            </div>
-            <div className="text-[58px] text-white font-[800] leading-none tracking-tight">
-              {capacity}
-            </div>
-            <div className="text-[24px] text-white font-bold tracking-wide">
-              Grid-Connected Solar PV Power Plant
-            </div>
-            <div className="w-[110px] h-[1.5px] bg-white mx-auto mt-4 opacity-80" />
+        <div className="text-center mt-[30px] w-full px-[30px]">
+          <div className="text-[16px] text-white font-medium opacity-95 mb-1.5">
+            Proposal for
           </div>
+          <h1 className="text-[32px] text-white font-[800] tracking-tight leading-snug mb-2 block">
+            {capacity}
+          </h1>
+          <h2 className="text-[20px] text-white font-bold tracking-wide leading-snug block mb-4">
+            Grid-Connected Solar PV Power Plant
+          </h2>
+          <div className="w-[110px] h-[1.5px] bg-white mx-auto opacity-80 mb-6" />
 
-          <div className="space-y-[12px] pt-[35px]">
-            <div className="text-[11px] text-white uppercase tracking-[3px] font-semibold opacity-90">
-              PREPARED FOR
-            </div>
-            <div className="text-[34px] text-white font-bold leading-tight">
-              {clientName}
-            </div>
-            <div className="text-[16px] text-white font-normal opacity-90">
-              {proposalDate}
-            </div>
+          <div className="text-[11px] text-white uppercase tracking-[3px] font-semibold opacity-90 mb-1">
+            PREPARED FOR
+          </div>
+          <h3 className="text-[28px] text-white font-bold leading-snug block mb-1">
+            {clientName}
+          </h3>
+          <div className="text-[15px] text-white font-normal opacity-90">
+            {proposalDate}
           </div>
         </div>
 
         {/* Statistics Cards */}
-        <div className="flex flex-wrap justify-center gap-[20px] mt-[45px] w-full px-[20px] animate-scale-in">
+        <div className="flex flex-wrap justify-center gap-[16px] mt-[45px] w-full px-[20px]">
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="flex flex-col items-center justify-center rounded-[12px] shadow-sm"
+              className="flex flex-col items-center justify-center rounded-[12px] shadow-sm px-2"
               style={{
-                width: "140px",
+                width: "155px",
                 height: "82px",
                 backgroundColor: "rgba(255, 255, 255, 0.10)",
                 border: "1px solid rgba(255, 255, 255, 0.2)",
@@ -243,10 +186,10 @@ export default function CoverPage({ formData }) {
                 boxSizing: "border-box"
               }}
             >
-              <div className="text-[24px] font-bold text-white leading-tight">
+              <div className="text-[22px] font-bold text-white leading-none mb-1.5 whitespace-nowrap">
                 {stat.number}
               </div>
-              <div className="text-[11px] font-medium" style={{ color: "rgba(255, 255, 255, 0.9)" }}>
+              <div className="text-[11px] font-medium leading-none whitespace-nowrap" style={{ color: "rgba(255, 255, 255, 0.9)" }}>
                 {stat.label}
               </div>
             </div>
@@ -281,7 +224,7 @@ export default function CoverPage({ formData }) {
         </div>
 
         {/* Contact Numbers, Email & Website Line */}
-        <div className="text-center text-[9px] pt-1.5 flex justify-center gap-1.5 font-medium" style={{ color: "rgba(255, 255, 255, 0.9)", borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
+        <div className="text-center text-[9px] pt-1.5 flex justify-center space-x-1.5 font-medium" style={{ color: "rgba(255, 255, 255, 0.9)", borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
           <span>Sales: +91 92000 12500</span>
           <span className="opacity-40">|</span>
           <span>Service: +91 92000 12400</span>

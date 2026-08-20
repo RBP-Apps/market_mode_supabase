@@ -523,10 +523,11 @@ export default function BeneficiaryForm() {
                         Contact Number
                       </label>
                       <input
-                        type="tel"
+                        type="number"
                         id="contactNumber"
                         name="contactNumber"
                         value={formData.contactNumber}
+                        onWheel={(e) => e.currentTarget.blur()}
                         onChange={handleChange}
                         className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                       />
@@ -1161,6 +1162,7 @@ export default function BeneficiaryForm() {
                             type="tel"
                             name="contactNumber"
                             value={editFormData.contactNumber || ""}
+                        onWheel={(e) => e.currentTarget.blur()}
                             onChange={handleEditChange}
                             className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                           />

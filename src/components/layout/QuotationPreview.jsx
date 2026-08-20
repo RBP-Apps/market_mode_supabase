@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Eye, XCircle, Save } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { toCanvas } from "html-to-image";
 
 // ─── Number to Words (Indian System) ─────────────────────────────────────────
 function toWords(num) {
@@ -171,63 +172,58 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
       if (!el || el.ownerDocument === document) {
         return style;
       }
-      const cleanValue = (val) => {
-        if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
-          return val
-            .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
-            .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
-        }
-        return val;
-      };
       return new Proxy(style, {
         get(target, prop) {
+          const val = target[prop];
+          if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
+            return val
+              .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
+              .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
+          }
           if (prop === 'getPropertyValue') {
             return function(name) {
-              return cleanValue(target.getPropertyValue(name));
+              const pVal = target.getPropertyValue(name);
+              if (typeof pVal === 'string' && (pVal.includes('oklch') || pVal.includes('oklab'))) {
+                return pVal
+                  .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
+                  .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
+              }
+              return pVal;
             };
           }
-          const val = target[prop];
           if (typeof val === 'function') {
             return val.bind(target);
           }
-          return cleanValue(val);
+          return val;
         }
       });
     };
 
     try {
       await document.fonts.ready;
-      // Capture at exactly A4 Portrait dimensions
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: 794,
-        windowHeight: 1123,
-        onclone: (clonedDoc) => {
-          const clonedEl = clonedDoc.querySelector("[data-pdf-preview]");
-          if (clonedEl) {
-            clonedEl.style.width = "794px";
-            clonedEl.style.height = "1123px";
-            clonedEl.style.minHeight = "1123px";
-            clonedEl.style.maxHeight = "1123px";
-            clonedEl.style.boxShadow = "none";
-            clonedEl.style.border = "none";
-            clonedEl.style.margin = "0";
-            clonedEl.style.padding = "23px";
-            clonedEl.style.overflow = "hidden";
-            clonedEl.style.display = "flex";
-            clonedEl.style.flexDirection = "column";
-            clonedEl.style.boxSizing = "border-box";
-          }
-        },
-      });
+      let canvas;
+      try {
+        canvas = await toCanvas(element, {
+          pixelRatio: 1.5,
+          backgroundColor: "#ffffff",
+          width: 794,
+          height: 1123,
+          skipFonts: true,
+          fontEmbedCSS: '',
+          cacheBust: false,
+        });
+      } catch (e) {
+        console.warn("toCanvas fallback to html2canvas:", e);
+        canvas = await html2canvas(element, {
+          scale: 1.5,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+        });
+      }
 
-      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+      const imgData = canvas.toDataURL("image/jpeg", 0.85);
       const pdf = new jsPDF({
         orientation: "p",
         unit: "mm",
@@ -263,6 +259,7 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
 
   const handleSubmit = async () => {
     setIsGeneratingPDF(true);
+    await new Promise((r) => setTimeout(r, 100));
     try {
       const pdfBlob = await buildPDF();
       await onSubmit(pdfBlob, sendWhatsApp);
@@ -572,14 +569,28 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
             <div style={{ display: "flex", width: "100%", background: colors.beige, border: `1px solid ${colors.border}`, padding: "5px 8px", alignItems: "center" }}>
               <div style={{ width: "45%" }}>
                 <div style={{ fontWeight: "bold", textAlign: "center", marginBottom: "3px", textTransform: "uppercase", fontSize: "8px" }}>Warranty</div>
-                <div style={{ fontSize: "7.5px", lineHeight: "1.3" }}>
+                {/* <div style={{ fontSize: "7.5px", lineHeight: "1.3" }}>
                   <div>1. Solar Module 5 Year against Manufacturing defect</div>
                   <div style={{ marginLeft: "8px" }}>10 Year limited warranty on 90% Power Output.</div>
                   <div style={{ marginLeft: "8px" }}>25 Year Limited warranty on 80% Power Output.</div>
                   <div>2. Inverter : 5 Years for IP 65 & 5 Years for 3Ph manufacturer's warranty</div>
                   <div>3. Balance Of System 5 Year against manufacturing defect.</div>
                   <div>4. Switchgear - On Actuals</div>
-                </div>
+                </div> */}
+                <div style={{ fontSize: "7.5px", lineHeight: "1.3" }}>
+  <div>1. Solar Modules 12 Year against Manufacturing defect,</div>
+  <div style={{ marginLeft: "8px" }}>
+    10 Years performance warranty on 90% Power Output,
+  </div>
+  <div style={{ marginLeft: "8px" }}>
+    30 Year performance warranty on 80% Power Output.
+  </div>
+  <div>
+    2. Inverter: 8 Years upto 20kW &amp; 5 Years &gt;20kW manufacturer's warranty
+  </div>
+  <div>3. Balance of System 5 Year against manufacturing defect.</div>
+  <div>4. Switchgear - On Actuals</div>
+</div>
               </div>
               <div style={{ width: "10%", textAlign: "center" }}>
                 <div style={{ width: "30px", height: "30px", background: colors.teal, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
@@ -630,8 +641,18 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
             <span className="font-medium text-red-500">WhatsApp Send</span>
           </label>
           <button onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2 text-sm"><XCircle className="h-4 w-4" /> Cancel</button>
-          <button onClick={handleSubmit} disabled={isSubmitting || isGeneratingPDF} className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-colors flex items-center gap-2 disabled:opacity-50 text-sm font-bold shadow-lg">
-            {isSubmitting || isGeneratingPDF ? <>Processing...</> : <><Save className="h-4 w-4" /> Finalize & Save Quotation</>}
+          <button onClick={handleSubmit} disabled={isSubmitting || isGeneratingPDF} className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-colors flex items-center gap-2 disabled:opacity-50 text-sm font-bold shadow-lg cursor-pointer disabled:cursor-not-allowed">
+            {isSubmitting || isGeneratingPDF ? (
+              <>
+                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                <span>Saving Quotation...</span>
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                <span>Finalize & Save Quotation</span>
+              </>
+            )}
           </button>
         </div>
 
