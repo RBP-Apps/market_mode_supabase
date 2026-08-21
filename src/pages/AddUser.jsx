@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import supabase from "../utils/supabase";
 import AdminLayout from "../components/layout/AdminLayout";
 
@@ -58,6 +58,8 @@ export default function UserRegistration() {
     "Bank Process"
   ];
   const [loading, setLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const [pageAccess, setPageAccess] = useState([]);
   const [openPageBox, setOpenPageBox] = useState(false);
@@ -65,31 +67,188 @@ export default function UserRegistration() {
   const [editPageAccess, setEditPageAccess] = useState([]);
   const [openEditPageBox, setOpenEditPageBox] = useState(false);
 
+  // Refs for click outside handling
+  const pageBoxRef = useRef(null);
+  const editPageBoxRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (pageBoxRef.current && !pageBoxRef.current.contains(event.target)) {
+        setOpenPageBox(false);
+      }
+      if (editPageBoxRef.current && !editPageBoxRef.current.contains(event.target)) {
+        setOpenEditPageBox(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Static list of tabs for Assign Survey
+  const ASSIGN_SURVEY_TABS = [
+    "Pending (Estimate Survey)",
+    "Pending (Actual Survey)",
+    "Survey Completed"
+  ];
+  const [assignSurveyTabs, setAssignSurveyTabs] = useState(ASSIGN_SURVEY_TABS);
+  const [editAssignSurveyTabs, setEditAssignSurveyTabs] = useState(ASSIGN_SURVEY_TABS);
+
+  // Static list of tabs for Quotation Create
+  const QUOTATION_CREATE_TABS = [
+    "Pending",
+    "BOM Approval",
+    "Director Approval",
+    "History"
+  ];
+  const [quotationCreateTabs, setQuotationCreateTabs] = useState(QUOTATION_CREATE_TABS);
+  const [editQuotationCreateTabs, setEditQuotationCreateTabs] = useState(QUOTATION_CREATE_TABS);
+
   const togglePage = (page) => {
-    setPageAccess((prev) =>
-      prev.includes(page) ? prev.filter((p) => p !== page) : [...prev, page],
-    );
+    setPageAccess((prevPages) => {
+      const exists = prevPages.includes(page);
+      if (exists) {
+        if (page === "Assign Survey") {
+          setAssignSurveyTabs([]);
+        }
+        if (page === "Quotation Create") {
+          setQuotationCreateTabs([]);
+        }
+        return prevPages.filter((p) => p !== page);
+      } else {
+        if (page === "Assign Survey") {
+          setAssignSurveyTabs((prev) => (prev.length > 0 ? prev : [...ASSIGN_SURVEY_TABS]));
+        }
+        if (page === "Quotation Create") {
+          setQuotationCreateTabs((prev) => (prev.length > 0 ? prev : [...QUOTATION_CREATE_TABS]));
+        }
+        return [...prevPages, page];
+      }
+    });
+  };
+
+  const toggleAssignSurveyTab = (tab) => {
+    setAssignSurveyTabs((prevTabs) => {
+      const nextTabs = prevTabs.includes(tab)
+        ? prevTabs.filter((t) => t !== tab)
+        : [...prevTabs, tab];
+
+      setPageAccess((prevPages) => {
+        if (nextTabs.length === 0) {
+          return prevPages.filter((p) => p !== "Assign Survey");
+        } else if (!prevPages.includes("Assign Survey")) {
+          return [...prevPages, "Assign Survey"];
+        }
+        return prevPages;
+      });
+
+      return nextTabs;
+    });
+  };
+
+  const toggleQuotationCreateTab = (tab) => {
+    setQuotationCreateTabs((prevTabs) => {
+      const nextTabs = prevTabs.includes(tab)
+        ? prevTabs.filter((t) => t !== tab)
+        : [...prevTabs, tab];
+
+      setPageAccess((prevPages) => {
+        if (nextTabs.length === 0) {
+          return prevPages.filter((p) => p !== "Quotation Create");
+        } else if (!prevPages.includes("Quotation Create")) {
+          return [...prevPages, "Quotation Create"];
+        }
+        return prevPages;
+      });
+
+      return nextTabs;
+    });
   };
 
   const toggleAllPages = () => {
     if (pageAccess.length === pageOptions.length) {
       setPageAccess([]);
+      setAssignSurveyTabs([]);
+      setQuotationCreateTabs([]);
     } else {
       setPageAccess([...pageOptions]);
+      setAssignSurveyTabs([...ASSIGN_SURVEY_TABS]);
+      setQuotationCreateTabs([...QUOTATION_CREATE_TABS]);
     }
   };
 
   const toggleEditPage = (page) => {
-    setEditPageAccess((prev) =>
-      prev.includes(page) ? prev.filter((p) => p !== page) : [...prev, page],
-    );
+    setEditPageAccess((prevPages) => {
+      const exists = prevPages.includes(page);
+      if (exists) {
+        if (page === "Assign Survey") {
+          setEditAssignSurveyTabs([]);
+        }
+        if (page === "Quotation Create") {
+          setEditQuotationCreateTabs([]);
+        }
+        return prevPages.filter((p) => p !== page);
+      } else {
+        if (page === "Assign Survey") {
+          setEditAssignSurveyTabs((prev) => (prev.length > 0 ? prev : [...ASSIGN_SURVEY_TABS]));
+        }
+        if (page === "Quotation Create") {
+          setEditQuotationCreateTabs((prev) => (prev.length > 0 ? prev : [...QUOTATION_CREATE_TABS]));
+        }
+        return [...prevPages, page];
+      }
+    });
+  };
+
+  const toggleEditAssignSurveyTab = (tab) => {
+    setEditAssignSurveyTabs((prevTabs) => {
+      const nextTabs = prevTabs.includes(tab)
+        ? prevTabs.filter((t) => t !== tab)
+        : [...prevTabs, tab];
+
+      setEditPageAccess((prevPages) => {
+        if (nextTabs.length === 0) {
+          return prevPages.filter((p) => p !== "Assign Survey");
+        } else if (!prevPages.includes("Assign Survey")) {
+          return [...prevPages, "Assign Survey"];
+        }
+        return prevPages;
+      });
+
+      return nextTabs;
+    });
+  };
+
+  const toggleEditQuotationCreateTab = (tab) => {
+    setEditQuotationCreateTabs((prevTabs) => {
+      const nextTabs = prevTabs.includes(tab)
+        ? prevTabs.filter((t) => t !== tab)
+        : [...prevTabs, tab];
+
+      setEditPageAccess((prevPages) => {
+        if (nextTabs.length === 0) {
+          return prevPages.filter((p) => p !== "Quotation Create");
+        } else if (!prevPages.includes("Quotation Create")) {
+          return [...prevPages, "Quotation Create"];
+        }
+        return prevPages;
+      });
+
+      return nextTabs;
+    });
   };
 
   const toggleAllEditPages = () => {
     if (editPageAccess.length === pageOptions.length) {
       setEditPageAccess([]);
+      setEditAssignSurveyTabs([]);
+      setEditQuotationCreateTabs([]);
     } else {
       setEditPageAccess([...pageOptions]);
+      setEditAssignSurveyTabs([...ASSIGN_SURVEY_TABS]);
+      setEditQuotationCreateTabs([...QUOTATION_CREATE_TABS]);
     }
   };
 
@@ -206,11 +365,54 @@ export default function UserRegistration() {
     });
     setOpenEditPageBox(false);
 
+    let parsedAssignSurveyTabs = [...ASSIGN_SURVEY_TABS];
+    let parsedQuotationCreateTabs = [...QUOTATION_CREATE_TABS];
+
     if (!user.page || user.page === "ALL") {
       setEditPageAccess([...pageOptions]);
+      setEditAssignSurveyTabs([...ASSIGN_SURVEY_TABS]);
+      setEditQuotationCreateTabs([...QUOTATION_CREATE_TABS]);
     } else {
       const parsedPages = user.page.split(",").map((p) => p.trim()).filter(Boolean);
-      setEditPageAccess(parsedPages);
+      const rawPages = [];
+
+      parsedPages.forEach((p) => {
+        if (p.startsWith("Assign Survey")) {
+          rawPages.push("Assign Survey");
+          let tabsStr = "";
+          if (p.startsWith("Assign Survey(") && p.endsWith(")")) {
+            tabsStr = p.slice("Assign Survey(".length, -1);
+          } else if (p.startsWith("Assign Survey[") && p.endsWith("]")) {
+            tabsStr = p.slice("Assign Survey[".length, -1);
+          }
+          if (tabsStr) {
+            const tabs = tabsStr.split(";").map((t) => t.trim()).filter(Boolean);
+            if (tabs.length > 0) {
+              parsedAssignSurveyTabs = tabs;
+            }
+          }
+        } else if (p.startsWith("Quotation Create")) {
+          rawPages.push("Quotation Create");
+          let tabsStr = "";
+          if (p.startsWith("Quotation Create(") && p.endsWith(")")) {
+            tabsStr = p.slice("Quotation Create(".length, -1);
+          } else if (p.startsWith("Quotation Create[") && p.endsWith("]")) {
+            tabsStr = p.slice("Quotation Create[".length, -1);
+          }
+          if (tabsStr) {
+            const tabs = tabsStr.split(";").map((t) => t.trim()).filter(Boolean);
+            if (tabs.length > 0) {
+              parsedQuotationCreateTabs = tabs;
+            }
+          }
+        } else {
+          rawPages.push(p);
+        }
+      });
+
+      setEditPageAccess(rawPages);
+      setEditAssignSurveyTabs(parsedAssignSurveyTabs);
+      setEditQuotationCreateTabs(parsedQuotationCreateTabs);
     }
     setEditOpen(true);
   };
@@ -229,6 +431,20 @@ export default function UserRegistration() {
       return;
     }
 
+    const formattedPageAccess = pageAccess.map((p) => {
+      if (p === "Assign Survey") {
+        if (assignSurveyTabs.length === 0) return null;
+        if (assignSurveyTabs.length === ASSIGN_SURVEY_TABS.length) return "Assign Survey";
+        return `Assign Survey(${assignSurveyTabs.join(";")})`;
+      }
+      if (p === "Quotation Create") {
+        if (quotationCreateTabs.length === 0) return null;
+        if (quotationCreateTabs.length === QUOTATION_CREATE_TABS.length) return "Quotation Create";
+        return `Quotation Create(${quotationCreateTabs.join(";")})`;
+      }
+      return p;
+    }).filter(Boolean);
+
     const payload = {
       username: formData.username,
       name: formData.name || formData.username,
@@ -239,10 +455,14 @@ export default function UserRegistration() {
       given_by: formData.given_by || "",
       role: formData.role || "USER",
       page:
-        pageAccess.length === pageOptions.length ? "ALL" : pageAccess.join(","),
+        formattedPageAccess.length === pageOptions.length &&
+        !formattedPageAccess.some((p) => p.includes("("))
+          ? "ALL"
+          : formattedPageAccess.join(","),
       access: true,
     };
 
+    setIsCreating(true);
     try {
       const { error } = await supabase.from("login").insert([payload]);
 
@@ -262,10 +482,14 @@ export default function UserRegistration() {
       });
 
       setPageAccess([]);
+      setAssignSurveyTabs([...ASSIGN_SURVEY_TABS]);
+      setQuotationCreateTabs([...QUOTATION_CREATE_TABS]);
       fetchUsers();
     } catch (error) {
       console.error("Error adding user:", error);
       alert("Error adding user: " + error.message);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -283,6 +507,20 @@ export default function UserRegistration() {
       return;
     }
 
+    const formattedEditPageAccess = editPageAccess.map((p) => {
+      if (p === "Assign Survey") {
+        if (editAssignSurveyTabs.length === 0) return null;
+        if (editAssignSurveyTabs.length === ASSIGN_SURVEY_TABS.length) return "Assign Survey";
+        return `Assign Survey(${editAssignSurveyTabs.join(";")})`;
+      }
+      if (p === "Quotation Create") {
+        if (editQuotationCreateTabs.length === 0) return null;
+        if (editQuotationCreateTabs.length === QUOTATION_CREATE_TABS.length) return "Quotation Create";
+        return `Quotation Create(${editQuotationCreateTabs.join(";")})`;
+      }
+      return p;
+    }).filter(Boolean);
+
     const payload = {
       username: editData.username,
       name: editData.name || editData.username,
@@ -293,9 +531,13 @@ export default function UserRegistration() {
       given_by: editData.given_by || "",
       role: editData.role || "USER",
       page:
-        editPageAccess.length === pageOptions.length ? "ALL" : editPageAccess.join(","),
+        formattedEditPageAccess.length === pageOptions.length &&
+        !formattedEditPageAccess.some((p) => p.includes("("))
+          ? "ALL"
+          : formattedEditPageAccess.join(","),
     };
 
+    setIsUpdating(true);
     try {
       const { error } = await supabase
         .from("login")
@@ -310,6 +552,8 @@ export default function UserRegistration() {
     } catch (error) {
       console.error("Error updating user:", error);
       alert("Error updating user: " + error.message);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -842,7 +1086,7 @@ export default function UserRegistration() {
                 </div>
 
                 {/* Page Access (REQUIRED) */}
-                <div className="relative">
+                <div ref={pageBoxRef} className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Page Access <span className="text-red-500">*</span>
                   </label>
@@ -887,14 +1131,94 @@ export default function UserRegistration() {
                           <hr />
 
                           {pageOptions.map((page) => (
-                            <label key={page} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
-                              <input
-                                type="checkbox"
-                                checked={pageAccess.includes(page)}
-                                onChange={() => togglePage(page)}
-                              />
-                              <span className="text-sm">{page}</span>
-                            </label>
+                            <div key={page} className="space-y-1">
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={pageAccess.includes(page)}
+                                  onChange={() => togglePage(page)}
+                                />
+                                <span className="text-sm font-medium">{page}</span>
+                              </label>
+
+                              {/* SUB-TAB PERMISSIONS FOR ASSIGN SURVEY */}
+                              {page === "Assign Survey" && pageAccess.includes("Assign Survey") && (
+                                <div className="ml-6 pl-2 py-1.5 px-2 bg-purple-50 rounded-lg border border-purple-100 space-y-1">
+                                  <div className="flex items-center justify-between border-b border-purple-200/60 pb-1 mb-1">
+                                    <p className="text-[11px] font-semibold text-purple-800 uppercase tracking-wider">
+                                      Allowed Tabs ({assignSurveyTabs.length}/{ASSIGN_SURVEY_TABS.length}):
+                                    </p>
+                                    <div className="text-[10px] space-x-1 text-purple-700 font-medium">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setAssignSurveyTabs([...ASSIGN_SURVEY_TABS]); }}
+                                        className="hover:underline hover:text-purple-900"
+                                      >
+                                        All
+                                      </button>
+                                      <span>|</span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setAssignSurveyTabs([]); setPageAccess((prev) => prev.filter((p) => p !== "Assign Survey")); }}
+                                        className="hover:underline hover:text-purple-900"
+                                      >
+                                        None
+                                      </button>
+                                    </div>
+                                  </div>
+                                  {ASSIGN_SURVEY_TABS.map((tab) => (
+                                    <label key={tab} className="flex items-center gap-2 cursor-pointer hover:bg-purple-100/60 p-0.5 rounded">
+                                      <input
+                                        type="checkbox"
+                                        checked={assignSurveyTabs.includes(tab)}
+                                        onChange={() => toggleAssignSurveyTab(tab)}
+                                        className="accent-purple-600 h-3.5 w-3.5"
+                                      />
+                                      <span className="text-xs text-gray-700 font-medium">{tab}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* SUB-TAB PERMISSIONS FOR QUOTATION CREATE */}
+                              {page === "Quotation Create" && pageAccess.includes("Quotation Create") && (
+                                <div className="ml-6 pl-2 py-1.5 px-2 bg-indigo-50 rounded-lg border border-indigo-100 space-y-1">
+                                  <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1 mb-1">
+                                    <p className="text-[11px] font-semibold text-indigo-800 uppercase tracking-wider">
+                                      Allowed Tabs ({quotationCreateTabs.length}/{QUOTATION_CREATE_TABS.length}):
+                                    </p>
+                                    <div className="text-[10px] space-x-1 text-indigo-700 font-medium">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setQuotationCreateTabs([...QUOTATION_CREATE_TABS]); }}
+                                        className="hover:underline hover:text-indigo-900"
+                                      >
+                                        All
+                                      </button>
+                                      <span>|</span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setQuotationCreateTabs([]); setPageAccess((prev) => prev.filter((p) => p !== "Quotation Create")); }}
+                                        className="hover:underline hover:text-indigo-900"
+                                      >
+                                        None
+                                      </button>
+                                    </div>
+                                  </div>
+                                  {QUOTATION_CREATE_TABS.map((tab) => (
+                                    <label key={tab} className="flex items-center gap-2 cursor-pointer hover:bg-indigo-100/60 p-0.5 rounded">
+                                      <input
+                                        type="checkbox"
+                                        checked={quotationCreateTabs.includes(tab)}
+                                        onChange={() => toggleQuotationCreateTab(tab)}
+                                        className="accent-indigo-600 h-3.5 w-3.5"
+                                      />
+                                      <span className="text-xs text-gray-700 font-medium">{tab}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           ))}
                         </>
                       )}
@@ -978,9 +1302,17 @@ export default function UserRegistration() {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
+                    disabled={isCreating}
+                    className="px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Create User Account
+                    {isCreating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span>Creating User...</span>
+                      </>
+                    ) : (
+                      "Create User Account"
+                    )}
                   </button>
                 </div>
               </form>
@@ -1074,7 +1406,7 @@ export default function UserRegistration() {
                 </div>
 
                 {/* Page Access (REQUIRED) */}
-                <div className="relative">
+                <div ref={editPageBoxRef} className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Page Access <span className="text-red-500">*</span>
                   </label>
@@ -1114,14 +1446,94 @@ export default function UserRegistration() {
                           <hr />
 
                           {pageOptions.map((page) => (
-                            <label key={page} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
-                              <input
-                                type="checkbox"
-                                checked={editPageAccess.includes(page)}
-                                onChange={() => toggleEditPage(page)}
-                              />
-                              <span className="text-sm">{page}</span>
-                            </label>
+                            <div key={page} className="space-y-1">
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={editPageAccess.includes(page)}
+                                  onChange={() => toggleEditPage(page)}
+                                />
+                                <span className="text-sm font-medium">{page}</span>
+                              </label>
+
+                              {/* SUB-TAB PERMISSIONS FOR ASSIGN SURVEY */}
+                              {page === "Assign Survey" && editPageAccess.includes("Assign Survey") && (
+                                <div className="ml-6 pl-2 py-1.5 px-2 bg-purple-50 rounded-lg border border-purple-100 space-y-1">
+                                  <div className="flex items-center justify-between border-b border-purple-200/60 pb-1 mb-1">
+                                    <p className="text-[11px] font-semibold text-purple-800 uppercase tracking-wider">
+                                      Allowed Tabs ({editAssignSurveyTabs.length}/{ASSIGN_SURVEY_TABS.length}):
+                                    </p>
+                                    <div className="text-[10px] space-x-1 text-purple-700 font-medium">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setEditAssignSurveyTabs([...ASSIGN_SURVEY_TABS]); }}
+                                        className="hover:underline hover:text-purple-900"
+                                      >
+                                        All
+                                      </button>
+                                      <span>|</span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setEditAssignSurveyTabs([]); setEditPageAccess((prev) => prev.filter((p) => p !== "Assign Survey")); }}
+                                        className="hover:underline hover:text-purple-900"
+                                      >
+                                        None
+                                      </button>
+                                    </div>
+                                  </div>
+                                  {ASSIGN_SURVEY_TABS.map((tab) => (
+                                    <label key={tab} className="flex items-center gap-2 cursor-pointer hover:bg-purple-100/60 p-0.5 rounded">
+                                      <input
+                                        type="checkbox"
+                                        checked={editAssignSurveyTabs.includes(tab)}
+                                        onChange={() => toggleEditAssignSurveyTab(tab)}
+                                        className="accent-purple-600 h-3.5 w-3.5"
+                                      />
+                                      <span className="text-xs text-gray-700 font-medium">{tab}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* SUB-TAB PERMISSIONS FOR QUOTATION CREATE */}
+                              {page === "Quotation Create" && editPageAccess.includes("Quotation Create") && (
+                                <div className="ml-6 pl-2 py-1.5 px-2 bg-indigo-50 rounded-lg border border-indigo-100 space-y-1">
+                                  <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1 mb-1">
+                                    <p className="text-[11px] font-semibold text-indigo-800 uppercase tracking-wider">
+                                      Allowed Tabs ({editQuotationCreateTabs.length}/{QUOTATION_CREATE_TABS.length}):
+                                    </p>
+                                    <div className="text-[10px] space-x-1 text-indigo-700 font-medium">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setEditQuotationCreateTabs([...QUOTATION_CREATE_TABS]); }}
+                                        className="hover:underline hover:text-indigo-900"
+                                      >
+                                        All
+                                      </button>
+                                      <span>|</span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setEditQuotationCreateTabs([]); setEditPageAccess((prev) => prev.filter((p) => p !== "Quotation Create")); }}
+                                        className="hover:underline hover:text-indigo-900"
+                                      >
+                                        None
+                                      </button>
+                                    </div>
+                                  </div>
+                                  {QUOTATION_CREATE_TABS.map((tab) => (
+                                    <label key={tab} className="flex items-center gap-2 cursor-pointer hover:bg-indigo-100/60 p-0.5 rounded">
+                                      <input
+                                        type="checkbox"
+                                        checked={editQuotationCreateTabs.includes(tab)}
+                                        onChange={() => toggleEditQuotationCreateTab(tab)}
+                                        className="accent-indigo-600 h-3.5 w-3.5"
+                                      />
+                                      <span className="text-xs text-gray-700 font-medium">{tab}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           ))}
                         </>
                       )}
@@ -1208,9 +1620,17 @@ export default function UserRegistration() {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
+                    disabled={isUpdating}
+                    className="px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Update User Account
+                    {isUpdating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span>Updating User...</span>
+                      </>
+                    ) : (
+                      "Update User Account"
+                    )}
                   </button>
                 </div>
               </form>

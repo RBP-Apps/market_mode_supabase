@@ -70,7 +70,11 @@ const ProtectedRoute = ({ children, allowedRoles = [], pageLabel }) => {
   // Check page level permission if pageLabel is specified and user is not admin
   if (pageLabel && userRole !== "admin" && pageAccess !== "ALL") {
     const allowedPages = pageAccess.split(",").map(p => p.trim()).filter(Boolean)
-    if (!allowedPages.includes(pageLabel.trim())) {
+    const isPageAllowed = allowedPages.some(p => {
+      const cleanName = p.split("(")[0].split("[")[0].trim()
+      return cleanName === pageLabel.trim()
+    })
+    if (!isPageAllowed) {
       const fallback = getFirstAccessibleRoute(userRole, pageAccess)
       return <Navigate to={fallback} replace />
     }

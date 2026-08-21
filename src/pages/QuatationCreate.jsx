@@ -249,6 +249,89 @@ export default function QuatationCreate() {
 
   // State for list view
   const [activeTab, setActiveTab] = useState("pending");
+  const [allowedTabs, setAllowedTabs] = useState(["pending", "bom_approval", "director_approval", "history"]);
+
+  // Tab permissions effect for Quotation Create
+  useEffect(() => {
+    const checkPermissions = async () => {
+      const username = sessionStorage.getItem("username");
+      const role = (sessionStorage.getItem("role") || "").toLowerCase();
+      const isAdmin = sessionStorage.getItem("isAdmin") === "true";
+      let pageAccess = sessionStorage.getItem("pageAccess") || "ALL";
+
+      if (role === "admin" || isAdmin || pageAccess === "ALL" || !pageAccess) {
+        setAllowedTabs(["pending", "bom_approval", "director_approval", "history"]);
+        return;
+      }
+
+      let userPageStr = pageAccess;
+      if (username) {
+        try {
+          const { data } = await supabase
+            .from("login")
+            .select("page, role")
+            .eq("username", username)
+            .maybeSingle();
+          if (data) {
+            if (data.role?.toUpperCase() === "ADMIN") {
+              setAllowedTabs(["pending", "bom_approval", "director_approval", "history"]);
+              return;
+            }
+            if (data.page) {
+              userPageStr = data.page;
+            }
+          }
+        } catch (e) {
+          console.warn("Could not fetch user tab permissions for Quotation Create", e);
+        }
+      }
+
+      if (userPageStr === "ALL" || !userPageStr) {
+        setAllowedTabs(["pending", "bom_approval", "director_approval", "history"]);
+        return;
+      }
+
+      const pages = userPageStr.split(",").map((p) => p.trim()).filter(Boolean);
+      const item = pages.find((p) => p.startsWith("Quotation Create"));
+
+      if (!item) {
+        setAllowedTabs(["pending", "bom_approval", "director_approval", "history"]);
+        return;
+      }
+
+      const match = item.match(/Quotation Create\(([^)]+)\)/) || item.match(/Quotation Create\[([^\]]+)\]/);
+
+      if (!match || !match[1]) {
+        setAllowedTabs(["pending", "bom_approval", "director_approval", "history"]);
+        return;
+      }
+
+      const tabsStr = match[1];
+      const newAllowedTabs = [];
+
+      if (tabsStr.includes("Pending") || tabsStr.includes("pending")) {
+        newAllowedTabs.push("pending");
+      }
+      if (tabsStr.includes("BOM Approval") || tabsStr.includes("bom_approval")) {
+        newAllowedTabs.push("bom_approval");
+      }
+      if (tabsStr.includes("Director Approval") || tabsStr.includes("director_approval")) {
+        newAllowedTabs.push("director_approval");
+      }
+      if (tabsStr.includes("History") || tabsStr.includes("history")) {
+        newAllowedTabs.push("history");
+      }
+
+      if (newAllowedTabs.length === 0) {
+        setAllowedTabs(["pending", "bom_approval", "director_approval", "history"]);
+      } else {
+        setAllowedTabs(newAllowedTabs);
+      }
+    };
+
+    checkPermissions();
+  }, []);
+
   const [fmsData, setFmsData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1810,6 +1893,7 @@ export default function QuatationCreate() {
         <div className="max-w-7xl mx-auto space-y-6">
           {viewMode === "list" ? (
             <QuotationListView
+              allowedTabs={allowedTabs}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               fmsData={fmsData}

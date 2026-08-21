@@ -435,7 +435,12 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     // Otherwise filter by allowed page names list
     const allowedPages = pageAccess.split(',').map(p => p.trim()).filter(Boolean)
 
-    return accessibleByRole.filter(route => allowedPages.includes(route.label.trim()))
+    return accessibleByRole.filter(route =>
+      allowedPages.some(p => {
+        const cleanName = p.split("(")[0].split("[")[0].trim()
+        return cleanName === route.label.trim()
+      })
+    )
   }
 
   // Check if the current path is a data category page

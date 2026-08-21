@@ -102,70 +102,46 @@ useEffect(() => {
       const trimmedUsername = formData.username.trim().toLowerCase()
       const trimmedPassword = formData.password.trim()
 
-      console.log("Login Attempt Details:")
-      console.log("Entered Username:", trimmedUsername)
-      console.log("Entered Password:", trimmedPassword) // For debugging (remove in production)
-      console.log("Available Credentials Count:", Object.keys(masterData.userCredentials).length)
-      console.log("Current userCredentials:", masterData.userCredentials)
-      console.log("Current userRoles:", masterData.userRoles)
+      // Fetch fresh user record directly from Supabase to ensure accurate page permissions
+      const { data: dbUsers, error } = await supabase
+        .from("login")
+        .select("*")
 
-      // Check if the username exists in our credentials map
-      if (trimmedUsername in masterData.userCredentials) {
-        const correctPassword = masterData.userCredentials[trimmedUsername]
-        const userRole = masterData.userRoles[trimmedUsername]
-        const pageAccess = masterData.userPages[trimmedUsername] || "ALL"
+      if (error) throw error
 
-        console.log("Found user in credentials map")
-        console.log("Expected Password:", correctPassword)
-        console.log("Password Match:", correctPassword === trimmedPassword)
-        console.log("User Role:", userRole)
-        console.log("User Page Access:", pageAccess)
+      const dbUser = (dbUsers || []).find(
+        (u) => u.username?.trim().toLowerCase() === trimmedUsername
+      )
 
-        // Check if password matches
-        if (correctPassword === trimmedPassword) {
-          // Store user info in sessionStorage
-          sessionStorage.setItem('username', trimmedUsername)
-
-          // Check if user is admin - explicitly compare with the string "admin"
-          const isAdmin = userRole === "admin";
-          console.log(`User ${trimmedUsername} is admin: ${isAdmin}`);
-
-          // Set role based on the fetched role
-          sessionStorage.setItem('role', isAdmin ? 'admin' : 'user')
-          sessionStorage.setItem('pageAccess', isAdmin ? 'ALL' : pageAccess)
-
-          // For admin users, we don't want to restrict by department
-          if (isAdmin) {
-            sessionStorage.setItem('department', 'all') // Admin sees all departments
-            sessionStorage.setItem('isAdmin', 'true') // Additional flag to ensure admin permissions
-            console.log("ADMIN LOGIN - Setting full access permissions");
-          } else {
-            sessionStorage.setItem('department', trimmedUsername)
-            sessionStorage.setItem('isAdmin', 'false')
-            console.log("USER LOGIN - Setting restricted access");
-          }
-
-          // Navigate to first accessible page for the user
-          const targetRoute = getFirstAccessibleRoute(userRole, pageAccess)
-          console.log(`Redirecting user ${trimmedUsername} to target route: ${targetRoute}`)
-          navigate(targetRoute)
-
-          showToast(`Login successful. Welcome, ${trimmedUsername}!`, "success")
-          return
-        } else {
-          showToast("Username or password is incorrect. Please try again.", "error")
-        }
-      } else {
+      if (!dbUser || !dbUser.access) {
         showToast("Username or password is incorrect. Please try again.", "error")
+        return
       }
 
-      // If we got here, login failed
-      console.error("Login Failed", {
-        usernameExists: trimmedUsername in masterData.userCredentials,
-        passwordMatch: (trimmedUsername in masterData.userCredentials) ?
-          "Password did not match" : 'Username not found',
-        userRole: masterData.userRoles[trimmedUsername] || 'No role'
-      })
+      if (dbUser.password?.trim() !== trimmedPassword) {
+        showToast("Username or password is incorrect. Please try again.", "error")
+        return
+      }
+
+      const userRole = (dbUser.role || "user").toLowerCase()
+      const isAdmin = userRole === "admin"
+      const pageAccess = dbUser.page || "ALL"
+
+      sessionStorage.setItem('username', trimmedUsername)
+      sessionStorage.setItem('role', isAdmin ? 'admin' : 'user')
+      sessionStorage.setItem('pageAccess', isAdmin ? 'ALL' : pageAccess)
+
+      if (isAdmin) {
+        sessionStorage.setItem('department', 'all')
+        sessionStorage.setItem('isAdmin', 'true')
+      } else {
+        sessionStorage.setItem('department', trimmedUsername)
+        sessionStorage.setItem('isAdmin', 'false')
+      }
+
+      const targetRoute = getFirstAccessibleRoute(userRole, pageAccess)
+      navigate(targetRoute)
+      showToast(`Login successful. Welcome, ${trimmedUsername}!`, "success")
     } catch (error) {
       console.error("Login Error:", error)
       showToast(`Login failed: ${error.message}. Please try again.`, "error")

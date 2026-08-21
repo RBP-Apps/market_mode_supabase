@@ -13,10 +13,98 @@ import autoTable from "jspdf-autotable"
 
 
 export default function AssignSurveyPage() {
-  const [activeTab, setActiveTab] = useState("pending") // pending / history
+  const [activeTab, setActiveTab] = useState("pending") // pending / pending_actual / history
+  const [allowedTabs, setAllowedTabs] = useState(["pending", "pending_actual", "history"])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
+
+  // Tab permissions effect
+  useEffect(() => {
+    const checkPermissions = async () => {
+      const username = sessionStorage.getItem("username");
+      const role = (sessionStorage.getItem("role") || "").toLowerCase();
+      const isAdmin = sessionStorage.getItem("isAdmin") === "true";
+      let pageAccess = sessionStorage.getItem("pageAccess") || "ALL";
+
+      if (role === "admin" || isAdmin) {
+        setAllowedTabs(["pending", "pending_actual", "history"]);
+        return;
+      }
+
+      let userPageStr = pageAccess;
+      if (username) {
+        try {
+          const { data } = await supabase
+            .from("login")
+            .select("page, role")
+            .eq("username", username)
+            .maybeSingle();
+          if (data) {
+            if (data.role?.toUpperCase() === "ADMIN") {
+              setAllowedTabs(["pending", "pending_actual", "history"]);
+              return;
+            }
+            if (data.page) {
+              userPageStr = data.page;
+            }
+          }
+        } catch (e) {
+          console.warn("Could not fetch user tab permissions", e);
+        }
+      }
+
+      if (userPageStr === "ALL" || !userPageStr) {
+        setAllowedTabs(["pending", "pending_actual", "history"]);
+        return;
+      }
+
+      const pages = userPageStr.split(",").map((p) => p.trim()).filter(Boolean);
+      const assignSurveyItem = pages.find((p) => p.startsWith("Assign Survey"));
+
+      if (!assignSurveyItem) {
+        setAllowedTabs(["pending", "pending_actual", "history"]);
+        return;
+      }
+
+      let tabsStr = "";
+      if (assignSurveyItem.startsWith("Assign Survey(") && assignSurveyItem.endsWith(")")) {
+        tabsStr = assignSurveyItem.slice("Assign Survey(".length, -1);
+      } else if (assignSurveyItem.startsWith("Assign Survey[") && assignSurveyItem.endsWith("]")) {
+        tabsStr = assignSurveyItem.slice("Assign Survey[".length, -1);
+      } else {
+        setAllowedTabs(["pending", "pending_actual", "history"]);
+        return;
+      }
+
+      const newAllowedTabs = [];
+
+      if (tabsStr.includes("Pending (Estimate Survey)") || tabsStr.includes("pending")) {
+        newAllowedTabs.push("pending");
+      }
+      if (tabsStr.includes("Pending (Actual Survey)") || tabsStr.includes("pending_actual")) {
+        newAllowedTabs.push("pending_actual");
+      }
+      if (tabsStr.includes("Survey Completed") || tabsStr.includes("completed") || tabsStr.includes("history")) {
+        newAllowedTabs.push("history");
+      }
+
+      if (newAllowedTabs.length === 0) {
+        setAllowedTabs(["pending", "pending_actual", "history"]);
+      } else {
+        setAllowedTabs(newAllowedTabs);
+      }
+    };
+
+    checkPermissions();
+  }, []);
+
+  // Set active tab to first allowed tab if current activeTab is not allowed
+  useEffect(() => {
+    if (allowedTabs.length > 0 && !allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0]);
+    }
+  }, [allowedTabs, activeTab]);
 
   // Survey data
   const [surveys, setSurveys] = useState([])
@@ -957,36 +1045,42 @@ export default function AssignSurveyPage() {
 
         {/* Tab Selection */}
         <div className="flex space-x-2 border-b border-gray-200 overflow-x-auto">
-          <button
-            onClick={() => { setActiveTab("pending"); setPendingSearchTerm("") }}
-            className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "pending"
-                ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-          >
-            <FileText className="h-4 w-4" />
-            Pending (Estimate Surveys) ({pendingSurveys.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab("pending_actual"); setPendingActualSearchTerm("") }}
-            className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "pending_actual"
-                ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-          >
-            <FileText className="h-4 w-4" />
-            Pending (Actual Surveys) ({pendingActualSurveys.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab("history"); setSearchTerm("") }}
-            className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "history"
-                ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-          >
-            <History className="h-4 w-4" />
-            Survey Completed ({completedSurveys.length})
-          </button>
+          {allowedTabs.includes("pending") && (
+            <button
+              onClick={() => { setActiveTab("pending"); setPendingSearchTerm("") }}
+              className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "pending"
+                  ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+            >
+              <FileText className="h-4 w-4" />
+              Pending (Estimate Surveys) ({pendingSurveys.length})
+            </button>
+          )}
+          {allowedTabs.includes("pending_actual") && (
+            <button
+              onClick={() => { setActiveTab("pending_actual"); setPendingActualSearchTerm("") }}
+              className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "pending_actual"
+                  ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+            >
+              <FileText className="h-4 w-4" />
+              Pending (Actual Surveys) ({pendingActualSurveys.length})
+            </button>
+          )}
+          {allowedTabs.includes("history") && (
+            <button
+              onClick={() => { setActiveTab("history"); setSearchTerm("") }}
+              className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "history"
+                  ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+            >
+              <History className="h-4 w-4" />
+              Survey Completed ({completedSurveys.length})
+            </button>
+          )}
         </div>
 
         {/* Alert/Success Message */}
@@ -1003,7 +1097,7 @@ export default function AssignSurveyPage() {
         )}
 
         {/* TAB 1: PENDING (ESTIMATE SURVEYS) LIST */}
-        {activeTab === "pending" && (
+        {allowedTabs.includes("pending") && activeTab === "pending" && (
           <div className="space-y-4">
 
             {/* Search filter block */}
@@ -1091,7 +1185,7 @@ export default function AssignSurveyPage() {
         )}
 
         {/* TAB 2: PENDING (ACTUAL SURVEYS) LIST */}
-        {activeTab === "pending_actual" && (
+        {allowedTabs.includes("pending_actual") && activeTab === "pending_actual" && (
           <div className="space-y-4">
 
             {/* Search filter block */}
@@ -1178,8 +1272,8 @@ export default function AssignSurveyPage() {
           </div>
         )}
 
-        {/* TAB 2: HISTORY LIST */}
-        {activeTab === "history" && (
+        {/* TAB 3: HISTORY LIST */}
+        {allowedTabs.includes("history") && activeTab === "history" && (
           <div className="space-y-4">
 
             {/* Search filter block */}

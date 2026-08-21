@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 export default function QuotationListView({
+  allowedTabs = ["pending", "bom_approval", "director_approval", "history"],
   activeTab,
   setActiveTab,
   fmsData,
@@ -37,6 +38,12 @@ export default function QuotationListView({
   const [sheetData, setSheetData] = React.useState({});
   const [selectedBOMRow, setSelectedBOMRow] = React.useState(null);
   const userRole = React.useMemo(() => sessionStorage.getItem('role') || 'user', []);
+
+  React.useEffect(() => {
+    if (allowedTabs && allowedTabs.length > 0 && !allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0]);
+    }
+  }, [allowedTabs, activeTab, setActiveTab]);
 
   const getBOMDisplay = (bomStr, is10kv) => {
     if (!bomStr) return "N/A";
@@ -130,74 +137,82 @@ export default function QuotationListView({
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <div className="flex space-x-8">
-          <button
-            onClick={() => setActiveTab("pending")}
-            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "pending"
-              ? "border-blue-500 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-          >
-            <Clock className="h-5 w-5" />
-            Pending
-            <span className="ml-2 bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-xs">
-              {
-                fmsData.filter(
-                  (item) => item.planned2 && !item.actual2
-                ).length
-              }
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab("bom_approval")}
-            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "bom_approval"
-              ? "border-amber-500 text-amber-600"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-          >
-            <ClipboardList className="h-5 w-5" />
-            BOM Approval
-            <span className="ml-2 bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full text-xs font-semibold">
-              {
-                fmsData.filter(
-                  (item) => item.planned2 && item.actual2 && item.status === "Pending"
-                ).length
-              }
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab("director_approval")}
-            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "director_approval"
-              ? "border-purple-600 text-purple-600 font-bold"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-          >
-            <ShieldCheck className="h-5 w-5 text-purple-600" />
-            Director Approval
-            <span className="ml-2 bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-semibold">
-              {
-                fmsData.filter(
-                  (item) => item.planned2 && item.actual2 && item.directorApproval !== "Done"
-                ).length
-              }
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "history"
-              ? "border-green-500 text-green-600"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-          >
-            <CheckCircle className="h-5 w-5" />
-            History
-            <span className="ml-2 bg-green-100 text-green-600 px-2 py-0.5 rounded-full text-xs">
-              {
-                fmsData.filter(
-                  (item) => item.planned2 && item.actual2 && item.status !== "Pending"
-                ).length
-              }
-            </span>
-          </button>
+          {allowedTabs.includes("pending") && (
+            <button
+              onClick={() => setActiveTab("pending")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "pending"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+            >
+              <Clock className="h-5 w-5" />
+              Pending
+              <span className="ml-2 bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-xs">
+                {
+                  fmsData.filter(
+                    (item) => item.planned2 && !item.actual2
+                  ).length
+                }
+              </span>
+            </button>
+          )}
+          {allowedTabs.includes("bom_approval") && (
+            <button
+              onClick={() => setActiveTab("bom_approval")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "bom_approval"
+                ? "border-amber-500 text-amber-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+            >
+              <ClipboardList className="h-5 w-5" />
+              BOM Approval
+              <span className="ml-2 bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full text-xs font-semibold">
+                {
+                  fmsData.filter(
+                    (item) => item.planned2 && item.actual2 && item.status === "Pending"
+                  ).length
+                }
+              </span>
+            </button>
+          )}
+          {allowedTabs.includes("director_approval") && (
+            <button
+              onClick={() => setActiveTab("director_approval")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "director_approval"
+                ? "border-purple-600 text-purple-600 font-bold"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+            >
+              <ShieldCheck className="h-5 w-5 text-purple-600" />
+              Director Approval
+              <span className="ml-2 bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                {
+                  fmsData.filter(
+                    (item) => item.planned2 && item.actual2 && item.directorApproval !== "Done"
+                  ).length
+                }
+              </span>
+            </button>
+          )}
+          {allowedTabs.includes("history") && (
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors duration-200 ${activeTab === "history"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+            >
+              <CheckCircle className="h-5 w-5" />
+              History
+              <span className="ml-2 bg-green-100 text-green-600 px-2 py-0.5 rounded-full text-xs">
+                {
+                  fmsData.filter(
+                    (item) => item.planned2 && item.actual2 && item.status !== "Pending"
+                  ).length
+                }
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -722,51 +737,61 @@ export default function QuotationListView({
               records
             </span>
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4 text-blue-500" />
-                Pending:{" "}
-                {
-                  fmsData.filter(
-                    (item) => item.planned2 && !item.actual2
-                  ).length
-                }
-              </span>
-              <span className="flex items-center gap-1">
-                <ClipboardList className="h-4 w-4 text-amber-500" />
-                BOM Approval:{" "}
-                {
-                  fmsData.filter(
-                    (item) => item.planned2 && item.actual2 && item.status === "Pending"
-                  ).length
-                }
-              </span>
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="h-4 w-4 text-purple-500" />
-                Director Approval:{" "}
-                {
-                  fmsData.filter(
-                    (item) => item.planned2 && item.actual2 && item.directorApproval !== "Done"
-                  ).length
-                }
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                History:{" "}
-                {
-                  fmsData.filter(
-                    (item) => item.planned2 && item.actual2 && item.status !== "Pending" && !item.is10kv
-                  ).length
-                }
-              </span>
-              <span className="flex items-center gap-1">
-                <Zap className="h-4 w-4 text-teal-500" />
-                10kv History:{" "}
-                {
-                  fmsData.filter(
-                    (item) => item.planned2 && item.actual2 && item.status !== "Pending" && item.is10kv
-                  ).length
-                }
-              </span>
+              {allowedTabs.includes("pending") && (
+                <span className="flex items-center gap-1">
+                  <Clock className="h-4 w-4 text-blue-500" />
+                  Pending:{" "}
+                  {
+                    fmsData.filter(
+                      (item) => item.planned2 && !item.actual2
+                    ).length
+                  }
+                </span>
+              )}
+              {allowedTabs.includes("bom_approval") && (
+                <span className="flex items-center gap-1">
+                  <ClipboardList className="h-4 w-4 text-amber-500" />
+                  BOM Approval:{" "}
+                  {
+                    fmsData.filter(
+                      (item) => item.planned2 && item.actual2 && item.status === "Pending"
+                    ).length
+                  }
+                </span>
+              )}
+              {allowedTabs.includes("director_approval") && (
+                <span className="flex items-center gap-1">
+                  <ShieldCheck className="h-4 w-4 text-purple-500" />
+                  Director Approval:{" "}
+                  {
+                    fmsData.filter(
+                      (item) => item.planned2 && item.actual2 && item.directorApproval !== "Done"
+                    ).length
+                  }
+                </span>
+              )}
+              {allowedTabs.includes("history") && (
+                <>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    History:{" "}
+                    {
+                      fmsData.filter(
+                        (item) => item.planned2 && item.actual2 && item.status !== "Pending" && !item.is10kv
+                      ).length
+                    }
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Zap className="h-4 w-4 text-teal-500" />
+                    10kv History:{" "}
+                    {
+                      fmsData.filter(
+                        (item) => item.planned2 && item.actual2 && item.status !== "Pending" && item.is10kv
+                      ).length
+                    }
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>

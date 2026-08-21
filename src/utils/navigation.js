@@ -50,8 +50,13 @@ export function getFirstAccessibleRoute(userRole, pageAccess) {
 
   const allowedLabels = pages.split(",").map(p => p.trim()).filter(Boolean);
 
-  // Find first route from ROUTE_MAP whose label is in allowedLabels
-  const matched = ROUTE_MAP.find(route => allowedLabels.includes(route.label));
+  // Find first route from ROUTE_MAP whose label matches allowedLabels
+  const matched = ROUTE_MAP.find(route =>
+    allowedLabels.some(p => {
+      const cleanName = p.split("(")[0].split("[")[0].trim();
+      return cleanName === route.label;
+    })
+  );
 
   return matched ? matched.href : "/dashboard/admin";
 }
