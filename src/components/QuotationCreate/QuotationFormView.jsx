@@ -163,8 +163,8 @@ export default function QuotationFormView({
               const matchedUnit = (match[2] || pUnit || "").toUpperCase();
 
               if (matchedUnit.includes("MW")) return true;
-              if (matchedUnit.includes("W") && !matchedUnit.includes("K")) return val >= 10000;
-              return val >= 10;
+              if (matchedUnit.includes("W") && !matchedUnit.includes("K")) return val > 10000;
+              return val > 10;
             }
             return false;
           };

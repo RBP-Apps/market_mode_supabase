@@ -52,9 +52,26 @@ function DispatchMaterialsPage() {
   const [modalType, setModalType] = useState("create") // "create" or "edit"
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [statusValue, setStatusValue] = useState("Yes")
+
   const [tellyPhotoFile, setTellyPhotoFile] = useState(null)
   const [tellyPhotoPreview, setTellyPhotoPreview] = useState("")
   const [existingTellyPhotoUrl, setExistingTellyPhotoUrl] = useState("")
+
+  // New Fields: Serial Module Number, Inverter ID, Inverter Copy, Module Copy, E-way Bill Copy
+  const [serialModuleNumber, setSerialModuleNumber] = useState("")
+  const [inverterId, setInverterId] = useState("")
+
+  const [inverterCopyFile, setInverterCopyFile] = useState(null)
+  const [inverterCopyPreview, setInverterCopyPreview] = useState("")
+  const [existingInverterCopyUrl, setExistingInverterCopyUrl] = useState("")
+
+  const [moduleCopyFile, setModuleCopyFile] = useState(null)
+  const [moduleCopyPreview, setModuleCopyPreview] = useState("")
+  const [existingModuleCopyUrl, setExistingModuleCopyUrl] = useState("")
+
+  const [ewayBillCopyFile, setEwayBillCopyFile] = useState(null)
+  const [ewayBillCopyPreview, setEwayBillCopyPreview] = useState("")
+  const [existingEwayBillCopyUrl, setExistingEwayBillCopyUrl] = useState("")
 
   // Debounced search term for better performance
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
@@ -165,6 +182,13 @@ function DispatchMaterialsPage() {
           actual: row.actual || "",
           dispatchMaterial: row.status || "",
           tellyPhoto: row.telly_photo || "",
+
+          // NEW DISPATCH FIELDS
+          serialModuleNumber: row.serial_module_number || "",
+          inverterId: row.inverter_id || "",
+          inverterCopy: row.inverter_copy || "",
+          moduleCopy: row.module_copy || "",
+          ewayBillCopy: row.eway_bill_copy || "",
         }
 
         if (!row.actual) {
@@ -225,6 +249,22 @@ function DispatchMaterialsPage() {
     setExistingTellyPhotoUrl(record.tellyPhoto || "")
     setTellyPhotoFile(null)
     setTellyPhotoPreview("")
+
+    setSerialModuleNumber(record.serialModuleNumber || "")
+    setInverterId(record.inverterId || "")
+
+    setExistingInverterCopyUrl(record.inverterCopy || "")
+    setInverterCopyFile(null)
+    setInverterCopyPreview("")
+
+    setExistingModuleCopyUrl(record.moduleCopy || "")
+    setModuleCopyFile(null)
+    setModuleCopyPreview("")
+
+    setExistingEwayBillCopyUrl(record.ewayBillCopy || "")
+    setEwayBillCopyFile(null)
+    setEwayBillCopyPreview("")
+
     setShowModal(true)
   }
 
@@ -242,16 +282,17 @@ function DispatchMaterialsPage() {
 
     try {
       const enqNum = selectedRecord.enquiryNumber || "GEN"
-      let tellyPhotoUrl = existingTellyPhotoUrl
 
-      if (tellyPhotoFile) {
-        const fileExt = tellyPhotoFile.name.split(".").pop()
-        const fileName = `${enqNum}_telly_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+      // Helper file uploader to Supabase storage
+      const uploadFileToStorage = async (file, tag) => {
+        if (!file) return ""
+        const fileExt = file.name.split(".").pop()
+        const fileName = `${enqNum}_${tag}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
         const filePath = `dispatch_materials/${fileName}`
 
         const { error: uploadError } = await supabase.storage
           .from("survey_file")
-          .upload(filePath, tellyPhotoFile)
+          .upload(filePath, file)
 
         if (uploadError) throw uploadError
 
@@ -259,12 +300,37 @@ function DispatchMaterialsPage() {
           .from("survey_file")
           .getPublicUrl(filePath)
 
-        tellyPhotoUrl = publicUrlData.publicUrl
+        return publicUrlData.publicUrl
+      }
+
+      let tellyPhotoUrl = existingTellyPhotoUrl
+      if (tellyPhotoFile) {
+        tellyPhotoUrl = await uploadFileToStorage(tellyPhotoFile, "telly")
+      }
+
+      let inverterCopyUrl = existingInverterCopyUrl
+      if (inverterCopyFile) {
+        inverterCopyUrl = await uploadFileToStorage(inverterCopyFile, "inverter")
+      }
+
+      let moduleCopyUrl = existingModuleCopyUrl
+      if (moduleCopyFile) {
+        moduleCopyUrl = await uploadFileToStorage(moduleCopyFile, "module")
+      }
+
+      let ewayBillCopyUrl = existingEwayBillCopyUrl
+      if (ewayBillCopyFile) {
+        ewayBillCopyUrl = await uploadFileToStorage(ewayBillCopyFile, "eway")
       }
 
       const updatePayload = {
         status: statusValue,
         telly_photo: tellyPhotoUrl,
+        serial_module_number: serialModuleNumber,
+        inverter_id: inverterId,
+        inverter_copy: inverterCopyUrl,
+        module_copy: moduleCopyUrl,
+        eway_bill_copy: ewayBillCopyUrl,
         actual: new Date().toISOString()
       }
 
@@ -448,6 +514,21 @@ function DispatchMaterialsPage() {
                     {showHistory && (
                       <>
                         <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Serial Module Number
+                        </th>
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Inverter ID
+                        </th>
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Inverter Copy
+                        </th>
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Module Copy
+                        </th>
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          E-way Bill Copy
+                        </th>
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
                         </th>
                         <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -566,6 +647,60 @@ function DispatchMaterialsPage() {
                               <span className="text-gray-400 text-xs">—</span>
                             )}
                           </td>
+
+                          {/* New Dispatch History Columns */}
+                          <td className="px-2 py-3 whitespace-normal">
+                            <div className="text-xs font-semibold text-gray-900">{record.serialModuleNumber || "—"}</div>
+                          </td>
+                          <td className="px-2 py-3 whitespace-normal">
+                            <div className="text-xs font-semibold text-gray-900">{record.inverterId || "—"}</div>
+                          </td>
+                          <td className="px-2 py-3 whitespace-normal">
+                            {record.inverterCopy ? (
+                              <a
+                                href={record.inverterCopy}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs font-semibold"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View Copy
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 whitespace-normal">
+                            {record.moduleCopy ? (
+                              <a
+                                href={record.moduleCopy}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs font-semibold"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View Copy
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 whitespace-normal">
+                            {record.ewayBillCopy ? (
+                              <a
+                                href={record.ewayBillCopy}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs font-semibold"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View Copy
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
+
                           <td className="px-2 py-3 whitespace-normal">
                             <div className={`text-xs font-semibold ${record.dispatchMaterial === "Yes" ? "text-green-600" : "text-red-600"}`}>
                               {record.dispatchMaterial || "—"}
@@ -590,7 +725,7 @@ function DispatchMaterialsPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={21} className="px-4 py-8 text-center text-gray-500 text-sm">
+                        <td colSpan={26} className="px-4 py-8 text-center text-gray-500 text-sm">
                           {searchTerm
                             ? "No history records matching your search"
                             : "No completed dispatch materials found"}
@@ -755,7 +890,7 @@ function DispatchMaterialsPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               
               {/* Beneficiary details card summary */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1.5 text-xs">
@@ -789,11 +924,39 @@ function DispatchMaterialsPage() {
                 </select>
               </div>
 
+              {/* Serial Module Number */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Serial Module Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter Serial Module Number"
+                  value={serialModuleNumber}
+                  onChange={(e) => setSerialModuleNumber(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50/30"
+                />
+              </div>
+
+              {/* Inverter ID */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Inverter ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter Inverter ID"
+                  value={inverterId}
+                  onChange={(e) => setInverterId(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50/30"
+                />
+              </div>
+
               {/* Tally Photo Upload */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
                   <FileText className="h-3.5 w-3.5 text-blue-600" />
-                  Tally Photo (Image or PDF) <span className="text-red-500">*</span>
+                  Tally / Challan Copy (Image or PDF) <span className="text-red-500">*</span>
                 </label>
 
                 {/* Show existing file link if in edit mode */}
@@ -816,7 +979,7 @@ function DispatchMaterialsPage() {
                 )}
 
                 {/* Upload Drop Zone / Input */}
-                <div className="relative border-2 border-dashed border-gray-300 hover:border-blue-500 rounded-xl p-4 transition text-center cursor-pointer bg-slate-50/40">
+                <div className="relative border-2 border-dashed border-gray-300 hover:border-blue-500 rounded-xl p-3 transition text-center cursor-pointer bg-slate-50/40">
                   <input
                     type="file"
                     accept="image/*,application/pdf"
@@ -830,17 +993,176 @@ function DispatchMaterialsPage() {
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     required={modalType === "create"}
                   />
-                  <Upload className="mx-auto h-6 w-6 text-gray-400 mb-1.5" />
+                  <Upload className="mx-auto h-5 w-5 text-gray-400 mb-1" />
                   <p className="text-xs text-gray-600 font-medium">
-                    Drag & drop or <span className="text-blue-600 underline">browse</span> file
+                    Drag & drop or <span className="text-blue-600 underline">browse</span> Tally Copy
                   </p>
                   <p className="text-2xs text-gray-400 mt-0.5">Supports PDF, PNG, JPG, JPEG</p>
                 </div>
 
                 {tellyPhotoPreview && (
-                  <p className="text-xs text-blue-600 mt-2 font-semibold flex items-center gap-1">
+                  <p className="text-xs text-blue-600 mt-1 font-semibold flex items-center gap-1">
                     <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" />
                     Selected: {tellyPhotoPreview}
+                  </p>
+                )}
+              </div>
+
+              {/* Inverter Copy Upload */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                  <FileText className="h-3.5 w-3.5 text-indigo-600" />
+                  Inverter Copy (Image or PDF)
+                </label>
+
+                {modalType === "edit" && existingInverterCopyUrl && (
+                  <div className="mb-2 p-2 border border-emerald-100 bg-emerald-50/50 rounded-lg flex items-center justify-between text-xs">
+                    <span className="text-emerald-800 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      Current Inverter Copy exists
+                    </span>
+                    <a
+                      href={existingInverterCopyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                    >
+                      <Eye className="h-3 w-3" />
+                      View
+                    </a>
+                  </div>
+                )}
+
+                <div className="relative border-2 border-dashed border-gray-300 hover:border-indigo-500 rounded-xl p-3 transition text-center cursor-pointer bg-slate-50/40">
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setInverterCopyFile(file)
+                        setInverterCopyPreview(file.name)
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Upload className="mx-auto h-5 w-5 text-gray-400 mb-1" />
+                  <p className="text-xs text-gray-600 font-medium">
+                    Drag & drop or <span className="text-indigo-600 underline">browse</span> Inverter Copy
+                  </p>
+                  <p className="text-2xs text-gray-400 mt-0.5">Supports PDF, PNG, JPG, JPEG</p>
+                </div>
+
+                {inverterCopyPreview && (
+                  <p className="text-xs text-indigo-600 mt-1 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-indigo-500" />
+                    Selected: {inverterCopyPreview}
+                  </p>
+                )}
+              </div>
+
+              {/* Module Copy Upload */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                  <FileText className="h-3.5 w-3.5 text-purple-600" />
+                  Module Copy (Image or PDF)
+                </label>
+
+                {modalType === "edit" && existingModuleCopyUrl && (
+                  <div className="mb-2 p-2 border border-emerald-100 bg-emerald-50/50 rounded-lg flex items-center justify-between text-xs">
+                    <span className="text-emerald-800 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      Current Module Copy exists
+                    </span>
+                    <a
+                      href={existingModuleCopyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                    >
+                      <Eye className="h-3 w-3" />
+                      View
+                    </a>
+                  </div>
+                )}
+
+                <div className="relative border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-xl p-3 transition text-center cursor-pointer bg-slate-50/40">
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setModuleCopyFile(file)
+                        setModuleCopyPreview(file.name)
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Upload className="mx-auto h-5 w-5 text-gray-400 mb-1" />
+                  <p className="text-xs text-gray-600 font-medium">
+                    Drag & drop or <span className="text-purple-600 underline">browse</span> Module Copy
+                  </p>
+                  <p className="text-2xs text-gray-400 mt-0.5">Supports PDF, PNG, JPG, JPEG</p>
+                </div>
+
+                {moduleCopyPreview && (
+                  <p className="text-xs text-purple-600 mt-1 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-purple-500" />
+                    Selected: {moduleCopyPreview}
+                  </p>
+                )}
+              </div>
+
+              {/* E-way Bill Copy Upload */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                  <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                  E-way Bill Copy (Image or PDF)
+                </label>
+
+                {modalType === "edit" && existingEwayBillCopyUrl && (
+                  <div className="mb-2 p-2 border border-emerald-100 bg-emerald-50/50 rounded-lg flex items-center justify-between text-xs">
+                    <span className="text-emerald-800 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      Current E-way Bill Copy exists
+                    </span>
+                    <a
+                      href={existingEwayBillCopyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                    >
+                      <Eye className="h-3 w-3" />
+                      View
+                    </a>
+                  </div>
+                )}
+
+                <div className="relative border-2 border-dashed border-gray-300 hover:border-emerald-500 rounded-xl p-3 transition text-center cursor-pointer bg-slate-50/40">
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setEwayBillCopyFile(file)
+                        setEwayBillCopyPreview(file.name)
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Upload className="mx-auto h-5 w-5 text-gray-400 mb-1" />
+                  <p className="text-xs text-gray-600 font-medium">
+                    Drag & drop or <span className="text-emerald-600 underline">browse</span> E-way Bill Copy
+                  </p>
+                  <p className="text-2xs text-gray-400 mt-0.5">Supports PDF, PNG, JPG, JPEG</p>
+                </div>
+
+                {ewayBillCopyPreview && (
+                  <p className="text-xs text-emerald-600 mt-1 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    Selected: {ewayBillCopyPreview}
                   </p>
                 )}
               </div>

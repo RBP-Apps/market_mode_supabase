@@ -1,17 +1,68 @@
-"use client"
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { CheckCircle2, X, Search, History, MapPin, Users, Phone, Eye, Wrench, Loader2, CloudUpload, AlertCircle } from "lucide-react"
+import { 
+  CheckCircle2, X, Search, History, MapPin, Users, Phone, Eye, Wrench, 
+  Loader2, CloudUpload, AlertCircle, Trash2, Plus, FileText, File, Upload, 
+  Sun, Zap, Shield, Cpu 
+} from "lucide-react"
 import AdminLayout from "../components/layout/AdminLayout"
 import supabase from "../utils/supabase"
-
+import { useState, useEffect, useCallback, useMemo } from "react"
 const CONFIG = {
-
   PAGE_CONFIG: {
     title: "Installation",
     historyTitle: "Installation History",
     description: "Manage pending installations",
     historyDescription: "View completed installation records",
   },
+}
+
+// Helper to parse complete installation documents JSON or legacy string
+const parseCompleteDocs = (docValue) => {
+  const emptyState = {
+    panelFront: [],
+    panelBack: [],
+    panelSide: [],
+    la: [],
+    acdb: [],
+    earthing: [],
+  }
+
+  if (!docValue) return emptyState
+
+  if (typeof docValue === "string") {
+    try {
+      const parsed = JSON.parse(docValue)
+      if (typeof parsed === "object" && parsed !== null) {
+        return {
+          panelFront: (parsed.panelFront || []).map((item, idx) => 
+            typeof item === 'string' ? { id: `pf_${idx}_${Date.now()}`, url: item, name: `Panel Front ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
+          ),
+          panelBack: (parsed.panelBack || []).map((item, idx) => 
+            typeof item === 'string' ? { id: `pb_${idx}_${Date.now()}`, url: item, name: `Panel Back ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
+          ),
+          panelSide: (parsed.panelSide || []).map((item, idx) => 
+            typeof item === 'string' ? { id: `ps_${idx}_${Date.now()}`, url: item, name: `Panel Side ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
+          ),
+          la: (parsed.la || []).map((item, idx) => 
+            typeof item === 'string' ? { id: `la_${idx}_${Date.now()}`, url: item, name: `LA Copy ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
+          ),
+          acdb: (parsed.acdb || []).map((item, idx) => 
+            typeof item === 'string' ? { id: `ac_${idx}_${Date.now()}`, url: item, name: `ACDB Copy ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
+          ),
+          earthing: (parsed.earthing || []).map((item, idx) => 
+            typeof item === 'string' ? { id: `earth_${idx}_${Date.now()}`, url: item, name: `Earthing Copy ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
+          ),
+        }
+      }
+    } catch {
+      // Legacy single URL string
+      return {
+        ...emptyState,
+        panelFront: [{ id: `legacy_1_${Date.now()}`, url: docValue, name: "Legacy Installation Photo", type: docValue.toLowerCase().includes('.pdf') ? 'pdf' : 'image' }],
+      }
+    }
+  }
+
+  return emptyState
 }
 
 function useDebounce(value, delay) {
@@ -41,6 +92,21 @@ function InstallationPage() {
   const [successMessage, setSuccessMessage] = useState("")
   const [userRole, setUserRole] = useState("")
   const [username, setUsername] = useState("")
+
+  // State for Complete Installation Photo Modal (4 categories)
+  const [showCompleteDocsModal, setShowCompleteDocsModal] = useState(false)
+  const [completeDocsState, setCompleteDocsState] = useState({
+    panelFront: [],
+    panelBack: [],
+    panelSide: [],
+    la: [],
+    acdb: [],
+    earthing: [],
+  })
+
+  // State for viewing Complete Installation Docs from History/Pending table
+  const [viewingCompleteDocsRecord, setViewingCompleteDocsRecord] = useState(null)
+
   const [dropdownOptions, setDropdownOptions] = useState({
     inverterMake: [],
     inverterCapacity: [],
@@ -298,6 +364,7 @@ const fetchSheetData = useCallback(async () => {
 
   const handleInstallClick = useCallback((record) => {
     setSelectedRecord(record)
+    setCompleteDocsState(parseCompleteDocs(record.completeInstallationPhoto))
     setInstallForm({
       inverterMake: record.inverterMake || "",
       inverterCapacity: record.inverterCapacity || "",
@@ -421,6 +488,50 @@ const uploadImageToDrive = useCallback(async (file) => {
     throw error
   }
 }, [selectedRecord])
+
+  // Helper to upload all 4 categories in completeDocsState and return JSON payload
+  const uploadAndBuildCompleteDocsPayload = async (docsState, enquiryNum) => {
+    const result = {
+      panelFront: [],
+      panelBack: [],
+      panelSide: [],
+      la: [],
+      acdb: [],
+      earthing: [],
+    }
+
+    const categories = ["panelFront", "panelBack", "panelSide", "la", "acdb", "earthing"]
+    let hasAnyDoc = false
+
+    for (const cat of categories) {
+      const items = docsState[cat] || []
+      for (const item of items) {
+        if (item.file && item.file instanceof File) {
+          const fileExt = item.file.name.split(".").pop()
+          const fileName = `${enquiryNum}_${cat}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+          const filePath = `installation/complete_docs/${fileName}`
+
+          const { error: uploadErr } = await supabase.storage
+            .from("IP_assignment")
+            .upload(filePath, item.file)
+
+          if (uploadErr) throw uploadErr
+
+          const { data: publicData } = supabase.storage
+            .from("IP_assignment")
+            .getPublicUrl(filePath)
+
+          result[cat].push(publicData.publicUrl)
+          hasAnyDoc = true
+        } else if (item.url) {
+          result[cat].push(item.url)
+          hasAnyDoc = true
+        }
+      }
+    }
+
+    return hasAnyDoc ? JSON.stringify(result) : ""
+  }
 
 
 
@@ -704,6 +815,10 @@ const handleInstallSubmit = async () => {
       }
     }
 
+    // Process & upload 4-category complete installation docs
+    const completeDocsJson = await uploadAndBuildCompleteDocsPayload(completeDocsState, selectedRecord.enquiryNumber)
+    const finalCompletePhotoUrl = completeDocsJson || currentFileUploads.completeInstallationPhoto?.url || ""
+
     const { error } = await supabase
       .from("installations")
       .update({
@@ -717,7 +832,7 @@ const handleInstallSubmit = async () => {
         plant_photo: currentFileUploads.foundationPhoto?.url,
         installation_photo: currentFileUploads.afterInstallationPhoto?.url,
         dcr_certificate: currentFileUploads.photoWithCustomer?.url,
-        module_warranty: currentFileUploads.completeInstallationPhoto?.url,
+        module_warranty: finalCompletePhotoUrl,
 
         inverter_make: installForm.inverterMake,
         inverter_capacity: installForm.inverterCapacity,
@@ -746,9 +861,132 @@ const handleInstallSubmit = async () => {
   }
 }
 
+  const handleAddFilesToCategory = useCallback((categoryKey, fileList, maxLimit = null) => {
+    if (!fileList || fileList.length === 0) return
+    const currentItems = completeDocsState[categoryKey] || []
 
+    if (maxLimit && currentItems.length >= maxLimit) {
+      alert(`Maximum ${maxLimit} files allowed for this section.`)
+      return
+    }
 
+    const allowedCount = maxLimit ? maxLimit - currentItems.length : fileList.length
+    const selectedFiles = Array.from(fileList).slice(0, allowedCount)
 
+    const newItems = selectedFiles.map((file, idx) => {
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+      return {
+        id: `${categoryKey}_new_${Date.now()}_${idx}`,
+        file: file,
+        url: URL.createObjectURL(file),
+        name: file.name,
+        type: isPdf ? "pdf" : "image",
+      }
+    })
+
+    setCompleteDocsState((prev) => ({
+      ...prev,
+      [categoryKey]: [...(prev[categoryKey] || []), ...newItems],
+    }))
+  }, [completeDocsState])
+
+  const handleRemoveFileFromCategory = useCallback((categoryKey, itemId) => {
+    setCompleteDocsState((prev) => ({
+      ...prev,
+      [categoryKey]: (prev[categoryKey] || []).filter((item) => item.id !== itemId),
+    }))
+  }, [])
+
+  const renderDocCategoryCard = ({ title, categoryKey, maxLimit, icon: CardIcon }) => {
+    const items = completeDocsState[categoryKey] || []
+    const isLimitReached = maxLimit && items.length >= maxLimit
+
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-3 shadow-2xs flex flex-col justify-between">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+            <CardIcon className="h-3.5 w-3.5 text-blue-600" />
+            {title}
+          </span>
+          <span className={`text-3xs font-bold px-2 py-0.5 rounded-full ${
+            isLimitReached ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-700"
+          }`}>
+            {maxLimit ? `${items.length}/${maxLimit} Max` : `${items.length} Uploaded`}
+          </span>
+        </div>
+
+        {/* Uploaded File List */}
+        {items.length > 0 && (
+          <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+              >
+                <div className="flex items-center gap-2 overflow-hidden mr-2">
+                  {item.type === "pdf" ? (
+                    <div className="p-1 bg-red-100 text-red-600 rounded shrink-0">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                  ) : (
+                    <img
+                      src={item.url}
+                      alt={item.name}
+                      className="h-8 w-8 object-cover rounded shrink-0 border border-gray-200"
+                    />
+                  )}
+                  <span className="text-2xs font-semibold text-gray-800 truncate" title={item.name}>
+                    {item.name}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition"
+                    title="View File"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFileFromCategory(categoryKey, item.id)}
+                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition cursor-pointer"
+                    title="Delete File"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add File Dropzone / Input */}
+        <div>
+          {isLimitReached ? (
+            <div className="p-2.5 text-center text-3xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+              Limit Reached (Max {maxLimit})
+            </div>
+          ) : (
+            <label className="relative flex items-center justify-center p-2.5 border border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/30 hover:bg-blue-50 rounded-lg text-2xs font-semibold text-blue-700 cursor-pointer transition">
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                multiple={!maxLimit || maxLimit > 1}
+                onChange={(e) => handleAddFilesToCategory(categoryKey, e.target.files, maxLimit)}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Upload File (Image/PDF)
+            </label>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   const toggleSection = useCallback((section) => {
     setShowHistory(section === "history")
@@ -1174,15 +1412,14 @@ const handleInstallSubmit = async () => {
                           </td>
                           <td className="px-2 py-3 whitespace-normal">
                             {record.completeInstallationPhoto ? (
-                              <a
-                                href={record.completeInstallationPhoto}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs"
+                              <button
+                                type="button"
+                                onClick={() => setViewingCompleteDocsRecord(record)}
+                                className="text-blue-600 hover:text-blue-800 flex items-center justify-center text-xs font-semibold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md mx-auto transition hover:bg-blue-100"
                               >
                                 <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </a>
+                                View Docs
+                              </button>
                             ) : (
                               <span className="text-gray-400 text-xs">—</span>
                             )}
@@ -1843,33 +2080,43 @@ const handleInstallSubmit = async () => {
                     )}
                   </div>
 
-                  {/* Complete Installation Photo */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Complete Installation Photo
-                      <span className="text-gray-500 text-xs ml-1">(Image)</span>
+                  {/* Complete Installation Photo (4 Categories Upload System) */}
+                  <div className="col-span-full md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-800 mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <FileText className="h-4 w-4 text-blue-600" />
+                        Complete Installation Documents & Photos
+                      </span>
+                      <span className="text-2xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                        4 Categories System
+                      </span>
                     </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileUpload("completeInstallationPhoto", e.target.files[0])}
-                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    <UploadStatus field="completeInstallationPhoto" />
-
-                    {selectedRecord?.completeInstallationPhoto && (
-                      <div className="mt-2 flex items-center space-x-2">
-                        <span className="text-xs text-gray-500">Existing:</span>
-                        <button
-                          type="button"
-                          onClick={() => window.open(selectedRecord.completeInstallationPhoto, '_blank', 'noopener,noreferrer')}
-                          className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          Preview Image
-                        </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setShowCompleteDocsModal(true)}
+                      className="w-full flex items-center justify-between p-3.5 border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/50 hover:bg-blue-100/60 rounded-xl transition cursor-pointer group shadow-2xs"
+                    >
+                      <div className="flex items-center gap-3 text-left">
+                        <div className="p-2.5 bg-blue-600 text-white rounded-lg group-hover:scale-105 transition">
+                          <Upload className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-gray-900 group-hover:text-blue-700">
+                            Upload / Manage Installation Documents
+                          </div>
+                          <div className="text-2xs text-gray-500 mt-0.5">
+                            Panel Copy (Front, Back, Side), LA Copy, ACDB/Inverter Copy, Earthing Copy
+                          </div>
+                        </div>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold px-3 py-1 bg-blue-600 text-white rounded-lg shadow-2xs flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {Object.values(completeDocsState).reduce((acc, curr) => acc + (curr?.length || 0), 0)} Files Added
+                        </span>
+                      </div>
+                    </button>
                   </div>
 
                   {/* Repeated Certificate */}
@@ -1958,6 +2205,262 @@ const handleInstallSubmit = async () => {
                     )}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4-Category Complete Installation Documents Upload Modal */}
+        {showCompleteDocsModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-100">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="font-bold text-base flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Complete Installation Documents & Photos
+                  </h3>
+                  <p className="text-xs text-blue-100 mt-0.5">
+                    Upload Panel (Front, Back, Side), LA, ACDB/DCDB/Inverter, and Earthing files
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCompleteDocsModal(false)}
+                  className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                
+                {/* Category 1: Panel Installation Copy */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-amber-500 text-white rounded-lg">
+                        <Sun className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900">1. Panel Installation Copy</h4>
+                        <p className="text-2xs text-gray-500">Front (Max 3), Back (Max 3), Side (Max 3)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {renderDocCategoryCard({
+                      title: "A) Front",
+                      categoryKey: "panelFront",
+                      maxLimit: 3,
+                      icon: Sun,
+                    })}
+
+                    {renderDocCategoryCard({
+                      title: "B) Back",
+                      categoryKey: "panelBack",
+                      maxLimit: 3,
+                      icon: Sun,
+                    })}
+
+                    {renderDocCategoryCard({
+                      title: "C) Side",
+                      categoryKey: "panelSide",
+                      maxLimit: 3,
+                      icon: Sun,
+                    })}
+                  </div>
+                </div>
+
+                {/* Category 2: LA Installation Copy */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-indigo-600 text-white rounded-lg">
+                        <Zap className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900">2. LA Installation Copy</h4>
+                        <p className="text-2xs text-gray-500">Maximum 2 files supported (Image or PDF)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {renderDocCategoryCard({
+                    title: "LA Copy",
+                    categoryKey: "la",
+                    maxLimit: 2,
+                    icon: Zap,
+                  })}
+                </div>
+
+                {/* Category 3: ACDB/DCDB/Inverter Installation Copy */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-purple-600 text-white rounded-lg">
+                        <Cpu className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900">3. ACDB / DCDB / Inverter Installation Copy</h4>
+                        <p className="text-2xs text-gray-500">Multiple files supported (Image or PDF)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {renderDocCategoryCard({
+                    title: "Inverter / ACDB / DCDB Copy",
+                    categoryKey: "acdb",
+                    maxLimit: null,
+                    icon: Cpu,
+                  })}
+                </div>
+
+                {/* Category 4: Earthing Copy */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-emerald-600 text-white rounded-lg">
+                        <Shield className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900">4. Earthing Copy</h4>
+                        <p className="text-2xs text-gray-500">Multiple files supported (Image or PDF)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {renderDocCategoryCard({
+                    title: "Earthing Copy",
+                    categoryKey: "earthing",
+                    maxLimit: null,
+                    icon: Shield,
+                  })}
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center shrink-0">
+                <span className="text-xs font-semibold text-gray-600">
+                  Total Files Added: <span className="text-blue-700 font-bold">{Object.values(completeDocsState).reduce((acc, curr) => acc + (curr?.length || 0), 0)}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCompleteDocsModal(false)}
+                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Done & Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* View Complete Installation Docs Modal (History Table View) */}
+        {viewingCompleteDocsRecord && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-100">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="font-bold text-base flex items-center gap-2">
+                    <Eye className="h-5 w-5" />
+                    Installation Documents - Enquiry: {viewingCompleteDocsRecord.enquiryNumber}
+                  </h3>
+                  <p className="text-xs text-blue-100 mt-0.5">
+                    Beneficiary: {viewingCompleteDocsRecord.beneficiaryName}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingCompleteDocsRecord(null)}
+                  className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                {(() => {
+                  const docs = parseCompleteDocs(viewingCompleteDocsRecord.completeInstallationPhoto)
+                  const categories = [
+                    { title: "Panel Installation - Front", items: docs.panelFront, icon: Sun },
+                    { title: "Panel Installation - Back", items: docs.panelBack, icon: Sun },
+                    { title: "Panel Installation - Side", items: docs.panelSide, icon: Sun },
+                    { title: "LA Installation Copy", items: docs.la, icon: Zap },
+                    { title: "ACDB / DCDB / Inverter Installation Copy", items: docs.acdb, icon: Cpu },
+                    { title: "Earthing Copy", items: docs.earthing, icon: Shield },
+                  ]
+
+                  const hasAny = categories.some((c) => c.items && c.items.length > 0)
+
+                  if (!hasAny) {
+                    return (
+                      <div className="text-center py-12 text-gray-500 text-sm">
+                        No documents available for this record.
+                      </div>
+                    )
+                  }
+
+                  return categories.map((cat, idx) => {
+                    if (!cat.items || cat.items.length === 0) return null
+                    const CatIcon = cat.icon
+                    return (
+                      <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                        <h4 className="text-xs font-bold text-gray-900 flex items-center gap-2 border-b border-slate-200 pb-2">
+                          <CatIcon className="h-4 w-4 text-blue-600" />
+                          {cat.title} ({cat.items.length})
+                        </h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {cat.items.map((item, itemIdx) => (
+                            <div key={itemIdx} className="bg-white border border-gray-200 rounded-lg p-2 flex flex-col items-center justify-between space-y-2 shadow-2xs group">
+                              {item.type === "pdf" ? (
+                                <div className="h-16 w-full bg-red-50 text-red-600 rounded flex flex-col items-center justify-center p-1">
+                                  <FileText className="h-8 w-8" />
+                                  <span className="text-3xs font-bold uppercase mt-1">PDF Document</span>
+                                </div>
+                              ) : (
+                                <img
+                                  src={item.url}
+                                  alt={item.name}
+                                  className="h-16 w-full object-cover rounded border border-gray-100"
+                                />
+                              )}
+                              <div className="w-full text-center">
+                                <p className="text-2xs font-semibold text-gray-700 truncate" title={item.name}>{item.name}</p>
+                                <a
+                                  href={item.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-1 inline-flex items-center gap-1 text-3xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                                >
+                                  <Eye className="h-2.5 w-2.5" /> View
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })
+                })()}
+              </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setViewingCompleteDocsRecord(null)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

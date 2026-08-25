@@ -201,29 +201,28 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
 
     try {
       await document.fonts.ready;
-      let canvas;
-      try {
-        canvas = await toCanvas(element, {
-          pixelRatio: 1.5,
-          backgroundColor: "#ffffff",
-          width: 794,
-          height: 1123,
-          skipFonts: true,
-          fontEmbedCSS: '',
-          cacheBust: false,
-        });
-      } catch (e) {
-        console.warn("toCanvas fallback to html2canvas:", e);
-        canvas = await html2canvas(element, {
-          scale: 1.5,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-        });
-      }
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.85);
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        windowWidth: 794,
+        windowHeight: 1123,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (clonedDoc) => {
+          const clonedEl = clonedDoc.querySelector('[data-pdf-preview="true"]');
+          if (clonedEl) {
+            clonedEl.style.transform = "none";
+            clonedEl.style.boxShadow = "none";
+            clonedEl.style.margin = "0";
+          }
+        }
+      });
+
+      const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
         orientation: "p",
         unit: "mm",
@@ -232,21 +231,10 @@ export default function QuotationPreview({ formData, productDetails, onClose, on
         floatPrecision: 16
       });
 
-      // Fit image to A4 width, scale height proportionally to avoid cut-off
       const pdfWidth = 210;
       const pdfPageHeight = 297;
-      const imgHeightMm = (canvas.height * pdfWidth) / canvas.width;
 
-      if (imgHeightMm <= pdfPageHeight) {
-        // Content fits — place at top, exact proportional height
-        pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, imgHeightMm, undefined, 'FAST');
-      } else {
-        // Content slightly overflows — scale down uniformly to fit A4
-        const scale = pdfPageHeight / imgHeightMm;
-        const scaledWidth = pdfWidth * scale;
-        const xOffset = (pdfWidth - scaledWidth) / 2;
-        pdf.addImage(imgData, "JPEG", xOffset, 0, scaledWidth, pdfPageHeight, undefined, 'FAST');
-      }
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfPageHeight, undefined, 'FAST');
       return pdf.output("blob");
     } catch (err) {
       console.error("Critical PDF Gen Error:", err);

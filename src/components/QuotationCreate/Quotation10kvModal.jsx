@@ -469,35 +469,29 @@ export default function Quotation10kvModal({
 
         let canvas;
         try {
-          canvas = await toCanvas(pageEl, {
-            pixelRatio: 1.5,
-            backgroundColor: "#ffffff",
-            width: 794,
-            height: 1123,
-            skipFonts: true,
-            fontEmbedCSS: '',
-            cacheBust: false,
-            filter: (node) => {
-              if (node.classList && (node.classList.contains('spec-edit-controls') || node.classList.contains('spec-btn'))) {
-                return false;
-              }
-              return true;
-            }
-          });
-        } catch (e) {
-          console.warn("toCanvas fallback to html2canvas:", e);
           canvas = await html2canvas(pageEl, {
-            scale: 1.5,
+            scale: 2,
             useCORS: true,
             allowTaint: true,
             backgroundColor: "#ffffff",
             logging: false,
+            windowWidth: 794,
+            windowHeight: 1123,
+            scrollX: 0,
+            scrollY: 0,
+            onclone: (clonedDoc) => {
+              const clonedPage = clonedDoc.querySelectorAll("[data-pdf-page]")[i];
+              if (clonedPage) {
+                const controls = clonedPage.querySelectorAll(".spec-edit-controls, .spec-btn");
+                controls.forEach((el) => { el.style.display = "none"; });
+              }
+            }
           });
         } finally {
           editControls.forEach((el) => { el.style.display = ""; });
         }
 
-        imagesData.push(canvas.toDataURL("image/jpeg", 0.85));
+        imagesData.push(canvas.toDataURL("image/png"));
       }
 
       const pdf = new jsPDF({
@@ -515,7 +509,7 @@ export default function Quotation10kvModal({
         if (idx > 0) {
           pdf.addPage();
         }
-        pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
       });
 
       return pdf.output("blob");

@@ -49,6 +49,7 @@ export default function BeneficiaryForm() {
     presentLoad: "",
     bpNumber: "",
     cspdclContractDemand: "",
+    requiredCapacity: "",
     futureLoadRequirement: "",
     loadDetailsApplication: "",
     noOfHoursOfFailure: "",
@@ -159,6 +160,7 @@ export default function BeneficiaryForm() {
           presentLoad: row.present_load || "",
           bpNumber: row.bp_number || "",
           cspdclContractDemand: row.cspdcl_contract_demand || "",
+          requiredCapacity: row.required_capacity || "",
           electricityBillUrl: row.avg_electricity_bill || "",
           futureLoadRequirement: row.future_load_requirement || "",
           loadDetailsApplication: row.load_details || "",
@@ -199,6 +201,7 @@ export default function BeneficiaryForm() {
       presentLoad: rowData.presentLoad,
       bpNumber: rowData.bpNumber,
       cspdclContractDemand: rowData.cspdclContractDemand,
+      requiredCapacity: rowData.requiredCapacity,
       electricityBillUrl: rowData.electricityBillUrl,
       futureLoadRequirement: rowData.futureLoadRequirement,
       loadDetailsApplication: rowData.loadDetailsApplication,
@@ -254,6 +257,7 @@ export default function BeneficiaryForm() {
           present_load: editFormData.presentLoad,
           bp_number: editFormData.bpNumber,
           cspdcl_contract_demand: editFormData.cspdclContractDemand,
+          required_capacity: editFormData.requiredCapacity,
           avg_electricity_bill: imageUrl,
           future_load_requirement: editFormData.futureLoadRequirement,
           load_details: editFormData.loadDetailsApplication,
@@ -390,6 +394,7 @@ export default function BeneficiaryForm() {
             present_load: formData.presentLoad,
             bp_number: formData.bpNumber,
             cspdcl_contract_demand: formData.cspdclContractDemand,
+            required_capacity: formData.requiredCapacity,
             avg_electricity_bill: imageUrl,
             future_load_requirement: formData.futureLoadRequirement,
             load_details: formData.loadDetailsApplication,
@@ -419,6 +424,7 @@ export default function BeneficiaryForm() {
         presentLoad: "",
         bpNumber: "",
         cspdclContractDemand: "",
+        requiredCapacity: "",
         futureLoadRequirement: "",
         loadDetailsApplication: "",
         noOfHoursOfFailure: "",
@@ -585,7 +591,7 @@ export default function BeneficiaryForm() {
                     Power & Load Information
                   </h3>
 
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-4">
                     <div className="space-y-1">
                       <label htmlFor="presentLoad" className="block text-xs font-medium text-purple-700">
                         Present Load
@@ -623,6 +629,20 @@ export default function BeneficiaryForm() {
                         id="cspdclContractDemand"
                         name="cspdclContractDemand"
                         value={formData.cspdclContractDemand}
+                        onChange={handleChange}
+                        className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="requiredCapacity" className="block text-xs font-medium text-purple-700">
+                        Required Capacity
+                      </label>
+                      <input
+                        type="text"
+                        id="requiredCapacity"
+                        name="requiredCapacity"
+                        value={formData.requiredCapacity}
                         onChange={handleChange}
                         className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                       />
@@ -883,6 +903,7 @@ export default function BeneficiaryForm() {
                         presentLoad: "",
                         bpNumber: "",
                         cspdclContractDemand: "",
+                        requiredCapacity: "",
                         futureLoadRequirement: "",
                         loadDetailsApplication: "",
                         noOfHoursOfFailure: "",
@@ -973,6 +994,7 @@ export default function BeneficiaryForm() {
                             <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Present Load</th>
                             <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">BP Number</th>
                             <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">CSPDCL Contract Demand</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Required Capacity</th>
                             <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Electricity Bill</th>
                             <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Future Load Requirement</th>
                             <th className="px-2 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">Load Details/Application</th>
@@ -1053,6 +1075,10 @@ export default function BeneficiaryForm() {
 
                               <td className="px-2 py-2 text-center text-xs text-gray-900">
                                 {row.cspdclContractDemand}
+                              </td>
+
+                              <td className="px-2 py-2 text-center text-xs text-gray-900">
+                                {row.requiredCapacity}
                               </td>
 
                               <td className="px-2 py-2 text-center text-xs text-gray-900">
@@ -1209,7 +1235,7 @@ export default function BeneficiaryForm() {
                         Power & Load Information
                       </h4>
 
-                      <div className="grid gap-3 md:grid-cols-3">
+                      <div className="grid gap-3 md:grid-cols-4">
                         <div className="space-y-1">
                           <label className="block text-xs font-medium text-purple-700">Present Load</label>
                           <input
@@ -1236,6 +1262,16 @@ export default function BeneficiaryForm() {
                             type="text"
                             name="cspdclContractDemand"
                             value={editFormData.cspdclContractDemand || ""}
+                            onChange={handleEditChange}
+                            className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-purple-700">Required Capacity</label>
+                          <input
+                            type="text"
+                            name="requiredCapacity"
+                            value={editFormData.requiredCapacity || ""}
                             onChange={handleEditChange}
                             className="w-full rounded-md border border-purple-200 p-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                           />

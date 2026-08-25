@@ -291,6 +291,12 @@ export default function QuotationListView({
                     </th>
                     <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
                       <div className="flex items-center justify-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        Reference
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-normal min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1">
                         <Phone className="h-3 w-3" />
                         Contact No.
                       </div>
@@ -386,7 +392,7 @@ export default function QuotationListView({
                         : activeTab === "bom_approval"
                           ? 6
                           : activeTab === "director_approval"
-                            ? 9
+                            ? 10
                             : (activeTab === "history" || activeTab === "10kv_history")
                               ? tableColumns.length + 3
                               : tableColumns.length
@@ -410,7 +416,7 @@ export default function QuotationListView({
                         : activeTab === "bom_approval"
                           ? 6
                           : activeTab === "director_approval"
-                            ? 9
+                            ? 10
                             : (activeTab === "history" || activeTab === "10kv_history")
                               ? tableColumns.length + 3
                               : tableColumns.length
@@ -522,6 +528,9 @@ export default function QuotationListView({
                         </td>
                         <td className="px-6 py-4 whitespace-normal text-center text-sm font-medium text-gray-900 min-w-[150px]">
                           {row.beneficiaryName || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-600 min-w-[150px]">
+                          {row.reference || row.referenceBy || "N/A"}
                         </td>
                         <td className="px-6 py-4 whitespace-normal text-center text-sm text-gray-600 min-w-[150px]">
                           {row.contactNumber || "N/A"}

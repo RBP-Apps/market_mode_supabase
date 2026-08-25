@@ -483,8 +483,8 @@ export default function QuatationCreate() {
       const matchedUnit = (match[2] || pUnit || "").toUpperCase();
 
       if (matchedUnit.includes("MW")) return true;
-      if (matchedUnit.includes("W") && !matchedUnit.includes("K")) return val >= 10000;
-      return val >= 10;
+      if (matchedUnit.includes("W") && !matchedUnit.includes("K")) return val > 10000;
+      return val > 10;
     }
     return false;
   };
@@ -804,7 +804,8 @@ export default function QuatationCreate() {
             project_mode,
             structure_type,
             load_details,
-            need_type
+            need_type,
+            reference
           )
         `)
         .not('planned', 'is', null);
@@ -836,6 +837,7 @@ export default function QuatationCreate() {
           avgElectricityBill: enq.avg_electricity_bill || "",
           cspdclContractDemand: enq.cspdcl_contract_demand || "",
           bpNumber: enq.bp_number || "",
+          reference: enq.reference || row.reference_by || "",
 
           planned2: row.planned || null,
           actual2: row.actual || null,

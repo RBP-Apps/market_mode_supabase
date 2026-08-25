@@ -141,35 +141,35 @@ export default function DCRPage() {
       const pending = []
       const history = []
 
-      ;(res.data || []).forEach((row) => {
-        const enq = row.enquiries || (row.enquiry_number ? {} : row)
-        const enquiryNumber = row.enquiry_number || enq.enquiry_number || ""
+        ; (res.data || []).forEach((row) => {
+          const enq = row.enquiries || (row.enquiry_number ? {} : row)
+          const enquiryNumber = row.enquiry_number || enq.enquiry_number || ""
 
-        const rowData = {
-          _id: row.id,
-          enquiryNumber: enquiryNumber || `EN-${row.id}`,
-          beneficiaryName: enq.beneficiary_name || row.beneficiary_name || "—",
-          address: enq.address || row.address || "—",
-          contactNumber: enq.contact_number || row.contact_number || "—",
-          villageBlock: enq.village_block || row.village_block || "—",
-          district: enq.district || row.district || "—",
-          planned: row.planned || row.timestamp || null,
-          actual: row.actual || null,
-          delay: row.delay || "",
-          status: row.status || row.dcr_status || "",
-          dcrNumber: row.dcr_number || row.dcr_certificate_no || "",
-          dcrCertificate: row.dcr_certificate || row.dcr_copy || "",
-          moduleMake: row.module_make || "",
-          moduleCapacity: row.module_capacity || "",
-          remarks: row.remarks || ""
-        }
+          const rowData = {
+            _id: row.id,
+            enquiryNumber: enquiryNumber || `EN-${row.id}`,
+            beneficiaryName: enq.beneficiary_name || row.beneficiary_name || "—",
+            address: enq.address || row.address || "—",
+            contactNumber: enq.contact_number || row.contact_number || "—",
+            villageBlock: enq.village_block || row.village_block || "—",
+            district: enq.district || row.district || "—",
+            planned: row.planned || row.timestamp || null,
+            actual: row.actual || null,
+            delay: row.delay || "",
+            status: row.status || row.dcr_status || "",
+            dcrNumber: row.dcr_number || row.dcr_certificate_no || "",
+            dcrCertificate: row.dcr_certificate || row.dcr_copy || "",
+            moduleMake: row.module_make || "",
+            moduleCapacity: row.module_capacity || "",
+            remarks: row.remarks || ""
+          }
 
-        if (!row.actual && row.status !== "Done" && row.status !== "Completed") {
-          pending.push(rowData)
-        } else {
-          history.push(rowData)
-        }
-      })
+          if (!row.actual && row.status !== "Done" && row.status !== "Completed") {
+            pending.push(rowData)
+          } else {
+            history.push(rowData)
+          }
+        })
 
       setPendingData(pending)
       setHistoryData(history)
@@ -189,20 +189,20 @@ export default function DCRPage() {
   const filteredPendingData = useMemo(() => {
     return debouncedSearchTerm
       ? pendingData.filter((record) =>
-          Object.values(record).some(
-            (value) => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-          )
+        Object.values(record).some(
+          (value) => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase())
         )
+      )
       : pendingData
   }, [pendingData, debouncedSearchTerm])
 
   const filteredHistoryData = useMemo(() => {
     return debouncedSearchTerm
       ? historyData.filter((record) =>
-          Object.values(record).some(
-            (value) => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-          )
+        Object.values(record).some(
+          (value) => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase())
         )
+      )
       : historyData
   }, [historyData, debouncedSearchTerm])
 
@@ -383,11 +383,10 @@ export default function DCRPage() {
         <div className="flex space-x-2 border-b border-gray-200">
           <button
             onClick={() => toggleSection("pending")}
-            className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all ${
-              !showHistory
+            className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all ${!showHistory
                 ? "border-blue-600 text-blue-600 bg-blue-50/50"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
+              }`}
           >
             <div className="flex items-center">
               <FileCheck className="h-4.5 w-4.5 mr-2 text-blue-500" />
@@ -396,11 +395,10 @@ export default function DCRPage() {
           </button>
           <button
             onClick={() => toggleSection("history")}
-            className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all ${
-              showHistory
+            className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all ${showHistory
                 ? "border-blue-600 text-blue-600 bg-blue-50/50"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
+              }`}
           >
             <div className="flex items-center">
               <History className="h-4.5 w-4.5 mr-2 text-blue-500" />
@@ -527,9 +525,8 @@ export default function DCRPage() {
                           <td className="px-4 py-3 font-medium text-emerald-700">{formatDate(record.actual)}</td>
                           <td className="px-4 py-3">
                             {record.delay ? (
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                parseInt(record.delay) > 0 ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${parseInt(record.delay) > 0 ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                                }`}>
                                 {record.delay} days
                               </span>
                             ) : "—"}

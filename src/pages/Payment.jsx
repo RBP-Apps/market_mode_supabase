@@ -181,7 +181,8 @@ function PaymentPage() {
             enquiries!left (
               beneficiary_name,
               address,
-              contact_number
+              contact_number,
+              payment_type
             )
           `)
           .not("planned", "is", null),
@@ -233,7 +234,8 @@ function PaymentPage() {
             contactNumber: enq.contact_number || "",
             surveyorName: fmsRow.surveyorName || "",
 
-            paymentType: row.payment_type || "",
+            paymentType: row.payment_type || enq.payment_type || "",
+            enquiryPaymentType: enq.payment_type || "",
             payment: row.status || "",
             checkNo: row.check_number || "",
             date: row.payment_date || "",
@@ -313,8 +315,22 @@ function PaymentPage() {
   const handlePaymentClick = useCallback(
     (record) => {
       setSelectedRecord(record)
+
+      const rawPaymentType = record.paymentType || record.enquiryPaymentType || ""
+      let defaultType = ""
+      if (rawPaymentType) {
+        const lower = rawPaymentType.toLowerCase().trim()
+        if (lower.includes("loan") || lower.includes("finance") || lower.includes("bank")) {
+          defaultType = "Bank Finance"
+        } else if (lower.includes("cheque") || lower.includes("rtgs") || lower.includes("upi") || lower.includes("cash")) {
+          defaultType = "Cheque / RTGS / UPI"
+        } else {
+          defaultType = rawPaymentType
+        }
+      }
+
       setPaymentForm({
-        paymentType: record.paymentType || "",
+        paymentType: defaultType,
         checkNo: record.checkNo || "",
         date: formatDateForInput(record.date || ""),
         amount: record.amount || "",

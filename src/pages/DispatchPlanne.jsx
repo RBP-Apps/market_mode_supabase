@@ -545,7 +545,7 @@ export default function DispatchPlannerPage() {
                 <div>
                   <label className="block text-2xs font-bold text-gray-700 mb-1 flex items-center gap-1">
                     <FileText className="h-3.5 w-3.5 text-blue-600" />
-                    Challan Copy (Image or PDF) <span className="text-red-500">*</span>
+                    Dispatch Planner(Challan Copy) (Image or PDF) <span className="text-red-500">*</span>
                   </label>
 
                   {/* Show existing file link if in edit mode */}

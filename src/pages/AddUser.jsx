@@ -468,6 +468,7 @@ export default function UserRegistration() {
 
       if (error) throw error;
 
+      alert("User added successfully!");
       setOpen(false);
       setFormData({
         username: "",
@@ -487,7 +488,11 @@ export default function UserRegistration() {
       fetchUsers();
     } catch (error) {
       console.error("Error adding user:", error);
-      alert("Error adding user: " + error.message);
+      if (error?.code === "23505" || error?.message?.includes("unique constraint")) {
+        alert(`User "${formData.username}" is already created in the database. Please use a different username.`);
+      } else {
+        alert("Error adding user: " + error.message);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -546,12 +551,17 @@ export default function UserRegistration() {
 
       if (error) throw error;
 
+      alert("User updated successfully!");
       setEditOpen(false);
       setEditUserId(null);
       fetchUsers();
     } catch (error) {
       console.error("Error updating user:", error);
-      alert("Error updating user: " + error.message);
+      if (error?.code === "23505" || error?.message?.includes("unique constraint")) {
+        alert(`Username "${editData.username}" already exists. Please choose a unique username.`);
+      } else {
+        alert("Error updating user: " + error.message);
+      }
     } finally {
       setIsUpdating(false);
     }
