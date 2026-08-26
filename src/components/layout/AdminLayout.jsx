@@ -248,13 +248,13 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname === "/dashboard/IpPayment",
       showFor: ["admin", "user"]
     },
-    {
-      href: "/dashboard/FinalPayment",
-      label: "Financial",
-      icon: CreditCard,
-      active: location.pathname === "/dashboard/FinalPayment",
-      showFor: ["admin", "user"]
-    },
+    // {
+    //   href: "/dashboard/FinalPayment",
+    //   label: "Financial",
+    //   icon: CreditCard,
+    //   active: location.pathname === "/dashboard/FinalPayment",
+    //   showFor: ["admin", "user"]
+    // },
     {
       href: "/dashboard/Billing",
       label: "Billings and Payment Details",
@@ -389,22 +389,22 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       showFor: ["admin", "user"]
     },
 
-    {
-      href: "/dashboard/DispatchApproval",
-      label: "Dispatch Approval",
-      icon: CheckSquare,
-      active: location.pathname === "/dashboard/DispatchApproval",
-      showFor: ["admin", "user"]
-    },
+    // {
+    //   href: "/dashboard/DispatchApproval",
+    //   label: "Dispatch Approval",
+    //   icon: CheckSquare,
+    //   active: location.pathname === "/dashboard/DispatchApproval",
+    //   showFor: ["admin", "user"]
+    // },
     
 
-    {
-      href: "/dashboard/BankProcess",
-      label: "Bank Process",
-      icon: CreditCard,
-      active: location.pathname === "/dashboard/BankProcess",
-      showFor: ["admin", "user"]
-    },
+    // {
+    //   href: "/dashboard/BankProcess",
+    //   label: "Bank Process",
+    //   icon: CreditCard,
+    //   active: location.pathname === "/dashboard/BankProcess",
+    //   showFor: ["admin", "user"]
+    // },
    
 
 

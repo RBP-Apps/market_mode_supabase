@@ -76,132 +76,245 @@ export default function FMSDashboard() {
 
 
   const fetchFMSData = async () => {
-  try {
-    setFmsData((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      setFmsData((prev) => ({ ...prev, loading: true, error: null }));
 
-    const { data, error } = await supabase
-      .from("enquiries")
-      .select("*");
+      const [
+        { data: enquiriesData, error: enquiriesErr },
+        { data: assignSurveyData },
+        { data: siteSurveysData },
+        { data: quotationData },
+        { data: quatation10kwData },
+        { data: salesCallsData },
+        { data: orderPlacementsData },
+        { data: ipAssignmentsData },
+        { data: dispatchMaterialsData },
+        { data: customerNotificationsData },
+        { data: materialReceiptsData },
+        { data: installationsData },
+        { data: billingsData },
+        { data: documentsUploadsData },
+        { data: projectInsuranceData },
+        { data: subsidyDisbursalsData },
+        { data: subsidyRedemptionsData },
+        { data: inspectionsData },
+        { data: qcData },
+        { data: registrationData },
+        { data: paymentsData },
+        { data: paymentConfirmationsData }
+      ] = await Promise.all([
+        supabase.from("enquiries").select("*"),
+        supabase.from("assign_survey").select("*"),
+        supabase.from("site_surveys").select("*"),
+        supabase.from("new_new_quatation_create").select("*"),
+        supabase.from("quatation_10kw").select("*"),
+        supabase.from("sales_calls").select("*"),
+        supabase.from("order_placements").select("*"),
+        supabase.from("ip_assignments").select("*"),
+        supabase.from("dispatch_materials").select("*"),
+        supabase.from("customer_notifications").select("*"),
+        supabase.from("material_receipts").select("*"),
+        supabase.from("installations").select("*"),
+        supabase.from("billings").select("*"),
+        supabase.from("documents_uploads").select("*"),
+        supabase.from("project_insurance").select("*"),
+        supabase.from("subsidy_disbursals").select("*"),
+        supabase.from("subsidy_redemptions").select("*"),
+        supabase.from("inspections").select("*"),
+        supabase.from("qc").select("*"),
+        supabase.from("registration").select("*"),
+        supabase.from("payments").select("*"),
+        supabase.from("payment_confirmations").select("*")
+      ]);
 
-    if (error) throw error;
+      if (enquiriesErr) throw enquiriesErr;
 
-    let totalEnquiry = 0;
-    let installation = 0;
-    let pendingInstallation = 0;
-    let commissions = 0;
-    let ipAssignment = 0;
-
-    const projectTypesCount = {
-      Residential: 0,
-      Society: 0,
-      Commercial: 0,
-      Others: 0,
-    };
-
-    const allRecords = [];
-    const uniqueNamesSet = new Set();
-
-    data.forEach((row) => {
-      const enquiryValue = row.enquiry_number;
-      const caValue = row.actual_4;   // install logic same mapping
-      const cbValue = row.actual_5;
-      const dmValue = row.actual_7;
-      const dnValue = row.actual_8;
-      const bbValue = row.actual_6;
-      const bcValue = row.status_6;
-
-      const projectType = row.need_type;
-      const fmsUserName = row.firm_name || row.vendor_name;
-      const subsidyDisbursalValue = row.status_17;
-
-      // counters (same logic)
-      if (enquiryValue) totalEnquiry++;
-      if (caValue && cbValue) installation++;
-      if (caValue && !cbValue) pendingInstallation++;
-      if (dmValue && dnValue) commissions++;
-      if (bbValue && bcValue) ipAssignment++;
-
-      if (fmsUserName) {
-        uniqueNamesSet.add(fmsUserName.trim());
-      }
-
-      if (projectType) {
-        if (projectTypesCount.hasOwnProperty(projectType)) {
-          projectTypesCount[projectType]++;
-        } else {
-          projectTypesCount["Others"]++;
-        }
-      }
-
-      if (enquiryValue || fmsUserName || projectType) {
-        allRecords.push({
-          id: row.id,
-          enquiry: enquiryValue,
-          projectType: projectType || "Unknown",
-          beneficiaryName: row.beneficiary_name,
-          address: row.address,
-          villageBlock: row.village_block,
-          district: row.district,
-          contactNumber: row.contact_number,
-          presentLoad: row.present_load,
-          bpNumber: row.bp_number,
-          cspdclContractDemand: row.cspdcl_contract_demand,
-          avgElectricityBill: row.avg_electricity_bill,
-          futureLoadRequirement: row.future_load_requirement,
-          loadDetails: row.load_details,
-          hoursOfFailure: row.failure_hours,
-          structureType: row.structure_type,
-          roofType: row.roof_type,
-          systemType: row.system_type,
-          needType: projectType,
-          projectMode: row.project_mode,
-
-          caValue,
-          cbValue,
-          bbValue,
-          bcValue,
-          dmValue,
-          dnValue,
-
-          installationStatus:
-            caValue && cbValue
-              ? "Completed"
-              : caValue
-              ? "Pending"
-              : "Not Started",
-
-          ipStatus:
-            bbValue && bcValue
-              ? "Assigned"
-              : "Not Assigned",
-
-          commissionStatus:
-            dmValue && dnValue
-              ? "Completed"
-              : "Pending",
-
-          subsidyDisbursal: subsidyDisbursalValue || "Pending",
-          userName: fmsUserName || "Unknown Vendor",
+      const mapByEnquiry = (list, key = "enquiry_number") => {
+        const map = {};
+        (list || []).forEach((item) => {
+          if (item && item[key]) {
+            map[String(item[key]).trim()] = item;
+          }
         });
-      }
-    });
+        return map;
+      };
 
-    setFmsData({
-      allRecords,
-      uniqueNames: Array.from(uniqueNamesSet).sort(),
-      loading: false,
-      error: null,
-    });
+      const assignSurveyMap = mapByEnquiry(assignSurveyData, "enquiry_id");
+      const siteSurveyMap = mapByEnquiry(siteSurveysData);
+      const quotationMap = mapByEnquiry(quotationData);
+      const quatation10kwMap = mapByEnquiry(quatation10kwData);
+      const salesCallsMap = mapByEnquiry(salesCallsData);
+      const orderPlacementsMap = mapByEnquiry(orderPlacementsData);
+      const ipAssignmentsMap = mapByEnquiry(ipAssignmentsData);
+      const dispatchMaterialsMap = mapByEnquiry(dispatchMaterialsData);
+      const customerNotificationsMap = mapByEnquiry(customerNotificationsData);
+      const materialReceiptsMap = mapByEnquiry(materialReceiptsData);
+      const installationsMap = mapByEnquiry(installationsData);
+      const billingsMap = mapByEnquiry(billingsData);
+      const documentsUploadsMap = mapByEnquiry(documentsUploadsData);
+      const projectInsuranceMap = mapByEnquiry(projectInsuranceData);
+      const subsidyDisbursalsMap = mapByEnquiry(subsidyDisbursalsData);
+      const subsidyRedemptionsMap = mapByEnquiry(subsidyRedemptionsData);
+      const inspectionsMap = mapByEnquiry(inspectionsData);
+      const qcMap = mapByEnquiry(qcData);
+      const registrationMap = mapByEnquiry(registrationData);
+      const paymentsMap = mapByEnquiry(paymentsData);
+      const paymentConfirmationsMap = mapByEnquiry(paymentConfirmationsData);
 
-  } catch (error) {
-    console.error("Error fetching FMS data:", error);
-    setFmsData((prev) => ({
-      ...prev,
-      loading: false,
-      error: error.message,
-    }));
-  }
-};
+      let totalEnquiry = 0;
+      let installation = 0;
+      let pendingInstallation = 0;
+      let commissions = 0;
+      let ipAssignment = 0;
+
+      const projectTypesCount = {
+        Residential: 0,
+        Society: 0,
+        Commercial: 0,
+        Others: 0,
+      };
+
+      const allRecords = [];
+      const uniqueNamesSet = new Set();
+
+      (enquiriesData || []).forEach((row) => {
+        const enquiryValue = row.enquiry_number;
+        const enqNumKey = enquiryValue ? String(enquiryValue).trim() : "";
+        const enqIdKey = row.id;
+
+        const assignSurveyRow = assignSurveyMap[enqIdKey] || {};
+        const siteSurveyRow = siteSurveyMap[enqNumKey] || {};
+        const quotationRow = quotationMap[enqNumKey] || {};
+        const quatation10kwRow = quatation10kwMap[enqNumKey] || {};
+        const salesCallsRow = salesCallsMap[enqNumKey] || {};
+        const orderPlacementsRow = orderPlacementsMap[enqNumKey] || {};
+        const ipAssignmentsRow = ipAssignmentsMap[enqNumKey] || {};
+        const dispatchMaterialsRow = dispatchMaterialsMap[enqNumKey] || {};
+        const customerNotificationsRow = customerNotificationsMap[enqNumKey] || {};
+        const materialReceiptsRow = materialReceiptsMap[enqNumKey] || {};
+        const installationsRow = installationsMap[enqNumKey] || {};
+        const billingsRow = billingsMap[enqNumKey] || {};
+        const documentsUploadsRow = documentsUploadsMap[enqNumKey] || {};
+        const projectInsuranceRow = projectInsuranceMap[enqNumKey] || {};
+        const subsidyDisbursalsRow = subsidyDisbursalsMap[enqNumKey] || {};
+        const subsidyRedemptionsRow = subsidyRedemptionsMap[enqNumKey] || {};
+        const inspectionsRow = inspectionsMap[enqNumKey] || {};
+        const qcRow = qcMap[enqNumKey] || {};
+        const registrationRow = registrationMap[enqNumKey] || {};
+        const paymentsRow = paymentsMap[enqNumKey] || {};
+        const paymentConfirmationsRow = paymentConfirmationsMap[enqNumKey] || {};
+
+        const projectType = row.need_type;
+        const fmsUserName = row.firm_name || siteSurveyRow.surveyor_name || ipAssignmentsRow.ip_name || row.reference;
+
+        const installActual = installationsRow.actual;
+        const installPlanned = installationsRow.planned;
+        const installationStatus = installActual
+          ? "Completed"
+          : installPlanned
+          ? "Pending"
+          : "Not Started";
+
+        const ipAssignedName = ipAssignmentsRow.ip_name || siteSurveyRow.ip_name;
+        const ipStatus = (ipAssignmentsRow.actual || ipAssignedName)
+          ? "Assigned"
+          : "Not Assigned";
+
+        const commissionStatus = (inspectionsRow.actual || inspectionsRow.date_of_inspection)
+          ? "Completed"
+          : "Pending";
+
+        const subsidyDisbursal = (subsidyDisbursalsRow.actual || subsidyDisbursalsRow.status === "Done")
+          ? "Done"
+          : "Pending";
+
+        if (enquiryValue) totalEnquiry++;
+        if (installationStatus === "Completed") installation++;
+        if (installationStatus === "Pending") pendingInstallation++;
+        if (commissionStatus === "Completed") commissions++;
+        if (ipStatus === "Assigned") ipAssignment++;
+
+        if (fmsUserName) {
+          uniqueNamesSet.add(String(fmsUserName).trim());
+        }
+
+        if (projectType) {
+          if (projectTypesCount.hasOwnProperty(projectType)) {
+            projectTypesCount[projectType]++;
+          } else {
+            projectTypesCount["Others"]++;
+          }
+        }
+
+        if (enquiryValue || fmsUserName || projectType) {
+          allRecords.push({
+            id: row.id,
+            enquiry: enquiryValue,
+            projectType: projectType || "Unknown",
+            beneficiaryName: row.beneficiary_name,
+            address: row.address,
+            villageBlock: row.village_block,
+            district: row.district,
+            contactNumber: row.contact_number,
+            presentLoad: row.present_load,
+            bpNumber: row.bp_number,
+            cspdclContractDemand: row.cspdcl_contract_demand,
+            avgElectricityBill: row.avg_electricity_bill,
+            futureLoadRequirement: row.future_load_requirement,
+            loadDetails: row.load_details,
+            structureType: row.structure_type,
+            roofType: row.roof_type,
+            systemType: row.system_type,
+            needType: projectType,
+            projectMode: row.project_mode,
+
+            assignSurvey: assignSurveyRow,
+            siteSurvey: siteSurveyRow,
+            quotation: quotationRow,
+            quatation10kw: quatation10kwRow,
+            salesCalls: salesCallsRow,
+            orderPlacements: orderPlacementsRow,
+            ipAssignment: ipAssignmentsRow,
+            dispatchMaterials: dispatchMaterialsRow,
+            customerNotifications: customerNotificationsRow,
+            materialReceipts: materialReceiptsRow,
+            installationDetails: installationsRow,
+            billings: billingsRow,
+            documentsUploads: documentsUploadsRow,
+            projectInsurance: projectInsuranceRow,
+            subsidyDisbursals: subsidyDisbursalsRow,
+            subsidyRedemptions: subsidyRedemptionsRow,
+            inspections: inspectionsRow,
+            qc: qcRow,
+            registration: registrationRow,
+            payments: paymentsRow,
+            paymentConfirmations: paymentConfirmationsRow,
+
+            installationStatus,
+            ipStatus,
+            commissionStatus,
+            subsidyDisbursal,
+            userName: fmsUserName || "Unknown Vendor",
+          });
+        }
+      });
+
+      setFmsData({
+        allRecords,
+        uniqueNames: Array.from(uniqueNamesSet).sort(),
+        loading: false,
+        error: null,
+      });
+
+    } catch (error) {
+      console.error("Error fetching FMS data:", error);
+      setFmsData((prev) => ({
+        ...prev,
+        loading: false,
+        error: error.message,
+      }));
+    }
+  };
 
 
 
@@ -640,7 +753,7 @@ export default function FMSDashboard() {
                 Loading FMS Dashboard
               </h3>
               <p className="text-purple-600">
-                Fetching latest data from Google Sheets...
+                Fetching latest data from database...
               </p>
             </div>
           </div>
