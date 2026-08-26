@@ -172,7 +172,8 @@ function PaymentPage() {
 
       const [
         { data: pData, error: pError },
-        { data: fmsData, error: fmsError }
+        { data: fmsData, error: fmsError },
+        { data: salesCallsData, error: salesError }
       ] = await Promise.all([
         supabase
           .from("payments")
@@ -188,11 +189,25 @@ function PaymentPage() {
           .not("planned", "is", null),
         supabase
           .from("fms")
-          .select("enquiry_number, surveyor_name, power_purchase_agreement, vendor_consumer_agreement, quotation_copy, application_copy, electricity_bill_doc, witness_id_proof, actual_12, status_13, status_14, status_15")
+          .select("enquiry_number, surveyor_name, power_purchase_agreement, vendor_consumer_agreement, quotation_copy, application_copy, electricity_bill_doc, witness_id_proof, actual_12, status_13, status_14, status_15"),
+        supabase
+          .from("sales_calls")
+          .select("enquiry_number, planned, actual")
+          .not("planned", "is", null)
+          .not("actual", "is", null)
       ])
 
       if (pError) throw pError
       if (fmsError) throw fmsError
+      if (salesError) {
+        console.warn("Could not fetch sales_calls:", salesError)
+      }
+
+      const completedSalesEnquiries = new Set(
+        (salesCallsData || [])
+          .filter(sc => sc.planned && sc.actual)
+          .map(sc => String(sc.enquiry_number || "").trim())
+      )
 
       const fmsMap = {}
       if (fmsData) {
@@ -221,6 +236,7 @@ function PaymentPage() {
       if (pData) {
         pData.forEach((row) => {
           const enqNum = row.enquiry_number || ""
+          const enqNumStr = String(enqNum).trim()
           const enq = row.enquiries || {}
           const fmsRow = fmsMap[enqNum] || {}
 
@@ -269,7 +285,9 @@ function PaymentPage() {
           }
 
           if (row.planned && !row.actual) {
-            pending.push(rowData)
+            if (completedSalesEnquiries.has(enqNumStr)) {
+              pending.push(rowData)
+            }
           } else if (row.planned && row.actual) {
             history.push(rowData)
           }
