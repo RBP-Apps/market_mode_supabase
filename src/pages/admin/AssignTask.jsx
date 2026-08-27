@@ -305,6 +305,7 @@ export default function BeneficiaryForm() {
 
   useEffect(() => {
     fetchDropdownOptions();
+    fetchHistoryData();
     const user = sessionStorage.getItem("username");
     if (user) {
       setFormData((prev) => ({ ...prev, assignedBy: user }));
@@ -413,6 +414,7 @@ export default function BeneficiaryForm() {
       if (error) throw error;
 
       alert("Successfully submitted beneficiary information!");
+      fetchHistoryData();
 
       setFormData({
         beneficiaryName: "",
@@ -474,7 +476,7 @@ export default function BeneficiaryForm() {
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
               >
-                History
+                History ({historyData.length})
               </button>
             </div>
           </div>
@@ -941,9 +943,14 @@ export default function BeneficiaryForm() {
             <div>
               <div className="bg-linear-to-r from-purple-50 to-pink-50 p-4 border-b border-purple-100">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-purple-700">
-                    Survey History
-                  </h2>
+                  <div className="flex items-center space-x-2">
+                    <h2 className="text-lg font-semibold text-purple-700">
+                      Survey History
+                    </h2>
+                    <span className="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-purple-200">
+                      Total Enquiries: {historyData.length}
+                    </span>
+                  </div>
                   <button
                     onClick={fetchHistoryData}
                     disabled={isLoadingHistory}

@@ -95,9 +95,15 @@ export default function LeadPage() {
   const [dashStatusFilter, setDashStatusFilter] = useState("ALL")
   const [dashUserFilter, setDashUserFilter] = useState("ALL")
   const [dashDateFilter, setDashDateFilter] = useState("ALL")
-  const [dashActivityType, setDashActivityType] = useState("ALL")
+  const [customStartDate, setCustomStartDate] = useState("")
+  const [customEndDate, setCustomEndDate] = useState("")
   const [selectedDashboardPage, setSelectedDashboardPage] = useState(null)
   const [showDashDetailModal, setShowDashDetailModal] = useState(false)
+
+  // PDF Preview State
+  const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false)
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState("")
+  const [pdfDocInstance, setPdfDocInstance] = useState(null)
 
   const debouncedDashSearchTerm = useDebounce(dashSearchTerm, 300)
 
@@ -225,17 +231,74 @@ export default function LeadPage() {
 
   // Computed Page-wise Dashboard Metrics
   const pageMetricsList = useMemo(() => {
-    const processStageTable = (sourceData, fmsIndex, defaultUserRole) => {
+    // Prerequisite stage completion sets to ensure accurate stage-wise pending counts
+    const completedPaymentsEnqs = new Set(
+      (paymentRecords || [])
+        .filter((p) => p.actual != null || p.status === "Paid" || p.status === "Completed")
+        .map((p) => String(p.enquiry_number || "").trim())
+    )
+    const completedDocsEnqs = new Set(
+      (documentsUploadsData || [])
+        .filter((r) => r.planned != null && r.actual != null)
+        .map((r) => String(r.enquiry_number || "").trim())
+    )
+    const completedRegEnqs = new Set(
+      (registrationData || [])
+        .filter((r) => r.planned != null && r.actual != null)
+        .map((r) => String(r.enquiry_number || "").trim())
+    )
+    const completedPayConfEnqs = new Set(
+      (paymentConfirmationsData || [])
+        .filter((r) => r.planned != null && r.actual != null)
+        .map((r) => String(r.enquiry_number || "").trim())
+    )
+    const completedDispatchPlannerEnqs = new Set(
+      (dispatchPlannerData || [])
+        .filter((r) => r.planned != null && r.actual != null)
+        .map((r) => String(r.enquiry_number || "").trim())
+    )
+    const completedDispatchMaterialEnqs = new Set(
+      (dispatchMaterialData || [])
+        .filter((r) => r.planned != null && r.actual != null)
+        .map((r) => String(r.enquiry_number || "").trim())
+    )
+    const completedInstallationEnqs = new Set(
+      (installationData || [])
+        .filter((r) => r.planned != null && r.actual != null)
+        .map((r) => String(r.enquiry_number || "").trim())
+    )
+    const completedQcEnqs = new Set(
+      (qcData || [])
+        .filter((r) => r.planned != null && r.actual != null)
+        .map((r) => String(r.enquiry_number || "").trim())
+    )
+
+    const processStageTable = (sourceData, fmsIndex, defaultUserRole, prereqSet = null) => {
       let pendingRows = []
       let historyRows = []
 
       if (sourceData && sourceData.length > 0) {
-        pendingRows = sourceData.filter(r => (r.planned || r.created_at || r.id) && !r.actual)
+        pendingRows = sourceData.filter(r => {
+          if (!r.actual && (r.planned || r.created_at || r.id)) {
+            if (prereqSet) {
+              const enqKey = String(r.enquiry_number || "").trim()
+              return prereqSet.has(enqKey)
+            }
+            return true
+          }
+          return false
+        })
         historyRows = sourceData.filter(r => Boolean(r.actual))
       } else if (fmsIndex > 0 && fmsRecords.length > 0) {
         fmsRecords.forEach(fms => {
-          if (fms[`planned_${fmsIndex}`] && !fms[`actual_${fmsIndex}`]) pendingRows.push(fms)
-          else if (fms[`actual_${fmsIndex}`]) historyRows.push(fms)
+          const enqKey = String(fms.enquiry_number || "").trim()
+          if (fms[`planned_${fmsIndex}`] && !fms[`actual_${fmsIndex}`]) {
+            if (!prereqSet || prereqSet.has(enqKey)) {
+              pendingRows.push(fms)
+            }
+          } else if (fms[`actual_${fmsIndex}`]) {
+            historyRows.push(fms)
+          }
         })
       }
 
@@ -553,42 +616,42 @@ export default function LeadPage() {
       }
       // 8. Documents Uploads
       else if (pageObj.name === "Documents Uploads") {
-        const res = processStageTable(documentsUploadsData, 7, "Doc Staff")
+        const res = processStageTable(documentsUploadsData, 7, "Doc Staff", completedPaymentsEnqs)
         totalWork = res.totalWork; completed = res.completed; pending = res.pending; inProgress = res.inProgress; activityCount = res.activityCount; lastActivityDate = res.lastActivityDate; lastUpdatedBy = res.lastUpdatedBy; taskTimeline = res.taskTimeline
       }
       // 9. Registration
       else if (pageObj.name === "Registration") {
-        const res = processStageTable(registrationData, 8, "Registration Staff")
+        const res = processStageTable(registrationData, 8, "Registration Staff", completedDocsEnqs)
         totalWork = res.totalWork; completed = res.completed; pending = res.pending; inProgress = res.inProgress; activityCount = res.activityCount; lastActivityDate = res.lastActivityDate; lastUpdatedBy = res.lastUpdatedBy; taskTimeline = res.taskTimeline
       }
       // 10. Payment Confirmation
       else if (pageObj.name === "Payment Confirmation") {
-        const res = processStageTable(paymentConfirmationsData, 9, "Finance Staff")
+        const res = processStageTable(paymentConfirmationsData, 9, "Finance Staff", completedRegEnqs)
         totalWork = res.totalWork; completed = res.completed; pending = res.pending; inProgress = res.inProgress; activityCount = res.activityCount; lastActivityDate = res.lastActivityDate; lastUpdatedBy = res.lastUpdatedBy; taskTimeline = res.taskTimeline
       }
       // 11. Dispatch Planner
       else if (pageObj.name === "Dispatch Planner") {
-        const res = processStageTable(dispatchPlannerData, 10, "Logistics Planner")
+        const res = processStageTable(dispatchPlannerData, 10, "Logistics Planner", completedPayConfEnqs)
         totalWork = res.totalWork; completed = res.completed; pending = res.pending; inProgress = res.inProgress; activityCount = res.activityCount; lastActivityDate = res.lastActivityDate; lastUpdatedBy = res.lastUpdatedBy; taskTimeline = res.taskTimeline
       }
       // 12. Dispatch Material
       else if (pageObj.name === "Dispatch Material") {
-        const res = processStageTable(dispatchMaterialData, 11, "Dispatch Staff")
+        const res = processStageTable(dispatchMaterialData, 11, "Dispatch Staff", completedDispatchPlannerEnqs)
         totalWork = res.totalWork; completed = res.completed; pending = res.pending; inProgress = res.inProgress; activityCount = res.activityCount; lastActivityDate = res.lastActivityDate; lastUpdatedBy = res.lastUpdatedBy; taskTimeline = res.taskTimeline
       }
       // 13. Installation
       else if (pageObj.name === "Installation") {
-        const res = processStageTable(installationData, 12, "Installation Team")
+        const res = processStageTable(installationData, 12, "Installation Team", completedDispatchMaterialEnqs)
         totalWork = res.totalWork; completed = res.completed; pending = res.pending; inProgress = res.inProgress; activityCount = res.activityCount; lastActivityDate = res.lastActivityDate; lastUpdatedBy = res.lastUpdatedBy; taskTimeline = res.taskTimeline
       }
       // 14. QC
       else if (pageObj.name === "QC") {
-        const res = processStageTable(qcData, 13, "QC Inspector")
+        const res = processStageTable(qcData, 13, "QC Inspector", completedInstallationEnqs)
         totalWork = res.totalWork; completed = res.completed; pending = res.pending; inProgress = res.inProgress; activityCount = res.activityCount; lastActivityDate = res.lastActivityDate; lastUpdatedBy = res.lastUpdatedBy; taskTimeline = res.taskTimeline
       }
       // 15. CSPDL Inspection
       else if (pageObj.name === "CSPDL Inspection") {
-        const res = processStageTable(inspectionsData, 14, "Inspector")
+        const res = processStageTable(inspectionsData, 14, "Inspector", completedQcEnqs)
         totalWork = res.totalWork; completed = res.completed; pending = res.pending; inProgress = res.inProgress; activityCount = res.activityCount; lastActivityDate = res.lastActivityDate; lastUpdatedBy = res.lastUpdatedBy; taskTimeline = res.taskTimeline
       }
       // 16. Subsidy Disbursal
@@ -684,7 +747,31 @@ export default function LeadPage() {
         taskTimeline: taskTimeline.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       }
     })
-  }, [leadData, fmsRecords, systemUsers, assignSurveyEstData, assignSurveyActData, newQuotationData, quotation10kwData, ipAssignmentsData, registrationData, installationData, qcData, dispatchPlannerData, dispatchMaterialData])
+  }, [
+    leadData,
+    fmsRecords,
+    paymentRecords,
+    systemUsers,
+    assignSurveyEstData,
+    assignSurveyActData,
+    newQuotationData,
+    newNewQuotationData,
+    quotation10kwData,
+    siteSurveysData,
+    ipAssignmentsData,
+    salesCallsData,
+    documentsUploadsData,
+    registrationData,
+    paymentConfirmationsData,
+    dispatchPlannerData,
+    dispatchMaterialData,
+    installationData,
+    qcData,
+    inspectionsData,
+    subsidyDisbursalsData,
+    subsidyRedemptionsData,
+    projectInsuranceData
+  ])
 
   // Filtered Page Metrics based on Dashboard Controls
   const filteredPageMetrics = useMemo(() => {
@@ -703,34 +790,43 @@ export default function LeadPage() {
         p.lastUpdatedBy.toLowerCase().includes(dashUserFilter.toLowerCase()) ||
         p.usersWithAccess.some((u) => u.username.toLowerCase().includes(dashUserFilter.toLowerCase()))
 
-      let matchesActivity = true
-      if (dashActivityType === "RECENT") {
-        if (!p.lastActivityDate) matchesActivity = false
-        else {
-          const diffDays = (new Date() - new Date(p.lastActivityDate)) / (1000 * 3600 * 24)
-          matchesActivity = diffDays <= 7
-        }
-      } else if (dashActivityType === "NO_ACTIVITY") {
-        matchesActivity = p.totalWork === 0 || p.status === "No Activity"
-      }
-
       let matchesDate = true
-      if (dashDateFilter !== "ALL" && p.lastActivityDate) {
-        const actDate = new Date(p.lastActivityDate)
-        const now = new Date()
-        if (dashDateFilter === "TODAY") {
-          matchesDate = actDate.toDateString() === now.toDateString()
-        } else if (dashDateFilter === "WEEK") {
-          const diffDays = (now - actDate) / (1000 * 3600 * 24)
-          matchesDate = diffDays <= 7
-        } else if (dashDateFilter === "MONTH") {
-          matchesDate = actDate.getMonth() === now.getMonth() && actDate.getFullYear() === now.getFullYear()
+      if (dashDateFilter !== "ALL") {
+        if (!p.lastActivityDate) {
+          matchesDate = false
+        } else {
+          const actDate = new Date(p.lastActivityDate)
+          const now = new Date()
+          if (isNaN(actDate.getTime())) {
+            matchesDate = false
+          } else if (dashDateFilter === "TODAY") {
+            matchesDate = actDate.toDateString() === now.toDateString()
+          } else if (dashDateFilter === "WEEK") {
+            const diffDays = (now - actDate) / (1000 * 3600 * 24)
+            matchesDate = diffDays >= 0 && diffDays <= 7
+          } else if (dashDateFilter === "MONTH") {
+            const diffDays = (now - actDate) / (1000 * 3600 * 24)
+            matchesDate = diffDays >= 0 && diffDays <= 30
+          } else if (dashDateFilter === "YEAR") {
+            matchesDate = actDate.getFullYear() === now.getFullYear()
+          } else if (dashDateFilter === "CUSTOM") {
+            if (customStartDate) {
+              const start = new Date(customStartDate)
+              if (!isNaN(start.getTime()) && actDate < start) {
+                matchesDate = false
+              }
+            }
+            if (customEndDate) {
+              const end = new Date(customEndDate)
+              if (!isNaN(end.getTime()) && actDate > end) {
+                matchesDate = false
+              }
+            }
+          }
         }
-      } else if (dashDateFilter !== "ALL" && !p.lastActivityDate) {
-        matchesDate = false
       }
 
-      return matchesSearch && matchesPage && matchesStatus && matchesUser && matchesActivity && matchesDate
+      return matchesSearch && matchesPage && matchesStatus && matchesUser && matchesDate
     })
   }, [
     pageMetricsList,
@@ -738,8 +834,9 @@ export default function LeadPage() {
     dashPageFilter,
     dashStatusFilter,
     dashUserFilter,
-    dashActivityType,
-    dashDateFilter
+    dashDateFilter,
+    customStartDate,
+    customEndDate
   ])
 
   // Dashboard Overview Summary Statistics
@@ -768,117 +865,291 @@ export default function LeadPage() {
     }
   }, [pageMetricsList])
 
-  // Export Dashboard PDF Summary
-  const exportDashboardPDF = useCallback(() => {
+  // Generate Dashboard PDF with Styled UI Cards (Matching Frontend Design)
+  const generateDashboardPDF = useCallback(() => {
     if (filteredPageMetrics.length === 0) {
       alert("No page activity data available for PDF export.")
-      return
+      return null
     }
 
-    const doc = new jsPDF("landscape")
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(16)
-    doc.setTextColor(30, 58, 138)
-    doc.text("RBP ENERGY INDIA PVT LTD", 14, 14)
+    const doc = new jsPDF("portrait", "mm", "a4")
+    const pageWidth = doc.internal.pageSize.getWidth() // 210mm
+    const pageHeight = doc.internal.pageSize.getHeight() // 297mm
+    const margin = 14
+    const contentWidth = pageWidth - margin * 2 // 182mm
 
-    doc.setFontSize(12)
-    doc.setTextColor(79, 70, 229)
-    doc.text("CENTRALIZED PAGE-WISE ACTIVITY & ACCESS DASHBOARD REPORT", 14, 21)
+    const drawHeader = (pageNum) => {
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(15)
+      doc.setTextColor(30, 58, 138) // Blue 900
+      doc.text("RBP ENERGY INDIA PVT LTD", margin, 14)
 
-    const now = new Date().toLocaleString("en-IN")
-    doc.setFontSize(9)
-    doc.setFont("helvetica", "normal")
-    doc.setTextColor(100, 100, 100)
-    doc.text(`Generated On: ${now} | System Total Pages: ${dashStats.totalPages}`, 14, 27)
+      doc.setFontSize(11)
+      doc.setTextColor(79, 70, 229) // Indigo 600
+      doc.text("PAGE ACTIVITY & WORKFLOW EXECUTIVE REPORT", margin, 20)
 
-    const filterAppliedStr = `Page: ${dashPageFilter} | Status: ${dashStatusFilter} | User: ${dashUserFilter} | Date: ${dashDateFilter} | Search: "${dashSearchTerm || "None"}"`
-    doc.text(`Applied Filters: ${filterAppliedStr}`, 14, 32)
-
-    doc.setLineWidth(0.5)
-    doc.setDrawColor(226, 232, 240)
-    doc.line(14, 35, 283, 35)
-
-    // Section 1: SYSTEM DASHBOARD SUMMARY METRICS
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(10.5)
-    doc.setTextColor(30, 41, 59)
-    doc.text("1. SYSTEM DASHBOARD SUMMARY METRICS", 14, 42)
-
-    const statsHeaders = [["Total Modules", "Completed Pages", "In Progress Pages", "Pending Pages", "No Activity Pages", "Total Logged Actions", "Recent Active (7D)"]]
-    const statsRows = [[
-      dashStats.totalPages,
-      dashStats.completedPages,
-      dashStats.inProgressPages,
-      dashStats.pendingPages,
-      dashStats.noActivityPages,
-      dashStats.totalActivities,
-      dashStats.recentActivitiesCount
-    ]]
-
-    autoTable(doc, {
-      startY: 45,
-      head: statsHeaders,
-      body: statsRows,
-      theme: "grid",
-      headStyles: { fillColor: [79, 70, 229], fontStyle: "bold", fontSize: 8.5 },
-      styles: { fontSize: 9, font: "helvetica", halign: "center", cellPadding: 3 },
-      columnStyles: {
-        0: { fillColor: [243, 244, 246] },
-        1: { fillColor: [236, 253, 245] },
-        2: { fillColor: [239, 246, 255] },
-        3: { fillColor: [254, 243, 199] }
-      },
-      margin: { left: 14, right: 14 }
-    })
-
-    // Section 2: Page-wise Activity & Work Table
-    const startTableY = doc.lastAutoTable.finalY + 8
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(10.5)
-    doc.setTextColor(30, 41, 59)
-    doc.text("2. PAGE-WISE WORK & ACCESS BREAKDOWN", 14, startTableY)
-
-    const tableHeaders = [
-      ["S.No", "Page / Module Name", "Category", "Total Work", "Completed", "Pending", "In Progress", "Last Activity", "Last Updated By", "Status", "Access Count"]
-    ]
-
-    const tableRows = filteredPageMetrics.map((p, idx) => [
-      idx + 1,
-      p.name,
-      p.category,
-      p.totalWork,
-      p.completed,
-      p.pending,
-      p.inProgress,
-      p.lastActivityDate ? formatDateTime(p.lastActivityDate) : "No Activity",
-      p.lastUpdatedBy,
-      p.status,
-      `${p.usersWithAccess.length} Users`
-    ])
-
-    autoTable(doc, {
-      startY: startTableY + 3,
-      head: tableHeaders,
-      body: tableRows,
-      theme: "striped",
-      headStyles: { fillColor: [67, 56, 202], fontStyle: "bold", fontSize: 8.5 },
-      styles: { fontSize: 8, font: "helvetica", cellPadding: 2.5 },
-      margin: { left: 14, right: 14 }
-    })
-
-    const pageCount = doc.internal.getNumberOfPages()
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i)
+      const now = new Date().toLocaleString("en-IN")
       doc.setFontSize(8)
       doc.setFont("helvetica", "normal")
-      doc.setTextColor(150, 150, 150)
-      doc.text(`Page ${i} of ${pageCount}`, 283 - 25, 200, { align: "right" })
-      doc.text("RBP Energy India Pvt Ltd — Page-wise Activity & Access Executive Summary Report", 14, 200)
+      doc.setTextColor(100, 116, 139)
+      doc.text(`Generated: ${now} | Modules: ${filteredPageMetrics.length}`, pageWidth - margin, 14, { align: "right" })
+
+      let dateStr = dashDateFilter
+      if (dashDateFilter === "CUSTOM") {
+        dateStr = `Custom (${customStartDate || "Start"} to ${customEndDate || "End"})`
+      }
+      const filterAppliedStr = `Filters: Page (${dashPageFilter}) | Status (${dashStatusFilter}) | Date (${dateStr})`
+      doc.text(filterAppliedStr, pageWidth - margin, 20, { align: "right" })
+
+      doc.setLineWidth(0.4)
+      doc.setDrawColor(226, 232, 240)
+      doc.line(margin, 24, pageWidth - margin, 24)
     }
 
-    const timestamp = new Date().toISOString().split("T")[0]
-    doc.save(`Page_Activity_Dashboard_Report_${timestamp}.pdf`)
-  }, [filteredPageMetrics, dashStats, systemUsers, dashPageFilter, dashStatusFilter, dashUserFilter, dashDateFilter, dashSearchTerm, formatDateTime])
+    const drawFooter = (pageNum, totalPages) => {
+      doc.setFontSize(8)
+      doc.setFont("helvetica", "normal")
+      doc.setTextColor(148, 163, 184)
+      doc.text("RBP Energy India Pvt Ltd — System Process Page Activity & Executive Access Report", margin, pageHeight - 8)
+      doc.text(`Page ${pageNum} of ${totalPages}`, pageWidth - margin, pageHeight - 8, { align: "right" })
+    }
+
+    // First page header
+    drawHeader(1)
+    let currentY = 28
+
+    // Calculate Summary Metrics for Filtered Data
+    const filteredTotalModules = filteredPageMetrics.length
+    const filteredCompleted = filteredPageMetrics.filter((p) => p.status === "Completed").length
+    const filteredInProgress = filteredPageMetrics.filter((p) => p.status === "In Progress").length
+    const filteredPending = filteredPageMetrics.filter((p) => p.status === "Pending").length
+
+    // --- SECTION 1: TOP EXECUTIVE KPI CARDS ---
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(10)
+    doc.setTextColor(30, 41, 59)
+    doc.text("EXECUTIVE DASHBOARD SUMMARY", margin, currentY)
+    currentY += 4
+
+    const kpiWidth = (contentWidth - 9) / 4 // ~43.25mm each
+    const kpiHeight = 18
+
+    const kpiCardsData = [
+      { label: "TOTAL MODULES", val: filteredTotalModules, bg: [248, 250, 252], border: [203, 213, 225], textCol: [30, 41, 59] },
+      { label: "COMPLETED", val: filteredCompleted, bg: [236, 253, 245], border: [167, 243, 208], textCol: [6, 78, 59] },
+      { label: "IN PROGRESS", val: filteredInProgress, bg: [239, 246, 255], border: [191, 219, 254], textCol: [30, 58, 138] },
+      { label: "PENDING", val: filteredPending, bg: [254, 243, 199], border: [253, 230, 138], textCol: [120, 53, 15] }
+    ]
+
+    kpiCardsData.forEach((card, i) => {
+      const kpiX = margin + i * (kpiWidth + 3)
+      doc.setDrawColor(...card.border)
+      doc.setFillColor(...card.bg)
+      doc.roundedRect(kpiX, currentY, kpiWidth, kpiHeight, 2.5, 2.5, "FD")
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(7.5)
+      doc.setTextColor(...card.textCol)
+      doc.text(card.label, kpiX + 3, currentY + 5)
+
+      doc.setFontSize(13)
+      doc.text(String(card.val), kpiX + 3, currentY + 13)
+    })
+
+    currentY += kpiHeight + 8
+
+    // --- SECTION 2: WORKFLOW PROCESS MODULE CARDS ---
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(10)
+    doc.setTextColor(30, 41, 59)
+    doc.text("WORKFLOW PROCESS MODULES CARDS", margin, currentY)
+    currentY += 4
+
+    filteredPageMetrics.forEach((p, idx) => {
+      const hasSubTabs = p.subTabs && p.subTabs.length > 0
+      const cardHeight = hasSubTabs ? 42 : 35
+      const isLast = idx === filteredPageMetrics.length - 1
+
+      // Page overflow check
+      if (currentY + cardHeight + (isLast ? 0 : 6) > pageHeight - 16) {
+        doc.addPage()
+        drawHeader(doc.internal.getNumberOfPages())
+        currentY = 28
+      }
+
+      // Draw Main Card Box
+      doc.setDrawColor(226, 232, 240) // border slate-200
+      doc.setFillColor(255, 255, 255)
+      doc.roundedRect(margin, currentY, contentWidth, cardHeight, 3, 3, "FD")
+
+      // Card Header Row: Step Badge + Module Name + Category + Status Badge
+      // Step Badge
+      doc.setFillColor(224, 231, 255) // Indigo 100
+      doc.roundedRect(margin + 3, currentY + 3, 18, 5, 1, 1, "F")
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(7)
+      doc.setTextColor(67, 56, 202) // Indigo 700
+      doc.text(`Step #${String(idx + 1).padStart(2, "0")}`, margin + 4.5, currentY + 6.5)
+
+      // Module Name
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(10)
+      doc.setTextColor(15, 23, 42) // Slate 900
+      doc.text(p.name, margin + 23, currentY + 7)
+
+      // Category Pill
+      const catWidth = doc.getTextWidth(p.category) + 4
+      const catX = margin + 24 + doc.getTextWidth(p.name)
+      doc.setFillColor(241, 245, 249) // Slate 100
+      doc.roundedRect(catX, currentY + 3.5, catWidth, 4.5, 1, 1, "F")
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(7)
+      doc.setTextColor(71, 85, 105)
+      doc.text(p.category, catX + 2, currentY + 6.8)
+
+      // Status Badge (Right aligned)
+      let statusBg = [241, 245, 249]
+      let statusTextCol = [51, 65, 85]
+      if (p.status === "Completed") {
+        statusBg = [209, 250, 229] // Emerald 100
+        statusTextCol = [6, 78, 59]
+      } else if (p.status === "In Progress") {
+        statusBg = [219, 234, 254] // Blue 100
+        statusTextCol = [30, 58, 138]
+      } else if (p.status === "Pending") {
+        statusBg = [254, 243, 199] // Amber 100
+        statusTextCol = [120, 53, 15]
+      } else if (p.status === "No Activity") {
+        statusBg = [255, 228, 230] // Rose 100
+        statusTextCol = [159, 18, 57]
+      }
+
+      const statusText = p.status
+      const statusWidth = doc.getTextWidth(statusText) + 6
+      const statusX = margin + contentWidth - statusWidth - 4
+      doc.setFillColor(...statusBg)
+      doc.roundedRect(statusX, currentY + 3, statusWidth, 5.5, 2, 2, "F")
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(7.5)
+      doc.setTextColor(...statusTextCol)
+      doc.text(statusText, statusX + 3, currentY + 6.8)
+
+      // Card Metrics Row (4 Box Grid)
+      const metricY = currentY + 11
+      const metricBoxWidth = (contentWidth - 15) / 4 // ~41.75mm
+      const metricBoxHeight = 10
+
+      const metricsArr = [
+        { title: "TOTAL WORK", val: p.totalWork, bg: [248, 250, 252], border: [226, 232, 240], col: [15, 23, 42] },
+        { title: "COMPLETED / HIST", val: p.completed, bg: [236, 253, 245], border: [167, 243, 208], col: [6, 78, 59] },
+        { title: "PENDING", val: p.pending, bg: [254, 243, 199], border: [253, 230, 138], col: [120, 53, 15] },
+        { title: "IN PROGRESS", val: p.inProgress, bg: [239, 246, 255], border: [191, 219, 254], col: [30, 58, 138] }
+      ]
+
+      metricsArr.forEach((m, mIdx) => {
+        const mX = margin + 3 + mIdx * (metricBoxWidth + 3)
+        doc.setDrawColor(...m.border)
+        doc.setFillColor(...m.bg)
+        doc.roundedRect(mX, metricY, metricBoxWidth, metricBoxHeight, 1.5, 1.5, "FD")
+
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(6.5)
+        doc.setTextColor(100, 116, 139)
+        doc.text(m.title, mX + 2.5, metricY + 3.8)
+
+        doc.setFontSize(9)
+        doc.setTextColor(...m.col)
+        doc.text(String(m.val), mX + 2.5, metricY + 8)
+      })
+
+      let nextRowY = metricY + metricBoxHeight + 3
+
+      // Sub-Tabs Breakdown Row (if available)
+      if (hasSubTabs) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(6.5)
+        doc.setTextColor(67, 56, 202)
+        doc.text("SUB-TABS:", margin + 4, nextRowY + 3.5)
+
+        let currSubTabX = margin + 20
+        p.subTabs.forEach((st) => {
+          const subText = `${st.name}: ${st.count}`
+          const subW = doc.getTextWidth(subText) + 4
+          if (currSubTabX + subW < margin + contentWidth - 4) {
+            doc.setFillColor(241, 245, 249)
+            doc.setDrawColor(203, 213, 225)
+            doc.roundedRect(currSubTabX, nextRowY + 0.5, subW, 4.5, 1, 1, "FD")
+            doc.setFont("helvetica", "bold")
+            doc.setFontSize(6.5)
+            doc.setTextColor(30, 41, 59)
+            doc.text(subText, currSubTabX + 2, nextRowY + 3.8)
+            currSubTabX += subW + 2.5
+          }
+        })
+
+        nextRowY += 6
+      }
+
+      // Card Audit & Permissions Footer Line
+      doc.setFillColor(248, 250, 252) // slate 50
+      doc.setDrawColor(241, 245, 249)
+      doc.roundedRect(margin + 3, nextRowY, contentWidth - 6, 6, 1, 1, "FD")
+
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(6.5)
+      doc.setTextColor(100, 116, 139)
+
+      const actDateStr = p.lastActivityDate ? formatDateTime(p.lastActivityDate) : "—"
+      doc.text(`Last Activity: ${actDateStr}  |  Updated By: ${p.lastUpdatedBy}`, margin + 5, nextRowY + 4)
+
+      doc.setFont("helvetica", "bold")
+      doc.setTextColor(79, 70, 229)
+      doc.text(`Access: ${p.usersWithAccess.length} Users`, margin + contentWidth - 28, nextRowY + 4)
+
+      currentY += cardHeight
+
+      // Down Arrow Indicator between cards
+      if (!isLast) {
+        doc.setDrawColor(199, 210, 254) // Indigo 200
+        doc.setFillColor(238, 242, 255)
+        doc.circle(margin + contentWidth / 2, currentY + 2.5, 2.2, "FD")
+
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(7)
+        doc.setTextColor(79, 70, 229)
+        doc.text("v", margin + contentWidth / 2 - 0.8, currentY + 3.3)
+
+        currentY += 5
+      }
+    })
+
+    // Draw page numbers on all pages
+    const totalPages = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i)
+      drawFooter(i, totalPages)
+    }
+
+    return doc
+  }, [filteredPageMetrics, dashPageFilter, dashStatusFilter, dashDateFilter, customStartDate, customEndDate, dashSearchTerm, formatDateTime])
+
+  // Open PDF Preview Modal
+  const handleOpenPdfPreview = useCallback(() => {
+    const doc = generateDashboardPDF()
+    if (!doc) return
+    const dataUrl = doc.output("dataurlstring")
+    setPdfDocInstance(doc)
+    setPdfPreviewUrl(dataUrl)
+    setShowPdfPreviewModal(true)
+  }, [generateDashboardPDF])
+
+  // Download PDF from Preview
+  const handleDownloadPdf = useCallback(() => {
+    if (pdfDocInstance) {
+      const timestamp = new Date().toISOString().split("T")[0]
+      pdfDocInstance.save(`Page_Activity_Dashboard_Report_${timestamp}.pdf`)
+    }
+  }, [pdfDocInstance])
 
   const handleViewPageDetail = (pageObj) => {
     setSelectedDashboardPage(pageObj)
@@ -903,10 +1174,10 @@ export default function LeadPage() {
           {/* Action Buttons & PDF Export */}
           <div className="flex items-center space-x-2 flex-wrap gap-y-2">
             <button
-              onClick={exportDashboardPDF}
+              onClick={handleOpenPdfPreview}
               disabled={loading || filteredPageMetrics.length === 0}
               className="inline-flex items-center px-3.5 py-2 border border-indigo-200 text-xs font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
-              title="Export Page Activity Dashboard PDF Summary Report"
+              title="Preview & Export Page Activity Dashboard PDF Summary Report"
             >
               <FileText className="h-3.5 w-3.5 mr-1.5 text-indigo-600" />
               Export Dashboard PDF
@@ -931,10 +1202,9 @@ export default function LeadPage() {
             <div
               onClick={() => {
                 setDashStatusFilter("ALL")
-                setDashActivityType("ALL")
               }}
               className={`bg-white p-3.5 rounded-xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md ${
-                dashStatusFilter === "ALL" && dashActivityType === "ALL"
+                dashStatusFilter === "ALL"
                   ? "border-blue-600 ring-2 ring-blue-500/20 bg-blue-50/10"
                   : "border-slate-200 hover:border-blue-300"
               }`}
@@ -952,7 +1222,6 @@ export default function LeadPage() {
             <div
               onClick={() => {
                 setDashStatusFilter("Completed")
-                setDashActivityType("ALL")
               }}
               className={`p-3.5 rounded-xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md ${
                 dashStatusFilter === "Completed"
@@ -973,7 +1242,6 @@ export default function LeadPage() {
             <div
               onClick={() => {
                 setDashStatusFilter("In Progress")
-                setDashActivityType("ALL")
               }}
               className={`p-3.5 rounded-xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md ${
                 dashStatusFilter === "In Progress"
@@ -994,7 +1262,6 @@ export default function LeadPage() {
             <div
               onClick={() => {
                 setDashStatusFilter("Pending")
-                setDashActivityType("ALL")
               }}
               className={`p-3.5 rounded-xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md ${
                 dashStatusFilter === "Pending"
@@ -1019,7 +1286,7 @@ export default function LeadPage() {
                 <Filter className="h-3.5 w-3.5 mr-1.5 text-indigo-600" />
                 Dashboard Filter Controls
               </h3>
-              {(dashSearchTerm || dashPageFilter !== "ALL" || dashStatusFilter !== "ALL" || dashUserFilter !== "ALL" || dashDateFilter !== "ALL" || dashActivityType !== "ALL") && (
+              {(dashSearchTerm || dashPageFilter !== "ALL" || dashStatusFilter !== "ALL" || dashUserFilter !== "ALL" || dashDateFilter !== "ALL" || customStartDate || customEndDate) && (
                 <button
                   onClick={() => {
                     setDashSearchTerm("")
@@ -1027,7 +1294,8 @@ export default function LeadPage() {
                     setDashStatusFilter("ALL")
                     setDashUserFilter("ALL")
                     setDashDateFilter("ALL")
-                    setDashActivityType("ALL")
+                    setCustomStartDate("")
+                    setCustomEndDate("")
                   }}
                   className="text-xs text-rose-600 hover:text-rose-800 font-bold underline cursor-pointer"
                 >
@@ -1036,7 +1304,7 @@ export default function LeadPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {/* Search Bar */}
               <div className="relative col-span-1 sm:col-span-2">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={15} />
@@ -1083,28 +1351,47 @@ export default function LeadPage() {
                 <select
                   value={dashDateFilter}
                   onChange={(e) => setDashDateFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white w-full"
+                  className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white w-full font-medium text-gray-700"
                 >
                   <option value="ALL">All Time</option>
-                  <option value="TODAY">Updated Today</option>
-                  <option value="WEEK">Updated This Week (7D)</option>
-                  <option value="MONTH">Updated This Month</option>
-                </select>
-              </div>
-
-              {/* Activity Filter */}
-              <div>
-                <select
-                  value={dashActivityType}
-                  onChange={(e) => setDashActivityType(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white w-full"
-                >
-                  <option value="ALL">All Activities</option>
-                  <option value="RECENT">Recent Activity (7D)</option>
-                  <option value="NO_ACTIVITY">No Activity Pages</option>
+                  <option value="TODAY">Today</option>
+                  <option value="WEEK">This Week (7 Days)</option>
+                  <option value="MONTH">This Month (30 Days)</option>
+                  <option value="YEAR">This Year (2026)</option>
+                  <option value="CUSTOM">Custom Date & Time Range 📅</option>
                 </select>
               </div>
             </div>
+
+            {/* Custom Date & Time Range Pickers */}
+            {dashDateFilter === "CUSTOM" && (
+              <div className="flex flex-col sm:flex-row items-center gap-3 bg-indigo-50/70 p-3 rounded-xl border border-indigo-100 animate-fade-in">
+                <div className="flex-1 w-full">
+                  <label className="block text-[11px] font-extrabold text-indigo-900 mb-1 flex items-center">
+                    <Clock className="h-3 w-3 mr-1 text-indigo-600" />
+                    From Date & Time:
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs border border-indigo-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium text-slate-800"
+                  />
+                </div>
+                <div className="flex-1 w-full">
+                  <label className="block text-[11px] font-extrabold text-indigo-900 mb-1 flex items-center">
+                    <Clock className="h-3 w-3 mr-1 text-indigo-600" />
+                    To Date & Time:
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs border border-indigo-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium text-slate-800"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar Process Page Cards (Vertical Stacked Flow with Arrow Indicators & Full Info) */}
@@ -1392,6 +1679,76 @@ export default function LeadPage() {
                 >
                   Close Details
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PDF PREVIEW MODAL */}
+        {showPdfPreviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="text-base font-bold flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-indigo-200" />
+                    Page Activity Dashboard PDF Preview
+                  </h3>
+                  <p className="text-xs text-indigo-100 mt-0.5">
+                    Review report before downloading | Filtered Modules: {filteredPageMetrics.length}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleDownloadPdf}
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Download PDF
+                  </button>
+                  <button
+                    onClick={() => setShowPdfPreviewModal(false)}
+                    className="rounded-full p-1.5 bg-white/10 hover:bg-white/20 transition-all text-white cursor-pointer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body: PDF Preview iFrame */}
+              <div className="p-4 bg-slate-100 flex-1 overflow-hidden flex flex-col">
+                {pdfPreviewUrl ? (
+                  <iframe
+                    src={pdfPreviewUrl}
+                    className="w-full h-[72vh] rounded-xl border border-slate-300 shadow-inner bg-white"
+                    title="PDF Dashboard Preview"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                    <Loader2 className="animate-spin h-8 w-8 text-indigo-600 mb-2" />
+                    <p className="text-sm font-medium">Generating PDF preview...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-white px-6 py-3 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500 shrink-0">
+                <span>RBP Energy India Pvt Ltd — Page Activity & Access Executive Summary Report</span>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setShowPdfPreviewModal(false)}
+                    className="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDownloadPdf}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    Download Report
+                  </button>
+                </div>
               </div>
             </div>
           </div>

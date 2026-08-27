@@ -99,19 +99,31 @@ export default function DCRPage() {
       setLoading(true)
       setError(null)
 
-      // Try fetching from 'dcr_creation' table with joined 'enquiries'
-      let res = await supabase
-        .from("dcr_creation")
-        .select(`
-          *,
-          enquiries!left (
-            beneficiary_name,
-            address,
-            village_block,
-            district,
-            contact_number
-          )
-        `)
+      // Concurrently fetch DCR data and dispatch_materials data
+      const [
+        dcrRes,
+        { data: dispatchMaterialsData }
+      ] = await Promise.all([
+        supabase
+          .from("dcr_creation")
+          .select(`
+            *,
+            enquiries!left (
+              beneficiary_name,
+              address,
+              village_block,
+              district,
+              contact_number
+            )
+          `),
+        supabase
+          .from("dispatch_materials")
+          .select("enquiry_number, planned, actual")
+          .then((r) => r)
+          .catch(() => ({ data: [] }))
+      ])
+
+      let res = dcrRes
 
       // Fallback 1: Try 'dcr' table if dcr_creation fails
       if (res.error) {
@@ -138,12 +150,19 @@ export default function DCRPage() {
 
       if (res.error) throw res.error
 
+      const completedDispatchEnquiries = new Set(
+        (dispatchMaterialsData || [])
+          .filter((dm) => dm.planned != null && dm.actual != null)
+          .map((dm) => String(dm.enquiry_number || "").trim())
+      )
+
       const pending = []
       const history = []
 
         ; (res.data || []).forEach((row) => {
           const enq = row.enquiries || (row.enquiry_number ? {} : row)
           const enquiryNumber = row.enquiry_number || enq.enquiry_number || ""
+          const enqKey = String(enquiryNumber).trim()
 
           const rowData = {
             _id: row.id,
@@ -165,7 +184,9 @@ export default function DCRPage() {
           }
 
           if (!row.actual && row.status !== "Done" && row.status !== "Completed") {
-            pending.push(rowData)
+            if (completedDispatchEnquiries.has(enqKey)) {
+              pending.push(rowData)
+            }
           } else {
             history.push(rowData)
           }

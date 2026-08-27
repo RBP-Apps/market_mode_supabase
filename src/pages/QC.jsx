@@ -133,7 +133,8 @@ export default function QCPage() {
 
       const [
         { data: qcData, error: qcError },
-        { data: fmsData, error: fmsError }
+        { data: fmsData, error: fmsError },
+        { data: installationsData }
       ] = await Promise.all([
         supabase
           .from("qc")
@@ -148,11 +149,22 @@ export default function QCPage() {
           .not("planned", "is", null),
         supabase
           .from("fms")
-          .select("enquiry_number, bp_number, cspdcl_contract_demand, present_load, installation_date, actual_9")
+          .select("enquiry_number, bp_number, cspdcl_contract_demand, present_load, installation_date, actual_9"),
+        supabase
+          .from("installations")
+          .select("enquiry_number, planned, actual")
+          .then((r) => r)
+          .catch(() => ({ data: [] }))
       ])
 
       if (qcError) throw qcError
       if (fmsError) throw fmsError
+
+      const completedInstallationEnquiries = new Set(
+        (installationsData || [])
+          .filter((inst) => inst.planned != null && inst.actual != null)
+          .map((inst) => String(inst.enquiry_number || "").trim())
+      )
 
       const fmsMap = {}
       if (fmsData) {
@@ -174,6 +186,7 @@ export default function QCPage() {
       if (qcData) {
         qcData.forEach((row) => {
           const enqNum = row.enquiry_number || ""
+          const enqKey = String(enqNum).trim()
           const enq = row.enquiries || {}
           const fmsRow = fmsMap[enqNum] || {}
 
@@ -234,10 +247,12 @@ export default function QCPage() {
             planned: row.planned || ""
           }
 
-          // pending :- planned not or actual null pending me show krega
-          // history :- planned or actula dono not null rhegaa to show kregaa
+          // pending :- planned not or actual null AND installations planned & actual not null
+          // history :- planned or actual dono not null rhegaa to show kregaa
           if (row.planned && !row.actual) {
-            pending.push(rowData)
+            if (completedInstallationEnquiries.has(enqKey)) {
+              pending.push(rowData)
+            }
           } else if (row.planned && row.actual) {
             history.push(rowData)
           }

@@ -62,21 +62,37 @@ export default function RegistrationPage() {
       setLoading(true)
       setError(null)
 
-      const { data, error: fetchError } = await supabase
-        .from("registration")
-        .select(`
-          *,
-          enquiries!left (
-            beneficiary_name,
-            address,
-            village_block,
-            district,
-            contact_number
-          )
-        `)
-        .not("planned", "is", null)
+      const [
+        { data, error: fetchError },
+        { data: docsUploadData }
+      ] = await Promise.all([
+        supabase
+          .from("registration")
+          .select(`
+            *,
+            enquiries!left (
+              beneficiary_name,
+              address,
+              village_block,
+              district,
+              contact_number
+            )
+          `)
+          .not("planned", "is", null),
+        supabase
+          .from("documents_uploads")
+          .select("enquiry_number, planned, actual")
+          .then((r) => r)
+          .catch(() => ({ data: [] }))
+      ])
 
       if (fetchError) throw fetchError
+
+      const completedDocsUploadEnquiries = new Set(
+        (docsUploadData || [])
+          .filter((d) => d.planned != null && d.actual != null)
+          .map((d) => d.enquiry_number)
+      )
 
       const pending = []
       const history = []
@@ -102,7 +118,9 @@ export default function RegistrationPage() {
         }
 
         if (!row.actual) {
-          pending.push(rowData)
+          if (completedDocsUploadEnquiries.has(enquiryNumber)) {
+            pending.push(rowData)
+          }
         } else {
           history.push(rowData)
         }

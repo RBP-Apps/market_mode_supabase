@@ -75,21 +75,37 @@ export default function DocumentsUpload() {
       setLoading(true)
       setError(null)
 
-      const { data, error: fetchError } = await supabase
-        .from("documents_uploads")
-        .select(`
-          *,
-          enquiries!left (
-            beneficiary_name,
-            address,
-            village_block,
-            district,
-            contact_number
-          )
-        `)
-        .not("planned", "is", null)
+      const [
+        { data, error: fetchError },
+        { data: paymentsData }
+      ] = await Promise.all([
+        supabase
+          .from("documents_uploads")
+          .select(`
+            *,
+            enquiries!left (
+              beneficiary_name,
+              address,
+              village_block,
+              district,
+              contact_number
+            )
+          `)
+          .not("planned", "is", null),
+        supabase
+          .from("payments")
+          .select("enquiry_number, planned, actual")
+          .then(r => r)
+          .catch(() => ({ data: [] }))
+      ])
 
       if (fetchError) throw fetchError
+
+      const completedPaymentEnquiries = new Set(
+        (paymentsData || [])
+          .filter((p) => p.planned != null && p.actual != null)
+          .map((p) => p.enquiry_number)
+      )
 
       const pending = []
       const history = []
@@ -124,7 +140,9 @@ export default function DocumentsUpload() {
         }
 
         if (!row.actual) {
-          pending.push(rowData)
+          if (completedPaymentEnquiries.has(enquiryNumber)) {
+            pending.push(rowData)
+          }
         } else {
           history.push(rowData)
         }

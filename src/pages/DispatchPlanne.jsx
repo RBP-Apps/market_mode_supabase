@@ -53,7 +53,7 @@ export default function DispatchPlannerPage() {
           `)
           .order("id", { ascending: false }),
         supabase
-          .from("sales_calls")
+          .from("payment_confirmations")
           .select("enquiry_number, planned, actual")
           .not("planned", "is", null)
           .not("actual", "is", null)
@@ -61,10 +61,10 @@ export default function DispatchPlannerPage() {
 
       if (error) throw error
       if (salesError) {
-        console.warn("Could not fetch sales_calls for validation:", salesError)
+        console.warn("Could not fetch payment_confirmations for validation:", salesError)
       }
 
-      // Map/Set of enquiry_numbers where sales_calls.planned IS NOT NULL and sales_calls.actual IS NOT NULL
+      // Map/Set of enquiry_numbers where payment_confirmations.planned IS NOT NULL and payment_confirmations.actual IS NOT NULL
       const completedSalesEnquiries = new Set(
         (salesCallsData || [])
           .filter(sc => sc.planned && sc.actual)
@@ -77,7 +77,7 @@ export default function DispatchPlannerPage() {
         ; (data || []).forEach(row => {
           const enqNum = String(row.enquiry_number || "").trim()
           if (!row.actual) {
-            // Condition for Pending: dispatch_planner.planned IS NOT NULL && dispatch_planner.actual IS NULL && sales_calls.planned IS NOT NULL && sales_calls.actual IS NOT NULL
+            // Condition for Pending: dispatch_planner.planned IS NOT NULL && dispatch_planner.actual IS NULL && payment_confirmations.planned IS NOT NULL && payment_confirmations.actual IS NOT NULL
             if (row.planned && completedSalesEnquiries.has(enqNum)) {
               pending.push(row)
             }

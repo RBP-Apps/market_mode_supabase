@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { 
-  CheckCircle2, X, Search, History, MapPin, Users, 
-  Phone, Eye, Package, Truck, Upload, Edit2, Plus, FileText 
+import {
+  CheckCircle2, X, Search, History, MapPin, Users,
+  Phone, Eye, Package, Truck, Upload, Edit2, Plus, FileText
 } from "lucide-react"
 import AdminLayout from "../components/layout/AdminLayout"
 import supabase from "../utils/supabase"
@@ -57,8 +57,11 @@ function DispatchMaterialsPage() {
   const [tellyPhotoPreview, setTellyPhotoPreview] = useState("")
   const [existingTellyPhotoUrl, setExistingTellyPhotoUrl] = useState("")
 
-  // New Fields: Serial Module Number, Inverter ID, Inverter Copy, Module Copy, E-way Bill Copy
+  // New Fields: Serial Module Number, Inverter ID, Inverter Copy, Module Copy, E-way Bill Copy, Serial Module Excel
   const [serialModuleNumber, setSerialModuleNumber] = useState("")
+  const [serialModuleExcelFile, setSerialModuleExcelFile] = useState(null)
+  const [serialModuleExcelPreview, setSerialModuleExcelPreview] = useState("")
+  const [existingSerialModuleExcelUrl, setExistingSerialModuleExcelUrl] = useState("")
   const [inverterId, setInverterId] = useState("")
 
   const [inverterCopyFile, setInverterCopyFile] = useState(null)
@@ -136,70 +139,71 @@ function DispatchMaterialsPage() {
       const pending = []
       const history = []
 
-      ;(dmData || []).forEach((row) => {
-        const enquiryNumber = row.enquiry_number || ""
-        const enq = row.enquiries || {}
-        const quotation = quotationMap[enquiryNumber] || {}
+        ; (dmData || []).forEach((row) => {
+          const enquiryNumber = row.enquiry_number || ""
+          const enq = row.enquiries || {}
+          const quotation = quotationMap[enquiryNumber] || {}
 
-        const rowData = {
-          _id: row.id,
-          _rowIndex: row.id,
+          const rowData = {
+            _id: row.id,
+            _rowIndex: row.id,
 
-          enquiryNumber: enquiryNumber,
-          beneficiaryName: enq.beneficiary_name || "",
-          address: enq.address || "",
-          villageBlock: enq.village_block || "",
-          district: enq.district || "",
-          contactNumber: enq.contact_number || "",
+            enquiryNumber: enquiryNumber,
+            beneficiaryName: enq.beneficiary_name || "",
+            address: enq.address || "",
+            villageBlock: enq.village_block || "",
+            district: enq.district || "",
+            contactNumber: enq.contact_number || "",
 
-          surveyorName: "",
-          surveyorContact: "",
+            surveyorName: "",
+            surveyorContact: "",
 
-          orderCopy: "",
+            orderCopy: "",
 
-          ipName: "",
-          ipContact: "",
+            ipName: "",
+            ipContact: "",
 
-          gstNumber: "",
-          gstCertificates: "",
-          aadharCard: "",
-          panCard: "",
-          workOrderNumber: "",
-          workOrderCopy: "",
+            gstNumber: "",
+            gstCertificates: "",
+            aadharCard: "",
+            panCard: "",
+            workOrderNumber: "",
+            workOrderCopy: "",
 
-          // QUOTATION DATA ADD
-          amount: quotation.amount || "",
-          netCost: quotation.net_cost || "",
-          gst: quotation.gst || "",
-          rate: quotation.rate || "",
-          qty: quotation.qty || "",
-          quotationCopy: quotation.quatation_copy || "",
-          sendStatus: quotation.send_status || "",
-          quotationBank: quotation.bank_name || "",
-          bankAccountDetails: quotation.bank_name || "",
+            // QUOTATION DATA ADD
+            amount: quotation.amount || "",
+            netCost: quotation.net_cost || "",
+            gst: quotation.gst || "",
+            rate: quotation.rate || "",
+            qty: quotation.qty || "",
+            quotationCopy: quotation.quatation_copy || "",
+            sendStatus: quotation.send_status || "",
+            quotationBank: quotation.bank_name || "",
+            bankAccountDetails: quotation.bank_name || "",
 
-          // EXISTING LOGIC
-          actual: row.actual || "",
-          dispatchMaterial: row.status || "",
-          tellyPhoto: row.telly_photo || "",
+            // EXISTING LOGIC
+            actual: row.actual || "",
+            dispatchMaterial: row.status || "",
+            tellyPhoto: row.telly_photo || "",
 
-          // NEW DISPATCH FIELDS
-          serialModuleNumber: row.serial_module_number || "",
-          inverterId: row.inverter_id || "",
-          inverterCopy: row.inverter_copy || "",
-          moduleCopy: row.module_copy || "",
-          ewayBillCopy: row.eway_bill_copy || "",
-        }
-
-        if (!row.actual) {
-          // Only show in Pending if available in Dispatch Planner History
-          if (dpHistoryEnquiries.has(String(enquiryNumber).trim())) {
-            pending.push(rowData)
+            // NEW DISPATCH FIELDS
+            serialModuleNumber: row.serial_module_number || "",
+            serialModuleExcel: row.serial_module_excel || "",
+            inverterId: row.inverter_id || "",
+            inverterCopy: row.inverter_copy || "",
+            moduleCopy: row.module_copy || "",
+            ewayBillCopy: row.eway_bill_copy || "",
           }
-        } else {
-          history.push(rowData)
-        }
-      })
+
+          if (!row.actual) {
+            // Only show in Pending if available in Dispatch Planner History
+            if (dpHistoryEnquiries.has(String(enquiryNumber).trim())) {
+              pending.push(rowData)
+            }
+          } else {
+            history.push(rowData)
+          }
+        })
 
       setPendingData(pending)
       setHistoryData(history)
@@ -251,6 +255,9 @@ function DispatchMaterialsPage() {
     setTellyPhotoPreview("")
 
     setSerialModuleNumber(record.serialModuleNumber || "")
+    setExistingSerialModuleExcelUrl(record.serialModuleExcel || "")
+    setSerialModuleExcelFile(null)
+    setSerialModuleExcelPreview("")
     setInverterId(record.inverterId || "")
 
     setExistingInverterCopyUrl(record.inverterCopy || "")
@@ -308,6 +315,11 @@ function DispatchMaterialsPage() {
         tellyPhotoUrl = await uploadFileToStorage(tellyPhotoFile, "telly")
       }
 
+      let serialModuleExcelUrl = existingSerialModuleExcelUrl
+      if (serialModuleExcelFile) {
+        serialModuleExcelUrl = await uploadFileToStorage(serialModuleExcelFile, "serial_excel")
+      }
+
       let inverterCopyUrl = existingInverterCopyUrl
       if (inverterCopyFile) {
         inverterCopyUrl = await uploadFileToStorage(inverterCopyFile, "inverter")
@@ -327,6 +339,7 @@ function DispatchMaterialsPage() {
         status: statusValue,
         telly_photo: tellyPhotoUrl,
         serial_module_number: serialModuleNumber,
+        serial_module_excel: serialModuleExcelUrl,
         inverter_id: inverterId,
         inverter_copy: inverterCopyUrl,
         module_copy: moduleCopyUrl,
@@ -517,6 +530,9 @@ function DispatchMaterialsPage() {
                           Serial Module Number
                         </th>
                         <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Serial Module Excel
+                        </th>
+                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Inverter ID
                         </th>
                         <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -651,6 +667,21 @@ function DispatchMaterialsPage() {
                           {/* New Dispatch History Columns */}
                           <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs font-semibold text-gray-900">{record.serialModuleNumber || "—"}</div>
+                          </td>
+                          <td className="px-2 py-3 whitespace-normal">
+                            {record.serialModuleExcel ? (
+                              <a
+                                href={record.serialModuleExcel}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-600 hover:text-emerald-800 flex items-center justify-center text-xs font-semibold"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View Excel
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
                           </td>
                           <td className="px-2 py-3 whitespace-normal">
                             <div className="text-xs font-semibold text-gray-900">{record.inverterId || "—"}</div>
@@ -865,7 +896,7 @@ function DispatchMaterialsPage() {
       {/* Modal for Planning / Editing Dispatch Details */}
       {showModal && selectedRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-          <form 
+          <form
             onSubmit={handleModalSubmit}
             className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100"
           >
@@ -891,7 +922,7 @@ function DispatchMaterialsPage() {
 
             {/* Modal Body */}
             <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-              
+
               {/* Beneficiary details card summary */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1.5 text-xs">
                 <div className="flex justify-between">
@@ -936,6 +967,59 @@ function DispatchMaterialsPage() {
                   onChange={(e) => setSerialModuleNumber(e.target.value)}
                   className="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50/30"
                 />
+              </div>
+
+              {/* Upload Serial Module Excel / CSV File */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                  <FileText className="h-3.5 w-3.5 text-blue-600" />
+                  Upload Serial Module Excel / CSV File
+                </label>
+
+                {modalType === "edit" && existingSerialModuleExcelUrl && (
+                  <div className="mb-2 p-2 border border-emerald-100 bg-emerald-50/50 rounded-lg flex items-center justify-between text-xs">
+                    <span className="text-emerald-800 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      Current Serial Module Excel File exists
+                    </span>
+                    <a
+                      href={existingSerialModuleExcelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                    >
+                      <Eye className="h-3 w-3" />
+                      View Excel
+                    </a>
+                  </div>
+                )}
+
+                <div className="relative border-2 border-dashed border-gray-300 hover:border-blue-500 rounded-xl p-3 transition text-center cursor-pointer bg-slate-50/40">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setSerialModuleExcelFile(file)
+                        setSerialModuleExcelPreview(file.name)
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Upload className="mx-auto h-5 w-5 text-gray-400 mb-1" />
+                  <p className="text-xs text-gray-600 font-medium">
+                    Drag & drop or <span className="text-blue-600 underline">browse</span> Serial Module Excel File
+                  </p>
+                  <p className="text-2xs text-gray-400 mt-0.5">Supports .xlsx, .xls, .csv files</p>
+                </div>
+
+                {serialModuleExcelPreview && (
+                  <p className="text-xs text-blue-600 mt-1 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" />
+                    Selected: {serialModuleExcelPreview}
+                  </p>
+                )}
               </div>
 
               {/* Inverter ID */}

@@ -1529,8 +1529,24 @@ CREATE TABLE IF NOT EXISTS public.payment_confirmations (
   payment_date DATE NULL,
   amount NUMERIC NULL,
   down_payment NUMERIC NULL,
+  loan_sanction_amount NUMERIC NULL,
+  payment_70_utr_number TEXT NULL,
+  payment_70_date DATE NULL,
+  payment_70_amount NUMERIC NULL,
+  payment_30_utr_number TEXT NULL,
+  payment_30_date DATE NULL,
+  payment_30_amount NUMERIC NULL,
   CONSTRAINT payment_confirmations_pkey PRIMARY KEY (id)
 ) TABLESPACE pg_default;
+
+ALTER TABLE public.payment_confirmations
+  ADD COLUMN IF NOT EXISTS loan_sanction_amount NUMERIC NULL,
+  ADD COLUMN IF NOT EXISTS payment_70_utr_number TEXT NULL,
+  ADD COLUMN IF NOT EXISTS payment_70_date DATE NULL,
+  ADD COLUMN IF NOT EXISTS payment_70_amount NUMERIC NULL,
+  ADD COLUMN IF NOT EXISTS payment_30_utr_number TEXT NULL,
+  ADD COLUMN IF NOT EXISTS payment_30_date DATE NULL,
+  ADD COLUMN IF NOT EXISTS payment_30_amount NUMERIC NULL;
 
 -- Automatically create a pending payment confirmation row when an enquiry is created
 CREATE OR REPLACE FUNCTION public.create_pending_payment_confirmations()

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { CheckCircle2, X, Search, History, MapPin, Users, Phone, Eye, CreditCard, DollarSign, Calendar, Edit3, Loader2 } from "lucide-react"
+import { CheckCircle2, X, Search, History, MapPin, Users, Phone, Eye, CreditCard, DollarSign, Calendar, Edit3, Loader2, Download, ChevronDown, ChevronUp } from "lucide-react"
 import AdminLayout from "../components/layout/AdminLayout"
 import supabase from "../utils/supabase"
 
@@ -36,6 +36,7 @@ export default function PaymentConfirmationPage() {
   const [pendingData, setPendingData] = useState([])
   const [historyData, setHistoryData] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showHistory, setShowHistory] = useState(false)
@@ -43,6 +44,10 @@ export default function PaymentConfirmationPage() {
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
+
+  // Form Accordion States
+  const [show70Payment, setShow70Payment] = useState(false)
+  const [show30Payment, setShow30Payment] = useState(false)
 
   // Form State
   const [form, setForm] = useState({
@@ -52,7 +57,14 @@ export default function PaymentConfirmationPage() {
     paymentDate: "",
     amount: "",
     downPayment: "",
-    remainingAmount:"",
+    remainingAmount: "",
+    loanSanctionAmount: "",
+    payment70UtrNumber: "",
+    payment70Date: "",
+    payment70Amount: "",
+    payment30UtrNumber: "",
+    payment30Date: "",
+    payment30Amount: "",
   })
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
@@ -87,19 +99,36 @@ export default function PaymentConfirmationPage() {
       setLoading(true)
       setError(null)
 
-      const { data, error: fetchError } = await supabase
-        .from("payment_confirmations")
-        .select(`
-          *,
-          enquiries!left (
-            beneficiary_name,
-            address,
-            contact_number
-          )
-        `)
-        .not("planned", "is", null)
+      const [
+        { data, error: fetchError },
+        { data: registrationData }
+      ] = await Promise.all([
+        supabase
+          .from("payment_confirmations")
+          .select(`
+            *,
+            enquiries!left (
+              beneficiary_name,
+              address,
+              contact_number
+            )
+          `)
+          .not("planned", "is", null),
+        supabase
+          .from("registration")
+          .select("enquiry_number, planned, actual")
+          .then((r) => r)
+          .catch(() => ({ data: [] }))
+      ])
 
       if (fetchError) throw fetchError
+
+      // Pending condition: Only include when registration table has planned IS NOT NULL and actual IS NOT NULL
+      const completedRegistrationEnquiries = new Set(
+        (registrationData || [])
+          .filter((r) => r.planned != null && r.actual != null)
+          .map((r) => r.enquiry_number)
+      )
 
       const pending = []
       const history = []
@@ -124,10 +153,19 @@ export default function PaymentConfirmationPage() {
             amount: row.amount || "",
             downPayment: row.down_payment || "",
             remainingAmount: row.remainingAmount || "",
+            loanSanctionAmount: row.loan_sanction_amount || "",
+            payment70UtrNumber: row.payment_70_utr_number || "",
+            payment70Date: row.payment_70_date || "",
+            payment70Amount: row.payment_70_amount || "",
+            payment30UtrNumber: row.payment_30_utr_number || "",
+            payment30Date: row.payment_30_date || "",
+            payment30Amount: row.payment_30_amount || "",
           }
 
           if (row.planned && !row.actual) {
-            pending.push(rowData)
+            if (completedRegistrationEnquiries.has(row.enquiry_number)) {
+              pending.push(rowData)
+            }
           } else if (row.planned && row.actual) {
             history.push(rowData)
           }
@@ -148,26 +186,34 @@ export default function PaymentConfirmationPage() {
     fetchPaymentConfirmations()
   }, [fetchPaymentConfirmations])
 
-  // Search filter
+  // Search & Filter implementation
   const filteredPendingData = useMemo(() => {
+    let data = pendingData
+    if (paymentTypeFilter) {
+      data = data.filter((record) => record.paymentType === paymentTypeFilter)
+    }
     return debouncedSearchTerm
-      ? pendingData.filter((record) =>
+      ? data.filter((record) =>
           Object.values(record).some(
             (value) => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase())
           )
         )
-      : pendingData
-  }, [pendingData, debouncedSearchTerm])
+      : data
+  }, [pendingData, debouncedSearchTerm, paymentTypeFilter])
 
   const filteredHistoryData = useMemo(() => {
+    let data = historyData
+    if (paymentTypeFilter) {
+      data = data.filter((record) => record.paymentType === paymentTypeFilter)
+    }
     return debouncedSearchTerm
-      ? historyData.filter((record) =>
+      ? data.filter((record) =>
           Object.values(record).some(
             (value) => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase())
           )
         )
-      : historyData
-  }, [historyData, debouncedSearchTerm])
+      : data
+  }, [historyData, debouncedSearchTerm, paymentTypeFilter])
 
   const handleActionClick = useCallback((record) => {
     setSelectedRecord(record)
@@ -179,7 +225,16 @@ export default function PaymentConfirmationPage() {
       amount: record.amount || "",
       downPayment: record.downPayment || "",
       remainingAmount: record.remainingAmount || "",
+      loanSanctionAmount: record.loanSanctionAmount || "",
+      payment70UtrNumber: record.payment70UtrNumber || "",
+      payment70Date: formatDateForInput(record.payment70Date || ""),
+      payment70Amount: record.payment70Amount || "",
+      payment30UtrNumber: record.payment30UtrNumber || "",
+      payment30Date: formatDateForInput(record.payment30Date || ""),
+      payment30Amount: record.payment30Amount || "",
     })
+    setShow70Payment(!!(record.payment70UtrNumber || record.payment70Date || record.payment70Amount))
+    setShow30Payment(!!(record.payment30UtrNumber || record.payment30Date || record.payment30Amount))
     setShowModal(true)
   }, [formatDateForInput])
 
@@ -201,6 +256,13 @@ export default function PaymentConfirmationPage() {
         payment_date: form.paymentDate || null,
         amount: form.amount ? parseFloat(form.amount) : null,
         down_payment: form.downPayment ? parseFloat(form.downPayment) : null,
+        loan_sanction_amount: form.loanSanctionAmount ? parseFloat(form.loanSanctionAmount) : null,
+        payment_70_utr_number: form.payment70UtrNumber || null,
+        payment_70_date: form.payment70Date || null,
+        payment_70_amount: form.payment70Amount ? parseFloat(form.payment70Amount) : null,
+        payment_30_utr_number: form.payment30UtrNumber || null,
+        payment_30_date: form.payment30Date || null,
+        payment_30_amount: form.payment30Amount ? parseFloat(form.payment30Amount) : null,
         actual: actualDate,
         status: "Done"
       }
@@ -225,6 +287,87 @@ export default function PaymentConfirmationPage() {
     }
   }
 
+  // Excel Export Handler for History Tab
+  const exportToExcel = useCallback(() => {
+    const dataToExport = filteredHistoryData
+
+    if (dataToExport.length === 0) {
+      alert("No history data available to export")
+      return
+    }
+
+    const headers = [
+      "Enquiry Number",
+      "Beneficiary Name",
+      "Address",
+      "Contact Number",
+      "Payment Type",
+      "Cheque Number",
+      "UTR Number",
+      "Payment Date",
+      "Amount (₹)",
+      "Down Payment (₹)",
+      "Remaining Amount (₹)",
+      "Loan Sanction Amount (₹)",
+      "70% Payment UTR Number",
+      "70% Payment Date",
+      "70% Payment Amount (₹)",
+      "30% Payment UTR Number",
+      "30% Payment Date",
+      "30% Payment Amount (₹)",
+      "Confirm Date",
+      "Delay (Days)"
+    ]
+
+    const rows = dataToExport.map((record) => [
+      record.enquiryNumber || "",
+      record.beneficiaryName || "",
+      record.address || "",
+      record.contactNumber || "",
+      record.paymentType || "",
+      record.chequeNumber || "",
+      record.utrNumber || "",
+      formatDate(record.paymentDate),
+      record.amount || "",
+      record.downPayment || "",
+      record.remainingAmount || "",
+      record.loanSanctionAmount || "",
+      record.payment70UtrNumber || "",
+      formatDate(record.payment70Date),
+      record.payment70Amount || "",
+      record.payment30UtrNumber || "",
+      formatDate(record.payment30Date),
+      record.payment30Amount || "",
+      formatDate(record.actual),
+      record.delay || "0"
+    ])
+
+    const formatValue = (val) => {
+      if (val === undefined || val === null) return '""'
+      const str = String(val)
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return `"${str}"`
+    }
+
+    const csvContent = [
+      headers.map(formatValue).join(','),
+      ...rows.map((row) => row.map(formatValue).join(','))
+    ].join('\n')
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    const timestamp = new Date().toISOString().split("T")[0]
+    link.download = `payment-confirmation-history-${timestamp}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  }, [filteredHistoryData, formatDate])
+
   const toggleSection = useCallback((section) => {
     setShowHistory(section === "history")
     setSearchTerm("")
@@ -241,7 +384,28 @@ export default function PaymentConfirmationPage() {
               {showHistory ? CONFIG.PAGE_CONFIG.historyDescription : CONFIG.PAGE_CONFIG.description}
             </p>
           </div>
-          <div className="flex space-x-4">
+
+          <div className="flex flex-wrap items-center gap-3">
+            {showHistory && (
+              <button
+                onClick={exportToExcel}
+                className="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow-xs transition-colors shrink-0"
+              >
+                <Download className="h-4 w-4 mr-1.5" />
+                Export Excel ({filteredHistoryData.length})
+              </button>
+            )}
+
+            <select
+              value={paymentTypeFilter}
+              onChange={(e) => setPaymentTypeFilter(e.target.value)}
+              className="px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs bg-white shadow-xs"
+            >
+              <option value="">All Payment Types</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Bank Finance">Bank Finance</option>
+            </select>
+
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
@@ -249,7 +413,7 @@ export default function PaymentConfirmationPage() {
                 placeholder={showHistory ? "Search history..." : "Search pending confirmations..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white shadow-xs w-64"
+                className="pl-9 pr-4 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs bg-white shadow-xs w-60"
               />
             </div>
           </div>
@@ -331,6 +495,13 @@ export default function PaymentConfirmationPage() {
                     <th className="px-4 py-4">Remaining Amount</th>
                     {showHistory && (
                       <>
+                        <th className="px-4 py-4">Loan Sanction Amt</th>
+                        <th className="px-4 py-4">70% UTR</th>
+                        <th className="px-4 py-4">70% Date</th>
+                        <th className="px-4 py-4">70% Amt</th>
+                        <th className="px-4 py-4">30% UTR</th>
+                        <th className="px-4 py-4">30% Date</th>
+                        <th className="px-4 py-4">30% Amt</th>
                         <th className="px-4 py-4">Confirm Date</th>
                         <th className="px-4 py-4">Delay (Days)</th>
                       </>
@@ -381,6 +552,19 @@ export default function PaymentConfirmationPage() {
                           <td className="px-4 py-3 font-semibold text-purple-700">
                             {record.remainingAmount ? `₹${parseFloat(record.remainingAmount).toLocaleString("en-IN")}` : "—"}
                           </td>
+                          <td className="px-4 py-3 font-semibold text-blue-800">
+                            {record.loanSanctionAmount ? `₹${parseFloat(record.loanSanctionAmount).toLocaleString("en-IN")}` : "—"}
+                          </td>
+                          <td className="px-4 py-3">{record.payment70UtrNumber || "—"}</td>
+                          <td className="px-4 py-3">{formatDate(record.payment70Date)}</td>
+                          <td className="px-4 py-3 font-semibold text-blue-700">
+                            {record.payment70Amount ? `₹${parseFloat(record.payment70Amount).toLocaleString("en-IN")}` : "—"}
+                          </td>
+                          <td className="px-4 py-3">{record.payment30UtrNumber || "—"}</td>
+                          <td className="px-4 py-3">{formatDate(record.payment30Date)}</td>
+                          <td className="px-4 py-3 font-semibold text-indigo-700">
+                            {record.payment30Amount ? `₹${parseFloat(record.payment30Amount).toLocaleString("en-IN")}` : "—"}
+                          </td>
                           <td className="px-4 py-3 text-green-700 font-semibold">{formatDate(record.actual)}</td>
                           <td className="px-4 py-3 font-semibold">
                             <span className={`px-2 py-0.5 rounded-full ${parseInt(record.delay) > 0 ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>
@@ -391,8 +575,8 @@ export default function PaymentConfirmationPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={13} className="px-4 py-16 text-center text-gray-500 font-medium">
-                          {searchTerm ? "No confirmation history records matching your search" : "No completed confirmations found"}
+                        <td colSpan={21} className="px-4 py-16 text-center text-gray-500 font-medium">
+                          {searchTerm || paymentTypeFilter ? "No confirmation history records matching your filter" : "No completed confirmations found"}
                         </td>
                       </tr>
                     )
@@ -440,7 +624,7 @@ export default function PaymentConfirmationPage() {
                   ) : (
                     <tr>
                       <td colSpan={11} className="px-4 py-16 text-center text-gray-500 font-medium">
-                        {searchTerm ? "No pending confirmations matching your search" : "No pending confirmations found"}
+                        {searchTerm || paymentTypeFilter ? "No pending confirmations matching your filter" : "No pending confirmations found"}
                       </td>
                     </tr>
                   )}
@@ -479,7 +663,7 @@ export default function PaymentConfirmationPage() {
                 </button>
               </div>
 
-              <div className="px-6 py-6 space-y-4">
+              <div className="px-6 py-6 space-y-4 max-h-[70vh] overflow-y-auto">
                 {/* 1. Payment Type Dropdown */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
@@ -564,6 +748,8 @@ export default function PaymentConfirmationPage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
                   />
                 </div>
+
+                {/* 7. Remaining Amount */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
                     Remaining Amount (₹)
@@ -575,6 +761,140 @@ export default function PaymentConfirmationPage() {
                     onChange={(e) => setForm({ ...form, remainingAmount: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
                   />
+                </div>
+
+                {/* 8. Loan Sanction Amount */}
+                <div className="pt-2 border-t border-gray-200">
+                  <label className="block text-xs font-bold text-blue-700 uppercase tracking-wider mb-1">
+                    Loan Sanction Amount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Enter Loan Sanction Amount"
+                    value={form.loanSanctionAmount}
+                    onChange={(e) => setForm({ ...form, loanSanctionAmount: e.target.value })}
+                    className="w-full border border-blue-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all bg-blue-50/20"
+                  />
+                </div>
+
+                {/* 9. 70% Payment Section */}
+                <div className="border border-blue-200 rounded-xl overflow-hidden bg-blue-50/20">
+                  <button
+                    type="button"
+                    onClick={() => setShow70Payment(!show70Payment)}
+                    className="w-full px-4 py-2.5 bg-blue-50 hover:bg-blue-100 flex items-center justify-between text-xs font-bold text-blue-800 transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <CreditCard className="h-4 w-4 text-blue-600" />
+                      70% Payment Details
+                    </span>
+                    <span className="text-blue-600 text-2xs bg-white px-2 py-0.5 rounded-full border border-blue-200 flex items-center">
+                      {show70Payment ? (
+                        <>Hide <ChevronUp className="h-3 w-3 ml-1" /></>
+                      ) : (
+                        <>View / Edit <ChevronDown className="h-3 w-3 ml-1" /></>
+                      )}
+                    </span>
+                  </button>
+                  {show70Payment && (
+                    <div className="p-4 space-y-3 bg-white border-t border-blue-100">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          70% Payment UTR Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter 70% UTR Number"
+                          value={form.payment70UtrNumber}
+                          onChange={(e) => setForm({ ...form, payment70UtrNumber: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          70% Payment Date
+                        </label>
+                        <input
+                          type="date"
+                          value={form.payment70Date}
+                          onChange={(e) => setForm({ ...form, payment70Date: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          70% Payment Amount (₹)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="Enter 70% Amount"
+                          value={form.payment70Amount}
+                          onChange={(e) => setForm({ ...form, payment70Amount: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 10. 30% Payment Section */}
+                <div className="border border-indigo-200 rounded-xl overflow-hidden bg-indigo-50/20">
+                  <button
+                    type="button"
+                    onClick={() => setShow30Payment(!show30Payment)}
+                    className="w-full px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 flex items-center justify-between text-xs font-bold text-indigo-800 transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <CreditCard className="h-4 w-4 text-indigo-600" />
+                      30% Payment Details
+                    </span>
+                    <span className="text-indigo-600 text-2xs bg-white px-2 py-0.5 rounded-full border border-indigo-200 flex items-center">
+                      {show30Payment ? (
+                        <>Hide <ChevronUp className="h-3 w-3 ml-1" /></>
+                      ) : (
+                        <>View / Edit <ChevronDown className="h-3 w-3 ml-1" /></>
+                      )}
+                    </span>
+                  </button>
+                  {show30Payment && (
+                    <div className="p-4 space-y-3 bg-white border-t border-indigo-100">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          30% Payment UTR Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter 30% UTR Number"
+                          value={form.payment30UtrNumber}
+                          onChange={(e) => setForm({ ...form, payment30UtrNumber: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          30% Payment Date
+                        </label>
+                        <input
+                          type="date"
+                          value={form.payment30Date}
+                          onChange={(e) => setForm({ ...form, payment30Date: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          30% Payment Amount (₹)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="Enter 30% Amount"
+                          value={form.payment30Amount}
+                          onChange={(e) => setForm({ ...form, payment30Amount: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
