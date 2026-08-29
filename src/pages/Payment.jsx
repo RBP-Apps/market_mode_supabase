@@ -626,7 +626,7 @@ function PaymentPage() {
                       Payment Type
                     </th>
                     <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Check No
+                      Cheque No
                     </th>
                     <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
@@ -964,7 +964,7 @@ function PaymentPage() {
                       {paymentForm.paymentType === "Cheque / RTGS / UPI" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                           <div>
-                            <label className="block text-xs font-semibold text-gray-700">Check No</label>
+                            <label className="block text-xs font-semibold text-gray-700">Cheque No</label>
                             <input
                               type="text"
                               value={paymentForm.checkNo}

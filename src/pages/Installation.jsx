@@ -16,7 +16,7 @@ const CONFIG = {
 }
 
 // Helper to parse complete installation documents JSON or legacy string
-const parseCompleteDocs = (docValue) => {
+const parseCompleteDocs = (docValue, row = {}) => {
   const emptyState = {
     panelFront: [],
     panelBack: [],
@@ -26,39 +26,64 @@ const parseCompleteDocs = (docValue) => {
     earthing: [],
   }
 
+  const formatItem = (item, prefix, idx) => {
+    if (typeof item === 'string') {
+      return {
+        id: `${prefix.toLowerCase().replace(/\s+/g, '_')}_${idx}_${Date.now()}`,
+        url: item,
+        name: `${prefix} ${idx + 1}`,
+        type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image'
+      }
+    }
+    return item
+  }
+
+  // 1. Check array columns from DB table row
+  const fromDbColumns = {
+    panelFront: Array.isArray(row?.panel_front) ? row.panel_front : [],
+    panelBack: Array.isArray(row?.panel_back) ? row.panel_back : [],
+    panelSide: Array.isArray(row?.panel_side) ? row.panel_side : [],
+    la: Array.isArray(row?.la_copy) ? row.la_copy : [],
+    acdb: Array.isArray(row?.acdb_dcdb_inverter_copy) ? row.acdb_dcdb_inverter_copy : [],
+    earthing: Array.isArray(row?.earthing_copy) ? row.earthing_copy : [],
+  }
+
+  const hasDbColumns = Object.values(fromDbColumns).some(arr => arr && arr.length > 0)
+  if (hasDbColumns) {
+    return {
+      panelFront: fromDbColumns.panelFront.map((item, idx) => formatItem(item, 'Panel Front', idx)),
+      panelBack: fromDbColumns.panelBack.map((item, idx) => formatItem(item, 'Panel Back', idx)),
+      panelSide: fromDbColumns.panelSide.map((item, idx) => formatItem(item, 'Panel Side', idx)),
+      la: fromDbColumns.la.map((item, idx) => formatItem(item, 'LA Copy', idx)),
+      acdb: fromDbColumns.acdb.map((item, idx) => formatItem(item, 'ACDB Copy', idx)),
+      earthing: fromDbColumns.earthing.map((item, idx) => formatItem(item, 'Earthing Copy', idx)),
+    }
+  }
+
   if (!docValue) return emptyState
 
+  // 2. Parse docValue if it's JSON string or Object
+  let parsed = docValue
   if (typeof docValue === "string") {
     try {
-      const parsed = JSON.parse(docValue)
-      if (typeof parsed === "object" && parsed !== null) {
-        return {
-          panelFront: (parsed.panelFront || []).map((item, idx) => 
-            typeof item === 'string' ? { id: `pf_${idx}_${Date.now()}`, url: item, name: `Panel Front ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
-          ),
-          panelBack: (parsed.panelBack || []).map((item, idx) => 
-            typeof item === 'string' ? { id: `pb_${idx}_${Date.now()}`, url: item, name: `Panel Back ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
-          ),
-          panelSide: (parsed.panelSide || []).map((item, idx) => 
-            typeof item === 'string' ? { id: `ps_${idx}_${Date.now()}`, url: item, name: `Panel Side ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
-          ),
-          la: (parsed.la || []).map((item, idx) => 
-            typeof item === 'string' ? { id: `la_${idx}_${Date.now()}`, url: item, name: `LA Copy ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
-          ),
-          acdb: (parsed.acdb || []).map((item, idx) => 
-            typeof item === 'string' ? { id: `ac_${idx}_${Date.now()}`, url: item, name: `ACDB Copy ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
-          ),
-          earthing: (parsed.earthing || []).map((item, idx) => 
-            typeof item === 'string' ? { id: `earth_${idx}_${Date.now()}`, url: item, name: `Earthing Copy ${idx + 1}`, type: item.toLowerCase().includes('.pdf') ? 'pdf' : 'image' } : item
-          ),
-        }
-      }
+      parsed = JSON.parse(docValue)
     } catch {
       // Legacy single URL string
       return {
         ...emptyState,
         panelFront: [{ id: `legacy_1_${Date.now()}`, url: docValue, name: "Legacy Installation Photo", type: docValue.toLowerCase().includes('.pdf') ? 'pdf' : 'image' }],
       }
+    }
+  }
+
+  if (typeof parsed === "object" && parsed !== null) {
+    return {
+      panelFront: (parsed.panelFront || parsed.panel_front || []).map((item, idx) => formatItem(item, 'Panel Front', idx)),
+      panelBack: (parsed.panelBack || parsed.panel_back || []).map((item, idx) => formatItem(item, 'Panel Back', idx)),
+      panelSide: (parsed.panelSide || parsed.panel_side || []).map((item, idx) => formatItem(item, 'Panel Side', idx)),
+      la: (parsed.la || parsed.la_copy || []).map((item, idx) => formatItem(item, 'LA Copy', idx)),
+      acdb: (parsed.acdb || parsed.acdb_dcdb_inverter_copy || []).map((item, idx) => formatItem(item, 'ACDB Copy', idx)),
+      earthing: (parsed.earthing || parsed.earthing_copy || []).map((item, idx) => formatItem(item, 'Earthing Copy', idx)),
     }
   }
 
@@ -266,6 +291,17 @@ const fetchSheetData = useCallback(async () => {
       const enquiryNumber = row.enquiry_number || ""
       const enq = row.enquiries || {}
 
+      let docsObj = {}
+      if (typeof row.complete_installation_docs === "object" && row.complete_installation_docs !== null) {
+        docsObj = row.complete_installation_docs
+      } else if (typeof row.complete_installation_docs === "string") {
+        try {
+          docsObj = JSON.parse(row.complete_installation_docs)
+        } catch {
+          docsObj = {}
+        }
+      }
+
       const rowData = {
         _id: row.id,
         enquiryNumber: enquiryNumber,
@@ -289,9 +325,10 @@ const fetchSheetData = useCallback(async () => {
         wiring: row.wiring || "",
 
         foundationPhoto: row.plant_photo || "",
-        afterInstallationPhoto: row.installation_photo || "",
-        photoWithCustomer: row.dcr_certificate || "",
-        completeInstallationPhoto: row.module_warranty || "",
+        afterInstallationPhoto: row.dcr_certificate || row.installation_photo || "",
+        photoWithCustomer: row.module_warranty || "",
+        completeInstallationPhoto: row.complete_installation_docs || "",
+        rawRow: row,
 
         inverterMake: row.inverter_make || "",
         inverterCapacity: row.inverter_capacity || "",
@@ -301,12 +338,12 @@ const fetchSheetData = useCallback(async () => {
         structureMake: row.structure_make || "",
 
         investorId: row.inverter_id || "",
-        repeatedCertificate: "",
-        projectCommissioningCertificate: "",
-        dataLoggerType: "",
-        simNumber: "",
-        mobileNumber: "",
-        dataPlan: "",
+        repeatedCertificate: row.repeated_certificate || docsObj.repeatedCertificate || "",
+        projectCommissioningCertificate: row.project_commissioning_certificate || docsObj.projectCommissioningCertificate || "",
+        dataLoggerType: row.data_logger_type || docsObj.dataLoggerType || "",
+        simNumber: row.sim_number || docsObj.simNumber || "",
+        mobileNumber: row.mobile_number || docsObj.mobileNumber || "",
+        dataPlan: row.data_plan || docsObj.dataPlan || "",
       }
 
       if (!row.actual) {
@@ -364,7 +401,7 @@ const fetchSheetData = useCallback(async () => {
 
   const handleInstallClick = useCallback((record) => {
     setSelectedRecord(record)
-    setCompleteDocsState(parseCompleteDocs(record.completeInstallationPhoto))
+    setCompleteDocsState(parseCompleteDocs(record.completeInstallationPhoto, record.rawRow))
     setInstallForm({
       inverterMake: record.inverterMake || "",
       inverterCapacity: record.inverterCapacity || "",
@@ -489,7 +526,7 @@ const uploadImageToDrive = useCallback(async (file) => {
   }
 }, [selectedRecord])
 
-  // Helper to upload all 4 categories in completeDocsState and return JSON payload
+  // Helper to upload all 4 categories in completeDocsState and return object payload
   const uploadAndBuildCompleteDocsPayload = async (docsState, enquiryNum) => {
     const result = {
       panelFront: [],
@@ -501,7 +538,6 @@ const uploadImageToDrive = useCallback(async (file) => {
     }
 
     const categories = ["panelFront", "panelBack", "panelSide", "la", "acdb", "earthing"]
-    let hasAnyDoc = false
 
     for (const cat of categories) {
       const items = docsState[cat] || []
@@ -522,15 +558,13 @@ const uploadImageToDrive = useCallback(async (file) => {
             .getPublicUrl(filePath)
 
           result[cat].push(publicData.publicUrl)
-          hasAnyDoc = true
         } else if (item.url) {
           result[cat].push(item.url)
-          hasAnyDoc = true
         }
       }
     }
 
-    return hasAnyDoc ? JSON.stringify(result) : ""
+    return result
   }
 
 
@@ -811,13 +845,23 @@ const handleInstallSubmit = async () => {
       const file = installForm[field]
       if (file && file instanceof File) {
         const url = await uploadImageToDrive(file)
-        currentFileUploads[field] = { url }
+        currentFileUploads[field] = { url, uploaded: true }
       }
     }
 
     // Process & upload 4-category complete installation docs
-    const completeDocsJson = await uploadAndBuildCompleteDocsPayload(completeDocsState, selectedRecord.enquiryNumber)
-    const finalCompletePhotoUrl = completeDocsJson || currentFileUploads.completeInstallationPhoto?.url || ""
+    const completeDocsPayload = await uploadAndBuildCompleteDocsPayload(completeDocsState, selectedRecord.enquiryNumber)
+
+    // Build complete JSON object including metadata & extra fields for jsonb storage
+    const completeDocsJsonObject = {
+      ...completeDocsPayload,
+      repeatedCertificate: currentFileUploads.repeatedCertificate?.url || selectedRecord.repeatedCertificate || "",
+      projectCommissioningCertificate: currentFileUploads.projectCommissioningCertificate?.url || selectedRecord.projectCommissioningCertificate || "",
+      dataLoggerType: installForm.dataLoggerType || "",
+      simNumber: installForm.simNumber || "",
+      mobileNumber: installForm.mobileNumber || "",
+      dataPlan: installForm.dataPlan || "",
+    }
 
     const { error } = await supabase
       .from("installations")
@@ -829,10 +873,10 @@ const handleInstallSubmit = async () => {
         base_foundation: installForm.baseFoundation,
         wiring: installForm.wiring,
 
-        plant_photo: currentFileUploads.foundationPhoto?.url,
-        installation_photo: currentFileUploads.afterInstallationPhoto?.url,
-        dcr_certificate: currentFileUploads.photoWithCustomer?.url,
-        module_warranty: finalCompletePhotoUrl,
+        plant_photo: currentFileUploads.foundationPhoto?.url || selectedRecord.foundationPhoto || null,
+        dcr_certificate: currentFileUploads.afterInstallationPhoto?.url || selectedRecord.afterInstallationPhoto || null,
+        module_warranty: currentFileUploads.photoWithCustomer?.url || selectedRecord.photoWithCustomer || null,
+        installation_photo: currentFileUploads.afterInstallationPhoto?.url || selectedRecord.afterInstallationPhoto || null,
 
         inverter_make: installForm.inverterMake,
         inverter_capacity: installForm.inverterCapacity,
@@ -840,8 +884,26 @@ const handleInstallSubmit = async () => {
         module_capacity: installForm.moduleCapacity,
         module_type: installForm.moduleType,
         structure_make: installForm.structureMake,
-
         inverter_id: installForm.inverterId,
+
+        // 4 Categories System - Text Arrays
+        panel_front: completeDocsPayload.panelFront || [],
+        panel_back: completeDocsPayload.panelBack || [],
+        panel_side: completeDocsPayload.panelSide || [],
+        la_copy: completeDocsPayload.la || [],
+        acdb_dcdb_inverter_copy: completeDocsPayload.acdb || [],
+        earthing_copy: completeDocsPayload.earthing || [],
+
+        // Individual columns for extra fields
+        data_logger_type: installForm.dataLoggerType || null,
+        sim_number: installForm.simNumber || null,
+        mobile_number: installForm.mobileNumber || null,
+        data_plan: installForm.dataPlan || null,
+        repeated_certificate: currentFileUploads.repeatedCertificate?.url || selectedRecord.repeatedCertificate || null,
+        project_commissioning_certificate: currentFileUploads.projectCommissioningCertificate?.url || selectedRecord.projectCommissioningCertificate || null,
+
+        // Full JSONB document storage
+        complete_installation_docs: completeDocsJsonObject,
       })
       .eq("enquiry_number", selectedRecord.enquiryNumber)
 
@@ -2388,7 +2450,7 @@ const handleInstallSubmit = async () => {
               {/* Body */}
               <div className="p-6 overflow-y-auto space-y-6 flex-1">
                 {(() => {
-                  const docs = parseCompleteDocs(viewingCompleteDocsRecord.completeInstallationPhoto)
+                  const docs = parseCompleteDocs(viewingCompleteDocsRecord.completeInstallationPhoto, viewingCompleteDocsRecord.rawRow)
                   const categories = [
                     { title: "Panel Installation - Front", items: docs.panelFront, icon: Sun },
                     { title: "Panel Installation - Back", items: docs.panelBack, icon: Sun },

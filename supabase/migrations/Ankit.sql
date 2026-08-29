@@ -789,6 +789,19 @@ CREATE TABLE public.installations (
   module_type TEXT NULL,
   structure_make TEXT NULL,
   inverter_id TEXT NULL,
+  panel_front TEXT[] NULL,
+  panel_back TEXT[] NULL,
+  panel_side TEXT[] NULL,
+  la_copy TEXT[] NULL,
+  acdb_dcdb_inverter_copy TEXT[] NULL,
+  earthing_copy TEXT[] NULL,
+  complete_installation_docs JSONB NULL,
+  data_logger_type TEXT NULL,
+  sim_number TEXT NULL,
+  mobile_number TEXT NULL,
+  data_plan TEXT NULL,
+  repeated_certificate TEXT NULL,
+  project_commissioning_certificate TEXT NULL,
   CONSTRAINT installations_pkey PRIMARY KEY (id)
 );
 
