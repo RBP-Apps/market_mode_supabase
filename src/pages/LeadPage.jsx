@@ -495,14 +495,14 @@ export default function LeadPage() {
       }
       // 4. Process for "Quotation Create" (4 Tabs)
       else if (pageObj.name === "Quotation Create" || pageObj.name === "Quotation Creation") {
-        const allQuotationRows = [...newQuotationData, ...quotation10kwData]
+        const quotationRows = newQuotationData || []
 
-        let tab1Pending = fmsRecords.filter(fms => fms.planned_2 && !fms.actual_2 && !allQuotationRows.some(q => q.enquiry_number === fms.enquiry_number))
-        let tab2BomApproval = allQuotationRows.filter(q => q.status === "BOM Approval" || q.status === "Pending BOM" || q.status === "BOM_APPROVAL")
-        let tab3DirectorApproval = allQuotationRows.filter(q => q.status === "Director Approval" || q.status === "Pending Director" || q.status === "DIRECTOR_APPROVAL")
-        let tab4History = allQuotationRows.filter(q => q.status === "Approved" || q.status === "Completed" || (!q.status && (q.actual || q.created_at)))
+        let tab1Pending = quotationRows.filter(item => item.planned != null && !item.actual)
+        let tab2BomApproval = quotationRows.filter(item => item.planned != null && item.actual != null && item.status === "Pending")
+        let tab3DirectorApproval = quotationRows.filter(item => item.planned != null && item.actual != null && (item.director_approval || item.directorApproval) !== "Done")
+        let tab4History = quotationRows.filter(item => item.planned != null && item.actual != null && item.status !== "Pending")
 
-        if (allQuotationRows.length === 0 && fmsRecords.length > 0) {
+        if (quotationRows.length === 0 && fmsRecords.length > 0) {
           fmsRecords.forEach((fms) => {
             if (fms.planned_4 && !fms.actual_4) {
               tab1Pending.push(fms)
@@ -517,15 +517,15 @@ export default function LeadPage() {
         const tab3Count = tab3DirectorApproval.length
         const tab4Count = tab4History.length
 
-        totalWork = tab1Count + tab2Count + tab3Count + tab4Count
         completed = tab4Count
         pending = tab1Count
         inProgress = tab2Count + tab3Count
+        totalWork = completed + pending
         activityCount = totalWork
 
         tab1Pending.forEach((q) => {
           const enqNum = q.enquiry_number || `EN-${q.id}`
-          const dt = q.planned_4 || q.created_at || new Date().toISOString()
+          const dt = q.planned || q.created_at || new Date().toISOString()
           if (!lastActivityDate || new Date(dt) > new Date(lastActivityDate)) {
             lastActivityDate = dt
             lastUpdatedBy = q.salesperson || "Sales Staff"
@@ -533,7 +533,7 @@ export default function LeadPage() {
           taskTimeline.push({
             enquiryNumber: enqNum,
             user: q.salesperson || "Sales Staff",
-            action: `[Tab 1: Pending] ${enqNum}`,
+            action: `[Pending] ${enqNum}`,
             status: "Pending",
             timestamp: dt,
             details: `Awaiting Quotation Generation`
@@ -550,7 +550,7 @@ export default function LeadPage() {
           taskTimeline.push({
             enquiryNumber: enqNum,
             user: q.salesperson || "Sales Staff",
-            action: `[Tab 2: BOM Approval] ${enqNum}`,
+            action: `[BOM Approval] ${enqNum}`,
             status: "In Progress",
             timestamp: dt,
             details: `Pending BOM Approval`
@@ -567,7 +567,7 @@ export default function LeadPage() {
           taskTimeline.push({
             enquiryNumber: enqNum,
             user: q.salesperson || "Sales Staff",
-            action: `[Tab 3: Director Approval] ${enqNum}`,
+            action: `[Director Approval] ${enqNum}`,
             status: "In Progress",
             timestamp: dt,
             details: `Pending Director Approval`
@@ -584,7 +584,7 @@ export default function LeadPage() {
           taskTimeline.push({
             enquiryNumber: enqNum,
             user: q.salesperson || "Sales Staff",
-            action: `[Tab 4: Approved History] ${enqNum}`,
+            action: `[Approved History] ${enqNum}`,
             status: "Completed",
             timestamp: dt,
             details: `Quotation fully approved & final`
@@ -592,10 +592,10 @@ export default function LeadPage() {
         })
 
         subTabs = [
-          { name: "Tab 1 (Pending)", count: tab1Count, color: "bg-amber-100 text-amber-900 border-amber-300" },
-          { name: "Tab 2 (BOM Approval)", count: tab2Count, color: "bg-purple-100 text-purple-900 border-purple-300" },
-          { name: "Tab 3 (Director Approval)", count: tab3Count, color: "bg-indigo-100 text-indigo-900 border-indigo-300" },
-          { name: "Tab 4 (History)", count: tab4Count, color: "bg-emerald-100 text-emerald-900 border-emerald-300" }
+          { name: "Pending", count: tab1Count, color: "bg-amber-100 text-amber-900 border-amber-300" },
+          { name: "BOM Approval", count: tab2Count, color: "bg-purple-100 text-purple-900 border-purple-300" },
+          { name: "Director Approval", count: tab3Count, color: "bg-indigo-100 text-indigo-900 border-indigo-300" },
+          { name: "History", count: tab4Count, color: "bg-emerald-100 text-emerald-900 border-emerald-300" }
         ]
       }
       // 5. Site Survey / IP Assignment
