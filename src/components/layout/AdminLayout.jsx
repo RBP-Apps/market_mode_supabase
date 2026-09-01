@@ -30,7 +30,8 @@ import {
   ChartColumn,
   BarChart3,
   ListFilter,
-  Users
+  Users,
+  X
 } from 'lucide-react'
 
 export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
@@ -40,6 +41,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
   const [isDataSubmenuOpen, setIsDataSubmenuOpen] = useState(false)
   const [username, setUsername] = useState("")
   const [userRole, setUserRole] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
 
   const desktopSidebarRef = useRef(null)
   const mobileSidebarRef = useRef(null)
@@ -457,6 +459,18 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
   const accessibleRoutes = getAccessibleRoutes()
   const accessibleDepartments = getAccessibleDepartments()
 
+  const filteredRoutes = accessibleRoutes.filter((route) => {
+    if (!searchQuery.trim()) return true
+    const query = searchQuery.toLowerCase().trim()
+    const labelMatches = route.label.toLowerCase().includes(query)
+    if (labelMatches) return true
+
+    if (route.submenu && accessibleDepartments) {
+      return accessibleDepartments.some((cat) => cat.name.toLowerCase().includes(query))
+    }
+    return false
+  })
+
   return (
     <div className={`flex h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-purple-50`}>
       {/* Sidebar for desktop */}
@@ -474,9 +488,36 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
             <span>Market Mode</span>
           </Link>
         </div>
+        <div className="p-2 border-b border-blue-100 bg-white">
+          <div className="relative flex items-center">
+            <Search className="absolute left-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search pages..."
+              className="w-full rounded-md border border-blue-200 bg-blue-50/50 pl-8 pr-8 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:bg-white focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors"
+                type="button"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
         <nav ref={desktopSidebarRef} onScroll={handleDesktopScroll} className="flex-1 overflow-y-auto p-2 custom-scrollbar">
-          <ul className="space-y-1 pb-20">
-            {accessibleRoutes.map((route) => (
+          {filteredRoutes.length === 0 ? (
+            <div className="px-3 py-6 text-center text-sm text-gray-500">
+              No pages found
+            </div>
+          ) : (
+            <ul className="space-y-1 pb-20">
+              {filteredRoutes.map((route) => (
               <li key={route.label}>
                 {route.submenu ? (
                   <div>
@@ -527,6 +568,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
               </li>
             ))}
           </ul>
+          )}
         </nav>
         <div className="border-t border-blue-200 p-4 bg-gradient-to-r from-blue-50 to-purple-50 ">
           <div className="flex items-center justify-between">
@@ -597,9 +639,36 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                 <span>Market Mode</span>
               </Link>
             </div>
+            <div className="p-2 border-b border-blue-100 bg-white">
+              <div className="relative flex items-center">
+                <Search className="absolute left-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search pages..."
+                  className="w-full rounded-md border border-blue-200 bg-blue-50/50 pl-8 pr-8 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:bg-white focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors"
+                    type="button"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
             <nav ref={mobileSidebarRef} onScroll={handleMobileScroll} className="flex-1 overflow-y-auto p-2 bg-white custom-scrollbar">
-              <ul className="space-y-1 pb-20">
-                {accessibleRoutes.map((route) => (
+              {filteredRoutes.length === 0 ? (
+                <div className="px-3 py-6 text-center text-sm text-gray-500">
+                  No pages found
+                </div>
+              ) : (
+                <ul className="space-y-1 pb-20">
+                  {filteredRoutes.map((route) => (
                   <li key={route.label}>
                     {route.submenu ? (
                       <div>
@@ -655,6 +724,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                   </li>
                 ))}
               </ul>
+              )}
             </nav>
             <div className="border-t border-blue-200 p-4 bg-gradient-to-r from-blue-50 to-purple-50">
               <div className="flex items-center justify-between">

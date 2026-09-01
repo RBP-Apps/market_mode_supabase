@@ -1611,3 +1611,106 @@ LEFT JOIN public.payment_confirmations pc
     ON pc.enquiry_number = e.enquiry_number
 WHERE pc.enquiry_number IS NULL AND e.enquiry_number IS NOT NULL;
 
+
+-- Project Commissioning / Synchronisation Table
+CREATE TABLE IF NOT EXISTS public.project_commissions (
+  id BIGSERIAL NOT NULL,
+  enquiry_number TEXT UNIQUE REFERENCES public.enquiries(enquiry_number) ON DELETE CASCADE,
+  planned DATE NULL,
+  actual TIMESTAMP WITHOUT TIME ZONE NULL,
+  delay TEXT NULL,
+  status TEXT NULL,
+  date DATE NULL,
+  cspdcl_mom TEXT NULL,
+  project_commission_certificate TEXT NULL,
+  rbp_staff_name TEXT NULL,
+  staff_contact_number TEXT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT project_commissions_pkey PRIMARY KEY (id)
+) TABLESPACE pg_default;
+
+ALTER TABLE public.project_commissions
+  ADD COLUMN IF NOT EXISTS rbp_staff_name TEXT NULL,
+  ADD COLUMN IF NOT EXISTS staff_contact_number TEXT NULL;
+
+-- Automatically create a pending project commission row when an enquiry is created
+CREATE OR REPLACE FUNCTION public.create_pending_project_commission()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.project_commissions (
+    enquiry_number,
+    planned
+  )
+  VALUES (
+    NEW.enquiry_number,
+    NEW.timestamp::date
+  )
+  ON CONFLICT (enquiry_number) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_create_pending_project_commission ON public.enquiries;
+CREATE TRIGGER trigger_create_pending_project_commission
+AFTER INSERT ON public.enquiries
+FOR EACH ROW
+EXECUTE FUNCTION public.create_pending_project_commission();
+
+-- Automatically calculate delay when actual timestamp is updated
+CREATE OR REPLACE FUNCTION public.calculate_project_commission_delay()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.actual IS NOT NULL AND NEW.planned IS NOT NULL THEN
+    NEW.delay := (NEW.actual::date - NEW.planned::date)::text;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_calculate_project_commission_delay ON public.project_commissions;
+CREATE TRIGGER trigger_calculate_project_commission_delay
+BEFORE INSERT OR UPDATE ON public.project_commissions
+FOR EACH ROW
+EXECUTE FUNCTION public.calculate_project_commission_delay();
+
+-- Insert pending project commission rows for existing enquiries
+INSERT INTO public.project_commissions (
+    enquiry_number,
+    planned
+)
+SELECT
+    e.enquiry_number,
+    e.timestamp::date
+FROM public.enquiries e
+LEFT JOIN public.project_commissions pc
+    ON pc.enquiry_number = e.enquiry_number
+WHERE pc.enquiry_number IS NULL AND e.enquiry_number IS NOT NULL
+ON CONFLICT (enquiry_number) DO NOTHING;
+
+-- Data Migration: Shift existing Stage 13 data from public.fms into public.project_commissions
+UPDATE public.project_commissions pc
+SET
+    planned = COALESCE(f.planned_13, pc.planned),
+    actual = COALESCE(f.actual_13::timestamp, pc.actual),
+    delay = COALESCE(f.delay_13::text, pc.delay),
+    status = COALESCE(f.status_13, pc.status),
+    date = COALESCE(f.date_13, pc.date),
+    project_commission_certificate = COALESCE(f.commissioning_certificate, pc.project_commission_certificate)
+FROM (
+    SELECT DISTINCT ON (enquiry_number)
+        enquiry_number,
+        planned_13,
+        actual_13,
+        delay_13,
+        status_13,
+        date_13,
+        commissioning_certificate
+    FROM public.fms
+    WHERE enquiry_number IS NOT NULL
+    ORDER BY enquiry_number, id DESC
+) f
+WHERE pc.enquiry_number = f.enquiry_number;
+
+
+

@@ -1,6 +1,6 @@
 import { 
   CheckCircle2, X, Search, History, MapPin, Users, Phone, Eye, Wrench, 
-  Loader2, CloudUpload, AlertCircle, Trash2, Plus, FileText, File, Upload, 
+  Loader2, CloudUpload, AlertCircle, Trash2, Plus, FileText, File as FileIcon, Upload, 
   Sun, Zap, Shield, Cpu 
 } from "lucide-react"
 import AdminLayout from "../components/layout/AdminLayout"
@@ -542,7 +542,7 @@ const uploadImageToDrive = useCallback(async (file) => {
     for (const cat of categories) {
       const items = docsState[cat] || []
       for (const item of items) {
-        if (item.file && item.file instanceof File) {
+        if (item.file && (item.file instanceof window.File || (typeof File !== 'undefined' && item.file instanceof File))) {
           const fileExt = item.file.name.split(".").pop()
           const fileName = `${enquiryNum}_${cat}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
           const filePath = `installation/complete_docs/${fileName}`
@@ -843,7 +843,7 @@ const handleInstallSubmit = async () => {
 
     for (const field of fields) {
       const file = installForm[field]
-      if (file && file instanceof File) {
+      if (file && (file instanceof window.File || (typeof File !== 'undefined' && file instanceof File))) {
         const url = await uploadImageToDrive(file)
         currentFileUploads[field] = { url, uploaded: true }
       }
