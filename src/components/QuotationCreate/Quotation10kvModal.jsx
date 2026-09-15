@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, Eye, Save, Sparkles, RefreshCw } from "lucide-react";
+import { X, Eye, Save, Sparkles, RefreshCw, Download } from "lucide-react";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import { toCanvas } from "html-to-image";
+// html-to-image renders through an SVG foreignObject, so the *browser* does the
+// layout and painting. html2canvas reimplements CSS/text-layout in JS and
+// mis-renders this deck's multi-line JSX paragraphs — it drops the spaces
+// between words (every line-wrapped word run gets glued together). Do not
+// swap it back; see the About/Boardroom pages for the worst examples.
+import { toCanvas, getFontEmbedCSS } from "html-to-image";
 import CoverPage from "./ProposalPages/CoverPage";
 import AboutPage from "./ProposalPages/AboutPage";
 import TrackRecordPage from "./ProposalPages/TrackRecordPage";
@@ -58,6 +62,7 @@ export default function Quotation10kvModal({
 }) {
   const previewRef = useRef(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState("");
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
 
   // Pending enquiries for dropdown selection
@@ -423,69 +428,48 @@ export default function Quotation10kvModal({
     const pages = previewContainer.querySelectorAll("[data-pdf-page]");
     if (pages.length === 0) throw new Error("No pages found to generate PDF");
 
-    const originalGetComputedStyle = window.getComputedStyle;
-    window.getComputedStyle = function (el, pseudoElt) {
-      const style = originalGetComputedStyle(el, pseudoElt);
-      if (!el || el.ownerDocument === document) {
-        return style;
-      }
-      return new Proxy(style, {
-        get(target, prop) {
-          const val = target[prop];
-          if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
-            return val
-              .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
-              .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
-          }
-          if (prop === 'getPropertyValue') {
-            return function(name) {
-              const pVal = target.getPropertyValue(name);
-              if (typeof pVal === 'string' && (pVal.includes('oklch') || pVal.includes('oklab'))) {
-                return pVal
-                  .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
-                  .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
-              }
-              return pVal;
-            };
-          }
-          if (typeof val === 'function') {
-            return val.bind(target);
-          }
-          return val;
-        }
-      });
-    };
-
     try {
       // Ensure all web fonts are loaded before capturing
       await document.fonts.ready;
 
+      // Resolve the Poppins @font-face CSS (with fonts inlined as data URIs)
+      // ONCE for the whole deck, then hand the same string to every page's
+      // toCanvas() call via `fontEmbedCSS`.
+      //
+      // Without this, html-to-image recomputes it per page: it walks every
+      // stylesheet, and because the Google Fonts <link> in index.html is
+      // cross-origin, reading its cssRules throws — sending it down a fallback
+      // path that re-fetches the stylesheet and INSERTS the parsed
+      // @font-face rules into the page's own live stylesheet. That insert
+      // happens again on every page, so the rules pile up as duplicates
+      // instead of being reused. Measured on this deck: 76 rules in the
+      // document before generating a PDF, 349 after — one run leaves 273
+      // duplicate rules behind permanently, growing further on every
+      // subsequent Save/Download in the same session and making every later
+      // getComputedStyle() call (there are thousands during cloning) resolve
+      // against a bigger and bigger stylesheet. That compounding is the
+      // actual cause of generation slowing to minutes over a session.
+      const fontEmbedCSS = await getFontEmbedCSS(previewContainer);
+
       // Sequential fast page rendering loop to avoid browser thread starvation and memory spikes
       const imagesData = [];
       for (let i = 0; i < pages.length; i++) {
+        setGenerationProgress(`Rendering Page ${i + 1} of ${pages.length}...`);
         const pageEl = pages[i];
         const editControls = pageEl.querySelectorAll(".spec-edit-controls, .spec-btn");
         editControls.forEach((el) => { el.style.display = "none"; });
 
         let canvas;
         try {
-          canvas = await html2canvas(pageEl, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
+          canvas = await toCanvas(pageEl, {
+            pixelRatio: 2,
             backgroundColor: "#ffffff",
-            logging: false,
-            windowWidth: 794,
-            windowHeight: 1123,
-            scrollX: 0,
-            scrollY: 0,
-            onclone: (clonedDoc) => {
-              const clonedPage = clonedDoc.querySelectorAll("[data-pdf-page]")[i];
-              if (clonedPage) {
-                const controls = clonedPage.querySelectorAll(".spec-edit-controls, .spec-btn");
-                controls.forEach((el) => { el.style.display = "none"; });
-              }
-            }
+            width: 794,
+            height: 1123,
+            // No cacheBust: the logo and fonts are static build assets that
+            // don't change, so let the browser serve them from its normal
+            // HTTP cache instead of forcing a fresh network fetch every time.
+            fontEmbedCSS,
           });
         } finally {
           editControls.forEach((el) => { el.style.display = ""; });
@@ -517,8 +501,7 @@ export default function Quotation10kvModal({
       console.error("Critical PDF Gen Error:", err);
       throw err;
     } finally {
-      // Restore window.getComputedStyle
-      window.getComputedStyle = originalGetComputedStyle;
+      setGenerationProgress("");
     }
   };
 
@@ -564,6 +547,30 @@ export default function Quotation10kvModal({
     }
   };
 
+  const handleDownloadPDF = async () => {
+    setIsGenerating(true);
+    await new Promise((r) => setTimeout(r, 100));
+
+    try {
+      const pdfBlob = await buildPDFBlob();
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      const customer = formData.preparedFor || formData.customer || "Customer";
+      const enq = formData.enquiryNumber ? `_${formData.enquiryNumber}` : "";
+      link.download = `Solar_10kV_Quotation_${customer}${enq}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("Error downloading 10kV PDF:", err);
+      alert("Error downloading 10kV Quotation PDF: " + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -579,12 +586,28 @@ export default function Quotation10kvModal({
               <p className="text-teal-100 text-xs mt-0.5 font-medium">Review the PDF copy of the quotation before final saving and sheet submission.</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              disabled={isGenerating}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-white/20 shadow-sm cursor-pointer disabled:opacity-50 active:scale-95"
+              title="Download 13-Page PDF directly"
+            >
+              {isGenerating ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              <span>Download PDF</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Workspace: PDF Preview Pane */}
@@ -766,9 +789,23 @@ export default function Quotation10kvModal({
           </label>
           <button
             onClick={onClose}
-            className="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors text-sm font-medium flex items-center gap-1.5"
+            className="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors text-sm font-medium flex items-center gap-1.5 cursor-pointer"
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadPDF}
+            disabled={isGenerating}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all duration-200 flex items-center gap-2 disabled:opacity-50 text-sm font-bold shadow-md hover:shadow-lg cursor-pointer disabled:cursor-not-allowed"
+            title="Download 13-Page PDF directly"
+          >
+            {isGenerating ? (
+              <RefreshCw className="h-4 w-4 animate-spin text-white" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            <span>{isGenerating ? (generationProgress || "Generating...") : "Download PDF"}</span>
           </button>
           <button
             onClick={handleSaveClick}
@@ -778,7 +815,7 @@ export default function Quotation10kvModal({
             {isGenerating ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin text-white" />
-                <span>Saving & Generating 10kV...</span>
+                <span>{generationProgress || "Saving & Generating 10kV..."}</span>
               </>
             ) : (
               <>

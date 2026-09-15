@@ -102,9 +102,10 @@ export default function QuotationFormView({
             </h2>
           </div>
           <div className="p-6">
-            <div className="max-w-md">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Product (system_key) */}
               <HybridSelector
-                label="Product"
+                label="Product (System Key)"
                 name="rating"
                 value={formData.rating}
                 onChange={handleProductChange}
@@ -115,6 +116,80 @@ export default function QuotationFormView({
                 selectClass={selectClass}
                 labelClass={labelClass}
               />
+
+              {/* 1. System ID */}
+              <div>
+                <label className={labelClass}>System ID</label>
+                <input
+                  type="text"
+                  name="systemId"
+                  value={formData.systemId || formData.system_id || ""}
+                  onChange={handleChange}
+                  placeholder="Auto-fetched system id"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* 2. Module Type */}
+              <div>
+                <label className={labelClass}>Module Type</label>
+                <input
+                  type="text"
+                  name="moduleType"
+                  value={formData.moduleType || formData.module_type || ""}
+                  onChange={handleChange}
+                  placeholder="Auto-fetched module type"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* 3. Structure */}
+              <div>
+                <label className={labelClass}>Structure</label>
+                <input
+                  type="text"
+                  name="structure"
+                  value={formData.structure || formData.structureType || ""}
+                  onChange={(e) => {
+                    handleChange(e);
+                    if (setFormData) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        structure: e.target.value,
+                        structureType: e.target.value,
+                      }));
+                    }
+                  }}
+                  placeholder="Auto-fetched structure"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* 4. Mode */}
+              <div>
+                <label className={labelClass}>Mode</label>
+                <input
+                  type="text"
+                  name="mode"
+                  value={formData.mode || ""}
+                  onChange={handleChange}
+                  placeholder="Auto-fetched mode"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* 5. Phase */}
+              <div>
+                <label className={labelClass}>Phase</label>
+                <input
+                  type="text"
+                  name="phase"
+                  value={formData.phase || ""}
+                  onChange={handleChange}
+                  placeholder="Auto-fetched phase"
+                  className={inputClass}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -830,10 +905,16 @@ export default function QuotationFormView({
                   generalTerms:
                     "1. Power output from Control Panel will be in customers scope.\n2. Civil work other than Module Mounting Structure will be in customer's scope.\n3. Our offer is valid for 15 Days. Any custom specifications will be charged extra.\n4. Regular cleaning of Modules with plain water (soft) for desired generation guarantee in customer's scope.\n5. Detailed Quotation with engineering document will be provided on finalisation, for systems above 10KW.\n6. Subsidy (if any) is subject to government approval and will be directly credited in customer's account.\n7. Transportation inclusive. Insurance inclusive upto site and thereafter in customer's scope.\n8. Payment 50% advance on booking, Balance 50% against PI before dispatch of material.\n9. Delivery within 2 weeks from sanction and installation immediately thereafter.\n10. AMC inclusive for 5 years and chargeable thereafter.\n11. Structure height consider 5 feet, for additional height should charge extra.\n12. DC cable length 40 meter, AC cable length 30 meter, and earthing cable length 50 meter considered; any additional length will be charged extra.",
                   rating: "",
-                  qty: "",
+                  qty: "1",
                   subCentral: "",
                   subState: "",
-                  disc: "",
+                  disc: "0",
+                  applicableSubsidy: "",
+                  systemId: "",
+                  moduleType: "",
+                  structure: "",
+                  mode: "",
+                  phase: "",
                   referenceBy: "",
                   bankAccount: "",
                   accountNo: "",

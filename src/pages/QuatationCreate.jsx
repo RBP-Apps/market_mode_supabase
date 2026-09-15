@@ -400,7 +400,15 @@ export default function QuatationCreate() {
     qty: "1",
     subCentral: "",
     subState: "",
-    disc: "",
+    disc: "0",
+    applicableSubsidy: "",
+    systemId: "",
+    system_id: "",
+    moduleType: "",
+    module_type: "",
+    structure: "",
+    mode: "",
+    phase: "",
     referenceBy: "",
     bankAccount: "",
     accountNo: "",
@@ -1378,38 +1386,62 @@ export default function QuatationCreate() {
 
   const fetchProductData = async () => {
     try {
-      const { data, error } = await supabase.from('product_list').select('*').order('id', { ascending: true });
+      const { data, error } = await supabase
+        .from('solar_systems_quote_list')
+        .select('*')
+        .order('id', { ascending: true });
       if (error) throw error;
 
       const products = [];
       const pMap = {};
 
       (data || []).forEach(row => {
-        const code = row.product_code ? String(row.product_code).trim() : "";
-        const name = row.product_name ? String(row.product_name).trim() : "";
+        const key = row.system_key ? String(row.system_key).trim() : "";
+        const id = row.system_id ? String(row.system_id).trim() : "";
 
-        // Determine primary key / label
-        const primaryKey = code || name;
+        // Primary key is system_key
+        const primaryKey = key || id;
 
         if (primaryKey) {
           const productData = {
-            productName: name || code,
-            bom: row.bill_of_material || "",
-            size: row.size || "",
-            unit: row.units || row.unit || row.uom || "",
-            rate: row.selling_price || 0,
-            gst: row.tax_percent || 0,
-            centerSubsidy: row.center_subsidy || 0,
-            stateSubsidy: row.state_subsidy || 0
+            system_key: key,
+            system_id: id,
+            module_type: row.module_type || "",
+            structure: row.structure || "",
+            mode: row.mode || "",
+            phase: row.phase || "",
+            capacity_kwp: row.capacity_kwp || "",
+            rating_wp: row.rating_wp || "",
+            panels: row.panels || "",
+            actual_kwp: row.actual_kwp || "",
+            original_rate: row.original_rate || "0",
+            gst_percent: row.gst_percent || "0",
+            applicable_subsidy: row.applicable_subsidy || "0",
+            central_subsidy_segment: row.central_subsidy_segment || "0",
+            state_subsidy_segment: row.state_subsidy_segment || "0",
+            total_incl_gst_ex_battery: row.total_incl_gst_ex_battery || "0",
+            net_ex_battery: row.net_ex_battery || "0",
+            spec_part_1: row.spec_part_1 || "",
+            spec_line_d_structure: row.spec_line_d_structure || "",
+            spec_part_2: row.spec_part_2 || "",
+
+            productName: key || id,
+            bom: [row.spec_part_1, row.spec_line_d_structure, row.spec_part_2].filter(Boolean).join("\n\n") || "",
+            size: row.capacity_kwp || "",
+            unit: "KW",
+            rate: row.original_rate || 0,
+            gst: row.gst_percent || 0,
+            applicableSubsidy: row.applicable_subsidy || 0,
+            centerSubsidy: row.central_subsidy_segment || 0,
+            stateSubsidy: row.state_subsidy_segment || 0
           };
 
-          // Add to dropdown options
-          if (code) products.push(code);
-          if (name && name !== code) products.push(name);
+          // Dropdown options will be system_key
+          if (key) products.push(key);
+          else if (id) products.push(id);
 
-          // Map both code and name so lookup works regardless of what is selected or saved
-          if (code) pMap[code] = productData;
-          if (name) pMap[name] = productData;
+          if (key) pMap[key] = productData;
+          if (id) pMap[id] = productData;
         }
       });
 
@@ -1417,7 +1449,7 @@ export default function QuatationCreate() {
       setDropdownOptions(prev => ({ ...prev, rating: uniqueProducts }));
       setProductMap(pMap);
     } catch (err) {
-      console.error("❌ Error fetching product data:", err);
+      console.error("❌ Error fetching product data from solar_systems_quote_list:", err);
     }
   };
 
@@ -1610,28 +1642,60 @@ export default function QuatationCreate() {
       setFormData(prev => ({
         ...prev,
         subCentral: "",
-        subState: ""
+        subState: "",
+        applicableSubsidy: "",
+        systemId: "",
+        system_id: "",
+        moduleType: "",
+        module_type: "",
+        structure: "",
+        structureType: "",
+        mode: "",
+        phase: ""
       }));
       return;
     }
 
     const p = productMap[formData.rating] || {};
-    const qty = parseFloat(formData.qty || 0);
-    const rate = parseFloat(p.rate || 0);
+    const qty = parseFloat(formData.qty || 1) || 1;
+    // Rate (₹) from original_rate
+    const rate = parseFloat(p.original_rate !== undefined && p.original_rate !== null && p.original_rate !== "" ? p.original_rate : (p.rate || 0));
 
     setProductDetails({
-      productName: p.productName || "",
+      productName: p.productName || formData.rating,
       bom: p.bom || "",
-      size: p.size || "",
-      gst: p.gst || 0,
+      size: p.size || p.capacity_kwp || "",
+      gst: p.gst_percent !== undefined && p.gst_percent !== null ? p.gst_percent : (p.gst || 0),
       rate: rate || 0,
       amount: (qty * rate).toFixed(2),
     });
 
     setFormData(prev => ({
       ...prev,
-      subCentral: p.centerSubsidy !== undefined && p.centerSubsidy !== null ? String(p.centerSubsidy) : "",
-      subState: p.stateSubsidy !== undefined && p.stateSubsidy !== null ? String(p.stateSubsidy) : ""
+      qty: prev.qty ? prev.qty : "1",
+      disc: prev.disc !== undefined && prev.disc !== "" ? prev.disc : "0",
+      systemId: p.system_id || "",
+      system_id: p.system_id || "",
+      moduleType: p.module_type || "",
+      module_type: p.module_type || "",
+      structure: p.structure || prev.structure || "",
+      structureType: p.structure || prev.structureType || "",
+      mode: p.mode || "",
+      phase: p.phase || "",
+      capacity_kwp: p.capacity_kwp || "",
+      rating_wp: p.rating_wp || "",
+      panels: p.panels || "",
+      actual_kwp: p.actual_kwp || "",
+      original_rate: p.original_rate || "",
+      gst_percent: p.gst_percent || "",
+      total_incl_gst_ex_battery: p.total_incl_gst_ex_battery || "",
+      net_ex_battery: p.net_ex_battery || "",
+      spec_part_1: p.spec_part_1 || "",
+      spec_line_d_structure: p.spec_line_d_structure || "",
+      spec_part_2: p.spec_part_2 || "",
+      applicableSubsidy: p.applicable_subsidy !== undefined && p.applicable_subsidy !== null ? String(p.applicable_subsidy) : (p.applicableSubsidy || ""),
+      subCentral: p.central_subsidy_segment !== undefined && p.central_subsidy_segment !== null ? String(p.central_subsidy_segment) : (p.centerSubsidy !== undefined ? String(p.centerSubsidy) : ""),
+      subState: p.state_subsidy_segment !== undefined && p.state_subsidy_segment !== null ? String(p.state_subsidy_segment) : (p.stateSubsidy !== undefined ? String(p.stateSubsidy) : "")
     }));
   }, [formData.rating, productMap]); // Removed formData.qty to prevent overwriting manual edits on qty change
 
@@ -1690,17 +1754,57 @@ export default function QuatationCreate() {
     const v = e.target.value;
     const p = productMap[v] || {};
     let defaultCap = "";
-    if (p.size) {
+    if (p.capacity_kwp) {
+      const m = String(p.capacity_kwp).match(/(\d+(?:\.\d+)?)/);
+      if (m) defaultCap = m[1];
+    } else if (p.size) {
       const m = String(p.size).match(/(\d+(?:\.\d+)?)/);
       if (m) defaultCap = m[1];
     } else if (v) {
       const m = String(v).match(/(\d+(?:\.\d+)?)/);
       if (m) defaultCap = m[1];
     }
+
+    const qty = parseFloat(formData.qty || 1) || 1;
+    const rate = parseFloat(p.original_rate !== undefined && p.original_rate !== null && p.original_rate !== "" ? p.original_rate : (p.rate || 0));
+
+    setProductDetails({
+      productName: p.productName || v,
+      bom: p.bom || "",
+      size: p.size || p.capacity_kwp || "",
+      gst: p.gst_percent !== undefined && p.gst_percent !== null ? p.gst_percent : (p.gst || 0),
+      rate: rate || 0,
+      amount: (qty * rate).toFixed(2),
+    });
+
     setFormData(prev => ({
       ...prev,
       rating: v,
-      plantCapacity: defaultCap || prev.plantCapacity || ""
+      plantCapacity: defaultCap || prev.plantCapacity || "",
+      qty: prev.qty ? prev.qty : "1",
+      disc: prev.disc !== undefined && prev.disc !== "" ? prev.disc : "0",
+      systemId: p.system_id || "",
+      system_id: p.system_id || "",
+      moduleType: p.module_type || "",
+      module_type: p.module_type || "",
+      structure: p.structure || prev.structure || "",
+      structureType: p.structure || prev.structureType || "",
+      mode: p.mode || "",
+      phase: p.phase || "",
+      capacity_kwp: p.capacity_kwp || "",
+      rating_wp: p.rating_wp || "",
+      panels: p.panels || "",
+      actual_kwp: p.actual_kwp || "",
+      original_rate: p.original_rate || "",
+      gst_percent: p.gst_percent || "",
+      total_incl_gst_ex_battery: p.total_incl_gst_ex_battery || "",
+      net_ex_battery: p.net_ex_battery || "",
+      spec_part_1: p.spec_part_1 || "",
+      spec_line_d_structure: p.spec_line_d_structure || "",
+      spec_part_2: p.spec_part_2 || "",
+      applicableSubsidy: p.applicable_subsidy !== undefined && p.applicable_subsidy !== null ? String(p.applicable_subsidy) : (p.applicableSubsidy || ""),
+      subCentral: p.central_subsidy_segment !== undefined && p.central_subsidy_segment !== null ? String(p.central_subsidy_segment) : (p.centerSubsidy !== undefined ? String(p.centerSubsidy) : ""),
+      subState: p.state_subsidy_segment !== undefined && p.state_subsidy_segment !== null ? String(p.state_subsidy_segment) : (p.stateSubsidy !== undefined ? String(p.stateSubsidy) : "")
     }));
   };
 
@@ -1923,7 +2027,14 @@ export default function QuatationCreate() {
         </div>
         {showPreview && (
           <QuotationPreview
-            formData={formData} productDetails={productDetails} onClose={() => setShowPreview(false)} onSubmit={handleSubmitWithPDF} isSubmitting={isSubmittingToSheet}
+            formData={formData}
+            productDetails={productDetails}
+            productMap={productMap}
+            dealerBankMap={dealerBankMap}
+            selectedEnquiry={selectedEnquiry}
+            onClose={() => setShowPreview(false)}
+            onSubmit={handleSubmitWithPDF}
+            isSubmitting={isSubmittingToSheet}
           />
         )}
         {show10kvModal && (

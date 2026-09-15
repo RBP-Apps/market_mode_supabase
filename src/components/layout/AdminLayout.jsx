@@ -31,6 +31,7 @@ import {
   BarChart3,
   ListFilter,
   Users,
+  Sun,
   X
 } from 'lucide-react'
 
@@ -385,9 +386,16 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     },
     {
       href: "/dashboard/ProductList",
-      label: "Product List",
+      label: "Product List(old)",
       icon: ClipboardList,
       active: location.pathname === "/dashboard/ProductList",
+      showFor: ["admin", "user"]
+    },
+    {
+      href: "/dashboard/SolarSystemsQuoteList",
+      label: "Solar Systems Quote List",
+      icon: Sun,
+      active: location.pathname === "/dashboard/SolarSystemsQuoteList",
       showFor: ["admin", "user"]
     },
 

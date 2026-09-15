@@ -54,6 +54,7 @@ export default function UserRegistration() {
     "Add User",
     "Dropdown",
     "Product List",
+    "Solar Systems Quote List",
     "Dispatch Approval",
     "Bank Process"
   ];

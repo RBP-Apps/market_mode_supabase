@@ -45,11 +45,27 @@ export default function PowerLoadInfoSection({
             <input
               type="number"
               name="qty"
-              value={formData.qty}
+              value={formData.qty !== undefined && formData.qty !== null && formData.qty !== "" ? formData.qty : "1"}
               onChange={handleQuantityChange}
               className={inputClass}
               placeholder="Enter quantity"
               required
+            />
+          </div>
+
+          {/* Applicable Subsidy */}
+          <div className="space-y-1">
+            <label className={labelClass}>
+              <Grid className="inline h-4 w-4 mr-1 text-amber-500" />
+              Applicable Subsidy
+            </label>
+            <input
+              type="text"
+              name="applicableSubsidy"
+              value={formData.applicableSubsidy || ""}
+              onChange={handleChange}
+              className={inputClass}
+              placeholder="Enter applicable subsidy"
             />
           </div>
 
@@ -62,7 +78,7 @@ export default function PowerLoadInfoSection({
             <input
               type="text"
               name="subCentral"
-              value={formData.subCentral}
+              value={formData.subCentral || ""}
               onChange={handleChange}
               className={inputClass}
               placeholder="Enter central sub"
@@ -78,7 +94,7 @@ export default function PowerLoadInfoSection({
             <input
               type="text"
               name="subState"
-              value={formData.subState}
+              value={formData.subState || ""}
               onChange={handleChange}
               className={inputClass}
               placeholder="Enter state sub"
@@ -94,7 +110,7 @@ export default function PowerLoadInfoSection({
             <input
               type="text"
               name="disc"
-              value={formData.disc}
+              value={formData.disc !== undefined && formData.disc !== null && formData.disc !== "" ? formData.disc : "0"}
               onChange={handleChange}
               className={inputClass}
               placeholder="Enter discount"

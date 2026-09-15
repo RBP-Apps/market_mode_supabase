@@ -30,6 +30,7 @@ import MonthlyPerformanceReport from "./pages/graph/MonthlyPerformanceReport"
 import InsurancePage from "./pages/Insurance"
 import ModuleEntryPage from "./pages/ModuleEntry"
 import ProductListPage from "./pages/ProductList"
+import SolarSystemsQuoteListPage from "./pages/SolarSystemsQuoteList"
 import DispatchApprovalPage from "./pages/DispatchApproval"
 import DispatchPlannerPage from "./pages/DispatchPlanne"
 import PaymentConfirmationPage from "./pages/PaymentConfirmation"
@@ -320,6 +321,14 @@ function App() {
             element={
               <ProtectedRoute pageLabel="Product List">
                 <ProductListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/SolarSystemsQuoteList"
+            element={
+              <ProtectedRoute pageLabel="Solar Systems Quote List">
+                <SolarSystemsQuoteListPage />
               </ProtectedRoute>
             }
           />

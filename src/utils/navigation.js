@@ -36,6 +36,7 @@ export const ROUTE_MAP = [
   { href: "/dashboard/AddUser", label: "Add User" },
   { href: "/dashboard/Dropdown", label: "Dropdown" },
   { href: "/dashboard/ProductList", label: "Product List" },
+  { href: "/dashboard/SolarSystemsQuoteList", label: "Solar Systems Quote List" },
   { href: "/dashboard/DispatchApproval", label: "Dispatch Approval" },
   { href: "/dashboard/BankProcess", label: "Bank Process" },
 ];
