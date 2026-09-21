@@ -1394,6 +1394,7 @@ export default function QuatationCreate() {
 
       const products = [];
       const pMap = {};
+      const pList = [];
 
       (data || []).forEach(row => {
         const key = row.system_key ? String(row.system_key).trim() : "";
@@ -1442,11 +1443,12 @@ export default function QuatationCreate() {
 
           if (key) pMap[key] = productData;
           if (id) pMap[id] = productData;
+          pList.push(productData);
         }
       });
 
       const uniqueProducts = [...new Set(products)];
-      setDropdownOptions(prev => ({ ...prev, rating: uniqueProducts }));
+      setDropdownOptions(prev => ({ ...prev, rating: uniqueProducts, productList: pList }));
       setProductMap(pMap);
     } catch (err) {
       console.error("❌ Error fetching product data from solar_systems_quote_list:", err);
@@ -1644,14 +1646,17 @@ export default function QuatationCreate() {
         subCentral: "",
         subState: "",
         applicableSubsidy: "",
-        systemId: "",
-        system_id: "",
-        moduleType: "",
-        module_type: "",
-        structure: "",
-        structureType: "",
-        mode: "",
-        phase: ""
+        capacity_kwp: "",
+        rating_wp: "",
+        panels: "",
+        actual_kwp: "",
+        original_rate: "",
+        gst_percent: "",
+        total_incl_gst_ex_battery: "",
+        net_ex_battery: "",
+        spec_part_1: "",
+        spec_line_d_structure: "",
+        spec_part_2: ""
       }));
       return;
     }
@@ -2018,7 +2023,7 @@ export default function QuatationCreate() {
             />
           ) : (
             <QuotationFormView
-              isEditMode={isEditMode} formData={formData} setFormData={setFormData} productDetails={productDetails} setProductDetails={setProductDetails} handleProductDetailsChange={handleProductDetailsChange} selectedEnquiry={selectedEnquiry} handleBackToList={handleBackToList} successMessage={successMessage} dropdownOptions={dropdownOptions} salespersons={salespersons} handleCustomerChange={handleCustomerChange} handleDealerChange={handleDealerChange} handleChange={handleChange} handleProductChange={handleProductChange} handleQuantityChange={handleQuantityChange} handlePreview={handlePreview} getCurrentDate={getCurrentDate} productMap={productMap}
+              isEditMode={isEditMode} formData={formData} setFormData={setFormData} productDetails={productDetails} setProductDetails={setProductDetails} handleProductDetailsChange={handleProductDetailsChange} selectedEnquiry={selectedEnquiry} handleBackToList={handleBackToList} successMessage={successMessage} dropdownOptions={dropdownOptions} salespersons={salespersons} handleCustomerChange={handleCustomerChange} handleDealerChange={handleDealerChange} handleChange={handleChange} handleProductChange={handleProductChange} handleQuantityChange={handleQuantityChange} handlePreview={handlePreview} getCurrentDate={getCurrentDate} productMap={productMap} productList={dropdownOptions.productList || []}
             />
           )}
           <SendQuotationModal

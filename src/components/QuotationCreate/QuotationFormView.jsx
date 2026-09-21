@@ -1,11 +1,12 @@
-import React from "react";
-import { ArrowLeft, FileSignature, Printer, Download, CheckCircle, Trash2, Eye, Zap, FileText, TrendingUp, Coins } from "lucide-react";
+import React, { useMemo, useEffect } from "react";
+import { ArrowLeft, FileSignature, Printer, Download, CheckCircle, Trash2, Eye, Zap, FileText, TrendingUp, Coins, ChevronDown } from "lucide-react";
 import QuotationInfoSection from "./QuotationInfoSection";
 import CustomerDetailsSection from "./CustomerDetailsSection";
 import InstallationDetailsSection from "./InstallationDetailsSection";
 import PowerLoadInfoSection from "./PowerLoadInfoSection";
 import CostCalculationSection from "./CostCalculationSection";
 import HybridSelector from "./HybridSelector";
+import SearchableSelect from "./SearchableSelect";
 
 export default function QuotationFormView({
   isEditMode,
@@ -27,6 +28,7 @@ export default function QuotationFormView({
   handlePreview,
   getCurrentDate,
   productMap = {},
+  productList = [],
 }) {
   // Enhanced styling classes
   const sectionClass =
@@ -40,6 +42,387 @@ export default function QuotationFormView({
     "w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white text-gray-700";
   const selectClass =
     "w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white text-gray-700 appearance-none cursor-pointer";
+
+  // Helper functions to normalize strings for comparison & trimming
+  const norm = (v) => (v !== undefined && v !== null ? String(v).trim() : "");
+  const normLower = (v) => norm(v).toLowerCase();
+
+  // Combine product list from props, dropdownOptions, or productMap
+  const allProducts = useMemo(() => {
+    if (productList && productList.length > 0) return productList;
+    if (dropdownOptions?.productList && dropdownOptions.productList.length > 0) {
+      return dropdownOptions.productList;
+    }
+    // Fallback: extract distinct products from productMap
+    const mapValues = Object.values(productMap || {}).filter(Boolean);
+    const seen = new Set();
+    const list = [];
+    mapValues.forEach((p) => {
+      const uKey = p.system_key ? `k:${p.system_key}` : `id:${p.system_id}`;
+      if (!seen.has(uKey)) {
+        seen.add(uKey);
+        list.push(p);
+      }
+    });
+    return list;
+  }, [productList, dropdownOptions?.productList, productMap]);
+
+  // Current selections
+  const currentSystemId = norm(formData.systemId || formData.system_id);
+  const currentModuleType = norm(formData.moduleType || formData.module_type);
+  const currentStructure = norm(formData.structure || formData.structureType);
+  const currentMode = norm(formData.mode);
+  const currentPhase = norm(formData.phase);
+
+  // Backward compatibility for edit mode: if formData.rating is set but systemId is empty,
+  // prefill the 5 cascading fields from productMap or allProducts.
+  useEffect(() => {
+    if (formData.rating && !currentSystemId) {
+      const p = productMap[formData.rating] || allProducts.find((item) => norm(item.system_key) === norm(formData.rating));
+      if (p) {
+        setFormData((prev) => ({
+          ...prev,
+          systemId: p.system_id || "",
+          system_id: p.system_id || "",
+          moduleType: p.module_type || "",
+          module_type: p.module_type || "",
+          structure: p.structure || prev.structure || "",
+          structureType: p.structure || prev.structureType || "",
+          mode: p.mode || "",
+          phase: p.phase || "",
+        }));
+      }
+    }
+  }, [formData.rating, currentSystemId, productMap, allProducts, setFormData]);
+
+  // 1. System ID options (unique, non-empty, sorted)
+  const systemIdOptions = useMemo(() => {
+    const set = new Set();
+    allProducts.forEach((p) => {
+      const val = norm(p.system_id);
+      if (val) set.add(val);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+  }, [allProducts]);
+
+  // 2. Module Type options (filtered by currentSystemId)
+  const moduleTypeOptions = useMemo(() => {
+    if (!currentSystemId) return [];
+    const set = new Set();
+    allProducts.forEach((p) => {
+      if (normLower(p.system_id) === normLower(currentSystemId)) {
+        const val = norm(p.module_type);
+        if (val) set.add(val);
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+  }, [allProducts, currentSystemId]);
+
+  // 3. Structure options (filtered by currentSystemId + currentModuleType)
+  const structureOptions = useMemo(() => {
+    if (!currentSystemId || !currentModuleType) return [];
+    const set = new Set();
+    allProducts.forEach((p) => {
+      if (
+        normLower(p.system_id) === normLower(currentSystemId) &&
+        normLower(p.module_type) === normLower(currentModuleType)
+      ) {
+        const val = norm(p.structure);
+        if (val) set.add(val);
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+  }, [allProducts, currentSystemId, currentModuleType]);
+
+  // 4. Mode options (filtered by currentSystemId + currentModuleType + currentStructure)
+  const modeOptions = useMemo(() => {
+    if (!currentSystemId || !currentModuleType || !currentStructure) return [];
+    const set = new Set();
+    allProducts.forEach((p) => {
+      if (
+        normLower(p.system_id) === normLower(currentSystemId) &&
+        normLower(p.module_type) === normLower(currentModuleType) &&
+        normLower(p.structure) === normLower(currentStructure)
+      ) {
+        const val = norm(p.mode);
+        if (val) set.add(val);
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+  }, [allProducts, currentSystemId, currentModuleType, currentStructure]);
+
+  // 5. Phase options (filtered by currentSystemId + currentModuleType + currentStructure + currentMode)
+  const phaseOptions = useMemo(() => {
+    if (!currentSystemId || !currentModuleType || !currentStructure || !currentMode) return [];
+    const set = new Set();
+    allProducts.forEach((p) => {
+      if (
+        normLower(p.system_id) === normLower(currentSystemId) &&
+        normLower(p.module_type) === normLower(currentModuleType) &&
+        normLower(p.structure) === normLower(currentStructure) &&
+        normLower(p.mode) === normLower(currentMode)
+      ) {
+        const val = norm(p.phase);
+        if (val) set.add(val);
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+  }, [allProducts, currentSystemId, currentModuleType, currentStructure, currentMode]);
+
+  // Check matching products for currently selected combination
+  const matchingProducts = useMemo(() => {
+    if (!currentSystemId || !currentModuleType || !currentStructure || !currentMode || !currentPhase) {
+      return [];
+    }
+    return allProducts.filter(
+      (p) =>
+        normLower(p.system_id) === normLower(currentSystemId) &&
+        normLower(p.module_type) === normLower(currentModuleType) &&
+        normLower(p.structure) === normLower(currentStructure) &&
+        normLower(p.mode) === normLower(currentMode) &&
+        normLower(p.phase) === normLower(currentPhase)
+    );
+  }, [allProducts, currentSystemId, currentModuleType, currentStructure, currentMode, currentPhase]);
+
+  const allFiveSelected = Boolean(currentSystemId && currentModuleType && currentStructure && currentMode && currentPhase);
+
+  // Cascading change handler with reset logic
+  const handleCascadingChange = (fieldName, newValue) => {
+    const val = norm(newValue);
+
+    let nextSysId = currentSystemId;
+    let nextModType = currentModuleType;
+    let nextStruct = currentStructure;
+    let nextMode = currentMode;
+    let nextPhase = currentPhase;
+
+    if (fieldName === "systemId") {
+      nextSysId = val;
+      if (!val) {
+        nextModType = "";
+        nextStruct = "";
+        nextMode = "";
+        nextPhase = "";
+      } else {
+        // Validate if currentModuleType is still valid for nextSysId
+        const validMTs = allProducts
+          .filter((p) => normLower(p.system_id) === normLower(val))
+          .map((p) => norm(p.module_type));
+        const keepMT = validMTs.some((m) => normLower(m) === normLower(currentModuleType)) ? currentModuleType : "";
+        nextModType = keepMT;
+
+        if (keepMT) {
+          const validStructs = allProducts
+            .filter((p) => normLower(p.system_id) === normLower(val) && normLower(p.module_type) === normLower(keepMT))
+            .map((p) => norm(p.structure));
+          const keepS = validStructs.some((s) => normLower(s) === normLower(currentStructure)) ? currentStructure : "";
+          nextStruct = keepS;
+
+          if (keepS) {
+            const validModes = allProducts
+              .filter(
+                (p) =>
+                  normLower(p.system_id) === normLower(val) &&
+                  normLower(p.module_type) === normLower(keepMT) &&
+                  normLower(p.structure) === normLower(keepS)
+              )
+              .map((p) => norm(p.mode));
+            const keepM = validModes.some((m) => normLower(m) === normLower(currentMode)) ? currentMode : "";
+            nextMode = keepM;
+
+            if (keepM) {
+              const validPhases = allProducts
+                .filter(
+                  (p) =>
+                    normLower(p.system_id) === normLower(val) &&
+                    normLower(p.module_type) === normLower(keepMT) &&
+                    normLower(p.structure) === normLower(keepS) &&
+                    normLower(p.mode) === normLower(keepM)
+                )
+                .map((p) => norm(p.phase));
+              nextPhase = validPhases.some((ph) => normLower(ph) === normLower(currentPhase)) ? currentPhase : "";
+            } else {
+              nextPhase = "";
+            }
+          } else {
+            nextMode = "";
+            nextPhase = "";
+          }
+        } else {
+          nextStruct = "";
+          nextMode = "";
+          nextPhase = "";
+        }
+      }
+    } else if (fieldName === "moduleType") {
+      nextModType = val;
+      if (!val) {
+        nextStruct = "";
+        nextMode = "";
+        nextPhase = "";
+      } else {
+        const validStructs = allProducts
+          .filter((p) => normLower(p.system_id) === normLower(nextSysId) && normLower(p.module_type) === normLower(val))
+          .map((p) => norm(p.structure));
+        const keepS = validStructs.some((s) => normLower(s) === normLower(currentStructure)) ? currentStructure : "";
+        nextStruct = keepS;
+
+        if (keepS) {
+          const validModes = allProducts
+            .filter(
+              (p) =>
+                normLower(p.system_id) === normLower(nextSysId) &&
+                normLower(p.module_type) === normLower(val) &&
+                normLower(p.structure) === normLower(keepS)
+            )
+            .map((p) => norm(p.mode));
+          const keepM = validModes.some((m) => normLower(m) === normLower(currentMode)) ? currentMode : "";
+          nextMode = keepM;
+
+          if (keepM) {
+            const validPhases = allProducts
+              .filter(
+                (p) =>
+                  normLower(p.system_id) === normLower(nextSysId) &&
+                  normLower(p.module_type) === normLower(val) &&
+                  normLower(p.structure) === normLower(keepS) &&
+                  normLower(p.mode) === normLower(keepM)
+              )
+              .map((p) => norm(p.phase));
+            nextPhase = validPhases.some((ph) => normLower(ph) === normLower(currentPhase)) ? currentPhase : "";
+          } else {
+            nextPhase = "";
+          }
+        } else {
+          nextMode = "";
+          nextPhase = "";
+        }
+      }
+    } else if (fieldName === "structure") {
+      nextStruct = val;
+      if (!val) {
+        nextMode = "";
+        nextPhase = "";
+      } else {
+        const validModes = allProducts
+          .filter(
+            (p) =>
+              normLower(p.system_id) === normLower(nextSysId) &&
+              normLower(p.module_type) === normLower(nextModType) &&
+              normLower(p.structure) === normLower(val)
+          )
+          .map((p) => norm(p.mode));
+        const keepM = validModes.some((m) => normLower(m) === normLower(currentMode)) ? currentMode : "";
+        nextMode = keepM;
+
+        if (keepM) {
+          const validPhases = allProducts
+            .filter(
+              (p) =>
+                normLower(p.system_id) === normLower(nextSysId) &&
+                normLower(p.module_type) === normLower(nextModType) &&
+                normLower(p.structure) === normLower(val) &&
+                normLower(p.mode) === normLower(keepM)
+            )
+            .map((p) => norm(p.phase));
+          nextPhase = validPhases.some((ph) => normLower(ph) === normLower(currentPhase)) ? currentPhase : "";
+        } else {
+          nextPhase = "";
+        }
+      }
+    } else if (fieldName === "mode") {
+      nextMode = val;
+      if (!val) {
+        nextPhase = "";
+      } else {
+        const validPhases = allProducts
+          .filter(
+            (p) =>
+              normLower(p.system_id) === normLower(nextSysId) &&
+              normLower(p.module_type) === normLower(nextModType) &&
+              normLower(p.structure) === normLower(nextStruct) &&
+              normLower(p.mode) === normLower(val)
+          )
+          .map((p) => norm(p.phase));
+        nextPhase = validPhases.some((ph) => normLower(ph) === normLower(currentPhase)) ? currentPhase : "";
+      }
+    } else if (fieldName === "phase") {
+      nextPhase = val;
+    }
+
+    const isAllFive = Boolean(nextSysId && nextModType && nextStruct && nextMode && nextPhase);
+
+    if (isAllFive) {
+      const matches = allProducts.filter(
+        (p) =>
+          normLower(p.system_id) === normLower(nextSysId) &&
+          normLower(p.module_type) === normLower(nextModType) &&
+          normLower(p.structure) === normLower(nextStruct) &&
+          normLower(p.mode) === normLower(nextMode) &&
+          normLower(p.phase) === normLower(nextPhase)
+      );
+
+      if (matches.length > 0) {
+        const matchedProduct = matches[0];
+        const matchedKey = matchedProduct.system_key || matchedProduct.system_id;
+        handleProductChange({ target: { value: matchedKey } });
+        setFormData((prev) => ({
+          ...prev,
+          systemId: nextSysId,
+          system_id: nextSysId,
+          moduleType: nextModType,
+          module_type: nextModType,
+          structure: nextStruct,
+          structureType: nextStruct,
+          mode: nextMode,
+          phase: nextPhase,
+          rating: matchedKey,
+        }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          systemId: nextSysId,
+          system_id: nextSysId,
+          moduleType: nextModType,
+          module_type: nextModType,
+          structure: nextStruct,
+          structureType: nextStruct,
+          mode: nextMode,
+          phase: nextPhase,
+          rating: "",
+        }));
+        setProductDetails({
+          productName: "",
+          bom: "",
+          size: "",
+          gst: 0,
+          rate: 0,
+          amount: "0.00",
+        });
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        systemId: nextSysId,
+        system_id: nextSysId,
+        moduleType: nextModType,
+        module_type: nextModType,
+        structure: nextStruct,
+        structureType: nextStruct,
+        mode: nextMode,
+        phase: nextPhase,
+        rating: "",
+      }));
+      setProductDetails({
+        productName: "",
+        bom: "",
+        size: "",
+        gst: 0,
+        rate: 0,
+        amount: "0.00",
+      });
+    }
+  };
 
   return (
     <>
@@ -103,92 +486,167 @@ export default function QuotationFormView({
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Product (system_key) */}
-              <HybridSelector
-                label="Product (System Key)"
-                name="rating"
-                value={formData.rating}
-                onChange={handleProductChange}
-                options={dropdownOptions.rating}
-                icon={Zap}
-                required={true}
-                inputClass={inputClass}
-                selectClass={selectClass}
-                labelClass={labelClass}
-              />
-
               {/* 1. System ID */}
               <div>
-                <label className={labelClass}>System ID</label>
-                <input
-                  type="text"
+                <label className={labelClass}>
+                  System ID <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
                   name="systemId"
-                  value={formData.systemId || formData.system_id || ""}
-                  onChange={handleChange}
-                  placeholder="Auto-fetched system id"
-                  className={inputClass}
+                  value={currentSystemId}
+                  onChange={(e) => handleCascadingChange("systemId", e.target ? e.target.value : e)}
+                  options={systemIdOptions}
+                  placeholder="Select System ID"
+                  searchPlaceholder="Search System ID..."
+                  selectClass={selectClass}
+                  required
                 />
               </div>
 
               {/* 2. Module Type */}
               <div>
-                <label className={labelClass}>Module Type</label>
-                <input
-                  type="text"
-                  name="moduleType"
-                  value={formData.moduleType || formData.module_type || ""}
-                  onChange={handleChange}
-                  placeholder="Auto-fetched module type"
-                  className={inputClass}
-                />
+                <label className={labelClass}>
+                  Module Type <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    name="moduleType"
+                    value={currentModuleType}
+                    onChange={(e) => handleCascadingChange("moduleType", e.target.value)}
+                    disabled={!currentSystemId}
+                    className={`${selectClass} ${!currentSystemId ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""}`}
+                    required
+                  >
+                    <option value="">
+                      {currentSystemId ? "Select Module Type" : "Select System ID first"}
+                    </option>
+                    {moduleTypeOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
               </div>
 
               {/* 3. Structure */}
               <div>
-                <label className={labelClass}>Structure</label>
-                <input
-                  type="text"
-                  name="structure"
-                  value={formData.structure || formData.structureType || ""}
-                  onChange={(e) => {
-                    handleChange(e);
-                    if (setFormData) {
-                      setFormData((prev) => ({
-                        ...prev,
-                        structure: e.target.value,
-                        structureType: e.target.value,
-                      }));
-                    }
-                  }}
-                  placeholder="Auto-fetched structure"
-                  className={inputClass}
-                />
+                <label className={labelClass}>
+                  Structure <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    name="structure"
+                    value={currentStructure}
+                    onChange={(e) => handleCascadingChange("structure", e.target.value)}
+                    disabled={!currentModuleType}
+                    className={`${selectClass} ${!currentModuleType ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""}`}
+                    required
+                  >
+                    <option value="">
+                      {currentModuleType ? "Select Structure" : "Select Module Type first"}
+                    </option>
+                    {structureOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
               </div>
 
               {/* 4. Mode */}
               <div>
-                <label className={labelClass}>Mode</label>
-                <input
-                  type="text"
-                  name="mode"
-                  value={formData.mode || ""}
-                  onChange={handleChange}
-                  placeholder="Auto-fetched mode"
-                  className={inputClass}
-                />
+                <label className={labelClass}>
+                  Mode <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    name="mode"
+                    value={currentMode}
+                    onChange={(e) => handleCascadingChange("mode", e.target.value)}
+                    disabled={!currentStructure}
+                    className={`${selectClass} ${!currentStructure ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""}`}
+                    required
+                  >
+                    <option value="">
+                      {currentStructure ? "Select Mode" : "Select Structure first"}
+                    </option>
+                    {modeOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
               </div>
 
               {/* 5. Phase */}
               <div>
-                <label className={labelClass}>Phase</label>
-                <input
-                  type="text"
-                  name="phase"
-                  value={formData.phase || ""}
-                  onChange={handleChange}
-                  placeholder="Auto-fetched phase"
-                  className={inputClass}
-                />
+                <label className={labelClass}>
+                  Phase <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    name="phase"
+                    value={currentPhase}
+                    onChange={(e) => handleCascadingChange("phase", e.target.value)}
+                    disabled={!currentMode}
+                    className={`${selectClass} ${!currentMode ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""}`}
+                    required
+                  >
+                    <option value="">
+                      {currentMode ? "Select Phase" : "Select Mode first"}
+                    </option>
+                    {phaseOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 6. Product (System Key) - Read Only & Auto-Fetched */}
+              <div>
+                <label className={labelClass}>
+                  <Zap className="inline h-4 w-4 mr-1 text-amber-500" />
+                  Product (System Key)
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="rating"
+                    value={
+                      formData.rating ||
+                      (allFiveSelected && matchingProducts.length === 0
+                        ? "No matching Product found"
+                        : "")
+                    }
+                    readOnly
+                    disabled
+                    placeholder="Auto-fetched Product (System Key)"
+                    className={`${inputClass} ${
+                      allFiveSelected && matchingProducts.length === 0
+                        ? "bg-red-50 text-red-600 border-red-300 font-medium"
+                        : "bg-gray-100 text-gray-700 cursor-not-allowed border-gray-300 font-medium"
+                    }`}
+                  />
+                </div>
+                {allFiveSelected && matchingProducts.length === 0 ? (
+                  <p className="text-xs text-red-500 mt-1 font-medium">No matching Product found</p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {formData.rating
+                      ? "Automatically matched from selected parameters"
+                      : "Select all 5 options above to match Product"}
+                  </p>
+                )}
               </div>
             </div>
           </div>

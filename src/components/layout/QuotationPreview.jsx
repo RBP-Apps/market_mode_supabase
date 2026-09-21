@@ -120,7 +120,7 @@ export default function QuotationPreview({
   const dealer = formData.dealer || selectedEnquiry?.dealer || "RBP Authorized Central Division";
   const enquiryNo = formData.enquiryNumber || selectedEnquiry?.enquiryNumber || "2025/001";
   const roofType = formData.roofType || formData.structureType || "RCC Flat Roof";
-  const projectMode = formData.projectMode || "Turnkey Supply, Installation & Commissioning";
+  const projectMode = formData.projectMode || "Market Mode, Installation & Commissioning";
   const paymentMode = formData.payment_mode || "Chq / Online / RTGS";
 
   // Bank details with official defaults
@@ -163,6 +163,7 @@ export default function QuotationPreview({
   const applicableSubsidy = parseNum(formData.applicableSubsidy || selectedProduct.applicable_subsidy);
   const totalSubsidy = (centralSubsidy + stateSubsidy) > 0 ? (centralSubsidy + stateSubsidy) : applicableSubsidy;
   const netCost = Math.max(0, grandTotal - totalSubsidy);
+  const roundedNetCost = Math.round(netCost);
 
   const fmt = (v) =>
     parseNum(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -507,26 +508,27 @@ export default function QuotationPreview({
               >
 
                 {/* ─── 1. TOP HEADER & CORPORATE BRANDING ────────────────────── */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0b2545", paddingBottom: "6px", marginBottom: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1e40af", paddingBottom: "6px", marginBottom: "6px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <img
-                      src="/Logo.PNG"
+                      src="/solarkart_logo.jpg"
                       alt="RBP Energy India Pvt. Ltd."
                       crossOrigin="anonymous"
                       style={{ width: "118px", maxHeight: "48px", objectFit: "contain" }}
                     />
                     <div>
-                      <div style={{ fontSize: "14.5px", fontWeight: "900", color: "#0b2545", letterSpacing: "0.5px" }}>
-                        RBP ENERGY INDIA PVT. LTD.
+                      <div style={{ fontSize: "14.5px", fontWeight: "900", color: "#1e40af", letterSpacing: "0.5px" }}>
+                        SOLARKART
                       </div>
                       <div style={{ fontSize: "7.8px", color: "#334155", fontWeight: "700", marginTop: "1px" }}>
-                        Solar Power System Designer, Manufacturer &amp; Turnkey EPC Contractor
+                        LARGEST RANGE OF SOLAR PRODUCTS <br />
+                        INDUSTRIAL · COMMERCIAL · RESIDENTIAL
                       </div>
                       <div style={{ fontSize: "7.2px", color: "#64748b", marginTop: "1px" }}>
                         Regd. Office: 303, Guru Ghasidas Plaza, Amapara, G.E. Road, Raipur (C.G.) 492001
                       </div>
                       <div style={{ fontSize: "7.2px", color: "#64748b" }}>
-                        Helpline: +91 92000 12500 / +91 92000 12400 | Web: www.rbpindia.com | Email: info@rbpindia.com
+                        Helpline: Sales (+91 92000 12500) /Service (+91 92000 12400) | Web: www.rbpindia.com | Email: gmsales@rbpindia.com
                       </div>
                     </div>
                   </div>
@@ -535,15 +537,14 @@ export default function QuotationPreview({
                   <div style={{ textAlign: "right" }}>
                     <div style={{
                       display: "inline-block",
-                      background: "#0b2545",
+                      background: "#1e40af",
                       color: "#ffffff",
-                      padding: "3px 12px",
+                      padding: "3.5px 14px",
                       borderRadius: "4px",
                       fontWeight: "800",
                       fontSize: "10.5px",
-                      letterSpacing: "1px",
-                      textTransform: "uppercase",
-                      borderBottom: "2px solid #f59e0b"
+                      letterSpacing: "0.8px",
+                      textTransform: "uppercase"
                     }}>
                       Solar Quotation
                     </div>
@@ -553,9 +554,7 @@ export default function QuotationPreview({
                     <div style={{ fontSize: "7.8px", color: "#334155", marginTop: "1px" }}>
                       <strong>Date:</strong> {quotationDate} | <strong>Validity:</strong> 15 Days
                     </div>
-                    <div style={{ fontSize: "7.2px", color: "#059669", fontWeight: "700", marginTop: "1px" }}>
-                      ✓ MNRE / PM Surya Ghar Approved Design
-                    </div>
+
                   </div>
                 </div>
 
@@ -599,7 +598,7 @@ export default function QuotationPreview({
 
                   {/* Right Column: Issued By / EPC Contractor & Dealer */}
                   <div style={{ ...boxStyle, flex: 1 }}>
-                    <div style={capStyle("#0b2545")}>
+                    <div style={capStyle("#1e40af")}>
                       <span>ISSUED BY / EPC CONTRACTOR &amp; PARTNER</span>
                       <span style={{ fontSize: "7px", opacity: 0.9 }}>Vendor Info</span>
                     </div>
@@ -607,7 +606,7 @@ export default function QuotationPreview({
                       <tbody>
                         <tr>
                           <td style={{ ...cellK, width: "34%" }}>EPC Contractor:</td>
-                          <td style={{ ...cellV, fontWeight: "bold" }}>RBP Energy India Pvt. Ltd.</td>
+                          <td style={{ ...cellV, fontWeight: "bold" }}>SOLARKART</td>
                         </tr>
                         <tr>
                           <td style={cellK}>Dealer / Partner:</td>
@@ -634,9 +633,9 @@ export default function QuotationPreview({
 
                 {/* ─── 3. TECHNICAL SPECIFICATIONS BANNER (All Solar DB Fields) ── */}
                 <div style={{ ...boxStyle, marginBottom: "6px" }}>
-                  <div style={{ ...capStyle("#0b2545"), alignItems: "center" }}>
+                  <div style={{ ...capStyle("#1e40af"), alignItems: "center" }}>
                     <span>⚡ SOLAR SYSTEM TECHNICAL CONFIGURATION &amp; PARAMETERS</span>
-                    <span style={{ fontSize: "7.2px", color: "#93c5fd" }}>All 23 Parameters Synchronized</span>
+                    {/* <span style={{ fontSize: "7.2px", color: "#93c5fd" }}>All 23 Parameters Synchronized</span> */}
                   </div>
 
                   {/* 6-Column High-Contrast Spec Grid */}
@@ -662,8 +661,8 @@ export default function QuotationPreview({
                       <div style={{ marginTop: "1px" }}>
                         <span style={{
                           display: "inline-block",
-                          padding: "1px 5px",
-                          borderRadius: "3px",
+                          padding: "1px 7px",
+                          borderRadius: "9999px",
                           fontSize: "7.5px",
                           fontWeight: "bold",
                           background: mode.toLowerCase().includes("on-grid") ? "#dcfce7" : "#fef3c7",
@@ -693,11 +692,11 @@ export default function QuotationPreview({
                 <div style={{ border: "1px solid #cbd5e1", borderRadius: "5px", overflow: "hidden", marginBottom: "6px" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "7.8px" }}>
                     <thead>
-                      <tr style={{ background: "#0b2545", color: "#ffffff", textAlign: "left", fontSize: "7.8px" }}>
+                      <tr style={{ background: "#1e40af", color: "#ffffff", textAlign: "left", fontSize: "7.8px" }}>
                         <th style={{ padding: "4px 6px", width: "4%", textAlign: "center" }}>#</th>
                         <th style={{ padding: "4px 6px", width: "21%" }}>System / Package</th>
                         <th style={{ padding: "4px 6px", width: "45%" }}>Bill of Materials &amp; Technical Scope of Supply (BOM)</th>
-                        <th style={{ padding: "4px 6px", width: "8%", textAlign: "center" }}>Capacity</th>
+                        <th style={{ padding: "4px 6px", width: "8%", textAlign: "center" }}>Size</th>
                         <th style={{ padding: "4px 6px", width: "5%", textAlign: "center" }}>Qty</th>
                         <th style={{ padding: "4px 6px", width: "8%", textAlign: "right" }}>Original Rate</th>
                         <th style={{ padding: "4px 6px", width: "9%", textAlign: "right" }}>Total (₹)</th>
@@ -777,15 +776,15 @@ export default function QuotationPreview({
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
                     {/* Bank Remittance Details */}
                     <div style={boxStyle}>
-                      <div style={{ ...capStyle("#0b2545"), fontSize: "7.8px" }}>
+                      <div style={{ ...capStyle("#1e40af"), fontSize: "7.8px" }}>
                         <span>OFFICIAL BANK DETAILS (FOR RTGS / NEFT / CHEQUE)</span>
-                        <span style={{ fontSize: "6.8px", color: "#93c5fd" }}>Remittance Info</span>
+                        <span style={{ fontSize: "6.8px", color: "#bfdbfe" }}>Remittance Info</span>
                       </div>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "7.5px" }}>
                         <tbody>
                           <tr>
                             <td style={{ ...cellK, width: "35%" }}>Beneficiary Name:</td>
-                            <td style={{ ...cellV, fontWeight: "bold" }}>RBP ENERGY INDIA PVT. LTD.</td>
+                            <td style={{ ...cellV, fontWeight: "bold" }}>SOLARKART</td>
                           </tr>
                           <tr>
                             <td style={cellK}>Bank Name:</td>
@@ -804,12 +803,12 @@ export default function QuotationPreview({
                     </div>
 
                     {/* Standard Warranty Package */}
-                    <div style={{ border: "1px solid #fde68a", borderRadius: "5px", padding: "5px 7px", background: "#fffbeb" }}>
-                      <div style={{ fontSize: "7.8px", fontWeight: "bold", color: "#92400e", marginBottom: "2px", textTransform: "uppercase", display: "flex", justifyContent: "space-between" }}>
-                        <span>🛡️ Standard Solar Warranty Package</span>
-                        <span style={{ fontSize: "6.8px", color: "#b45309" }}>30 Years Performance</span>
+                    <div style={{ border: "1px solid #bfdbfe", borderRadius: "5px", padding: "5px 7px", background: "#eff6ff" }}>
+                      <div style={{ fontSize: "7.8px", fontWeight: "bold", color: "#1e40af", marginBottom: "2px", textTransform: "uppercase", display: "flex", justifyContent: "space-between" }}>
+                        <span><span style={{ color: "#2563eb", marginRight: "3px" }}>●</span> Standard Solar Warranty Package</span>
+                        <span style={{ fontSize: "6.8px", color: "#2563eb", fontWeight: "bold" }}>30 Years Performance</span>
                       </div>
-                      <div style={{ fontSize: "7.2px", color: "#78350f", lineHeight: "1.28" }}>
+                      <div style={{ fontSize: "7.2px", color: "#1e3a8a", lineHeight: "1.28" }}>
                         <div>• <strong>Solar Modules:</strong> 12 Yrs Workmanship &amp; 30 Yrs Linear Performance (Min 80% generation).</div>
                         <div>• <strong>Solar Grid Inverter:</strong> 8 Yrs (≤20kW) / 5 Yrs (&gt;20kW) Comprehensive Manufacturer Warranty.</div>
                         <div>• <strong>Mounting Structure &amp; BOS:</strong> 5 Years against corrosion &amp; structural integrity.</div>
@@ -820,9 +819,9 @@ export default function QuotationPreview({
 
                   {/* Right Column: Commercial & Subsidy Calculation Breakdown */}
                   <div style={{ flex: 1, border: "1px solid #cbd5e1", borderRadius: "5px", overflow: "hidden", background: "#ffffff" }}>
-                    <div style={{ ...capStyle("#0b2545"), fontSize: "7.8px" }}>
+                    <div style={{ ...capStyle("#1e40af"), fontSize: "7.8px" }}>
                       <span>COMMERCIAL PRICING &amp; SUBSIDY BREAKDOWN</span>
-                      <span style={{ fontSize: "6.8px", color: "#93c5fd" }}>Direct Benefit Transfer</span>
+                      <span style={{ fontSize: "6.8px", color: "#bfdbfe" }}>Direct Benefit Transfer</span>
                     </div>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "7.8px" }}>
                       <tbody>
@@ -841,7 +840,7 @@ export default function QuotationPreview({
                           <td style={{ padding: "2px 7px", textAlign: "right", fontWeight: "bold", borderBottom: "1px solid #e2e8f0" }}>₹ {fmt(taxableAmount)}</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: "2px 7px", color: "#475569", borderBottom: "1px solid #e2e8f0" }}>CGST @ {(gstPct / 2).toFixed(1)}% + SGST @ {(gstPct / 2).toFixed(1)}%:</td>
+                          <td style={{ padding: "2px 7px", color: "#475569", borderBottom: "1px solid #e2e8f0" }}>GST (5% of Supply @70% &amp; 18% of I &amp; C @30%):</td>
                           <td style={{ padding: "2px 7px", textAlign: "right", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>+ ₹ {fmt(gstAmount)}</td>
                         </tr>
                         <tr style={{ background: "#f8fafc" }}>
@@ -858,7 +857,7 @@ export default function QuotationPreview({
                         )}
                         {stateSubsidy > 0 && (
                           <tr>
-                            <td style={{ padding: "2px 7px", color: "#15803d", borderBottom: "1px solid #e2e8f0" }}>State Subsidy (CREDA / State Govt):</td>
+                            <td style={{ padding: "2px 7px", color: "#15803d", borderBottom: "1px solid #e2e8f0" }}>State Subsidy (CSPDCL / State Govt):</td>
                             <td style={{ padding: "2px 7px", textAlign: "right", color: "#15803d", fontWeight: "bold", borderBottom: "1px solid #e2e8f0" }}>- ₹ {fmt(stateSubsidy)}</td>
                           </tr>
                         )}
@@ -870,17 +869,17 @@ export default function QuotationPreview({
                         )}
 
                         {/* NET PAYABLE BOX */}
-                        <tr style={{ background: "#0b2545", color: "#ffffff" }}>
+                        <tr style={{ background: "#1e40af", color: "#ffffff" }}>
                           <td style={{ padding: "5px 8px", fontWeight: "bold", fontSize: "8.8px" }}>
-                            NET PAYABLE BY CUSTOMER (Ex Battery):
+                            NET PAYABLE BY CUSTOMER :
                           </td>
                           <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: "900", fontSize: "11px", color: "#fbbf24" }}>
-                            ₹ {fmt(netCost)}
+                            ₹ {roundedNetCost.toLocaleString("en-IN")}
                           </td>
                         </tr>
                         <tr style={{ background: "#fffbeb" }}>
-                          <td colSpan={2} style={{ padding: "3px 7px", fontSize: "6.8px", color: "#78350f", fontStyle: "italic" }}>
-                            <strong>In Words:</strong> {toWords(netCost)}
+                          <td colSpan={2} style={{ padding: "3px 7px", fontSize: "6.8px", color: "#1e40af", fontStyle: "italic" }}>
+                            <strong>In Words:</strong> {toWords(roundedNetCost)}
                           </td>
                         </tr>
                       </tbody>
@@ -902,12 +901,12 @@ export default function QuotationPreview({
                   </div>
 
                   {/* Statutory Undertaking & Commitments */}
-                  <div style={{ flex: 1, border: "1px solid #fde68a", borderRadius: "5px", overflow: "hidden", background: "#fffbeb" }}>
-                    <div style={{ ...capStyle("#b45309"), fontSize: "7.8px" }}>
+                  <div style={{ flex: 1, border: "1px solid #bfdbfe", borderRadius: "5px", overflow: "hidden", background: "#eff6ff" }}>
+                    <div style={{ ...capStyle("#1e40af"), fontSize: "7.8px" }}>
                       <span>★ PROJECT EXECUTION &amp; GENERATION COMMITMENT</span>
-                      <span style={{ fontSize: "6.8px", color: "#fed7aa" }}>Undertaking</span>
+                      <span style={{ fontSize: "6.8px", color: "#bfdbfe" }}>Undertaking</span>
                     </div>
-                    <div style={{ padding: "5px 8px", fontSize: "7.2px", color: "#78350f", lineHeight: "1.32" }}>
+                    <div style={{ padding: "5px 8px", fontSize: "7.2px", color: "#1e3a8a", lineHeight: "1.32" }}>
                       <div>• <strong>Annual Yield:</strong> Estimated generation of 1,500 units (kWh) per kWp installed per year subject to shadow-free conditions and periodic cleaning.</div>
                       <div>• <strong>Net Metering &amp; Subsidies:</strong> Facilitation and documentation for Net Metering sanction and central/state subsidy approvals executed by RBP Energy India Pvt. Ltd.</div>
                       <div>• <strong>Delivery &amp; Dispatch:</strong> Supply of materials commences within 10 to 14 business days from technical feasibility approval.</div>
@@ -917,9 +916,9 @@ export default function QuotationPreview({
 
                 {/* ─── 7. GENERAL TERMS & CONDITIONS (2-column, full width) ───── */}
                 <div style={{ border: "1px solid #cbd5e1", borderRadius: "5px", overflow: "hidden", marginBottom: "6px", background: "#f8fafc" }}>
-                  <div style={{ ...capStyle("#0b2545"), fontSize: "7.8px" }}>
+                  <div style={{ ...capStyle("#1e40af"), fontSize: "7.8px" }}>
                     <span>GENERAL TERMS &amp; CONDITIONS</span>
-                    <span style={{ fontSize: "6.8px", color: "#93c5fd" }}>Commercial Terms &amp; Guidelines</span>
+                    <span style={{ fontSize: "6.8px", color: "#bfdbfe" }}>Commercial Terms &amp; Guidelines</span>
                   </div>
                   <div style={{ display: "flex", gap: "12px", padding: "5px 9px", fontSize: "7.1px", color: "#334155", lineHeight: "1.36" }}>
                     <div style={{ flex: 1 }}>
@@ -943,19 +942,22 @@ export default function QuotationPreview({
                     <div style={{ fontWeight: "bold", color: "#0f172a", fontSize: "8.2px", marginBottom: "3px" }}>
                       CLIENT ACCEPTANCE &amp; CONFIRMATION
                     </div>
-                    <div style={{ fontSize: "7.2px", color: "#64748b", marginBottom: "22px", lineHeight: "1.3" }}>
+                    <div style={{ fontSize: "7.2px", color: "#64748b", marginBottom: "14px", lineHeight: "1.3" }}>
                       I / We hereby approve and accept the technical specifications, BOM, pricing, and all terms &amp; conditions stated above.
                     </div>
                     <div style={{ borderTop: "1px dashed #94a3b8", paddingTop: "4px", display: "flex", justifyContent: "space-between", fontSize: "7px", color: "#475569" }}>
                       <span>Authorized Signature &amp; Seal</span>
                       <span>Date: _______________</span>
                     </div>
+                    <div style={{ fontSize: "6.5px", color: "#64748b", marginTop: "3px", lineHeight: "1.25" }}>
+                      Payment of advance will be considered as acceptance of all technical specifications, BOM, pricing, and all terms &amp; conditions stated above.
+                    </div>
                   </div>
 
                   {/* Contractor Sign-Off Box */}
                   <div style={{ flex: 1, border: "1px solid #cbd5e1", borderRadius: "5px", padding: "7px 8px", background: "#f8fafc", textAlign: "right" }}>
-                    <div style={{ fontWeight: "bold", color: "#0b2545", fontSize: "8.5px" }}>
-                      FOR RBP ENERGY INDIA PVT. LTD.
+                    <div style={{ fontWeight: "bold", color: "#1e40af", fontSize: "8.5px" }}>
+                      FOR SOLARKART
                     </div>
                     <div style={{ fontSize: "7px", color: "#64748b", marginTop: "2px" }}>
                       Authorized Central EPC Division
@@ -978,9 +980,9 @@ export default function QuotationPreview({
                 style={{ borderTop: "1.5px solid #cbd5e1", paddingTop: "5px", marginTop: `${FOOT_GAP}px`, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "7px", color: "#64748b" }}
               >
                 <div>
-                  RBP ENERGY INDIA PVT. LTD. • Raipur (C.G.) • Helpline: +91 92000 12500 / 12400 • www.rbpindia.com
+                  SOLARKART • Raipur (C.G.) • Helpline: +91 92000 12500 / 12400 • www.rbpindia.com
                 </div>
-                <div style={{ fontWeight: "bold", color: "#0b2545" }}>
+                <div style={{ fontWeight: "bold", color: "#1e40af" }}>
                   Page 1 of 1 • Subject to Raipur Jurisdiction
                 </div>
               </div>
