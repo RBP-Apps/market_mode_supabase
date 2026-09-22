@@ -112,6 +112,21 @@ export default function QuotationPreview({
   const phoneNo = formData.phoneNo || selectedEnquiry?.alternativePhoneNo || selectedEnquiry?.phoneNo || "";
   const email = formData.email || selectedEnquiry?.email || "—";
   const placeOfInstallation = formData.placeOfInstallation || selectedEnquiry?.address || "Site Address as provided";
+  const district =
+    formData.district ||
+    formData.District ||
+    selectedEnquiry?.district ||
+    selectedEnquiry?.District ||
+    selectedEnquiry?.enquiries?.district ||
+    "";
+  const state =
+    formData.state ||
+    formData.State ||
+    selectedEnquiry?.state ||
+    selectedEnquiry?.State ||
+    selectedEnquiry?.enquiries?.state ||
+    "";
+  const districtDisplay = [district, state].filter(Boolean).join(" / ") || district || placeOfInstallation || "—";
   const needType = formData.needType || selectedEnquiry?.needType || "Residential Grid-Tied System";
   const loadDetails = formData.loadDetails || selectedEnquiry?.loadDetails || "—";
   const failureHours = formData.failureHours || selectedEnquiry?.hoursOfFailure || "";
@@ -517,18 +532,18 @@ export default function QuotationPreview({
                       style={{ width: "118px", maxHeight: "48px", objectFit: "contain" }}
                     />
                     <div>
-                      <div style={{ fontSize: "14.5px", fontWeight: "900", color: "#1e40af", letterSpacing: "0.5px" }}>
+                      {/* <div style={{ fontSize: "14.5px", fontWeight: "900", color: "#1e40af", letterSpacing: "0.5px" }}>
                         SOLARKART
-                      </div>
-                      <div style={{ fontSize: "7.8px", color: "#334155", fontWeight: "700", marginTop: "1px" }}>
+                      </div> */}
+                      <div style={{ fontSize: "14.5px", color: "#334155", fontWeight: "700", marginTop: "1px" }}>
                         LARGEST RANGE OF SOLAR PRODUCTS <br />
                         INDUSTRIAL · COMMERCIAL · RESIDENTIAL
                       </div>
-                      <div style={{ fontSize: "7.2px", color: "#64748b", marginTop: "1px" }}>
-                        Regd. Office: 303, Guru Ghasidas Plaza, Amapara, G.E. Road, Raipur (C.G.) 492001
+                      <div style={{ fontSize: "7.5px", color: "#64748b", marginTop: "1px" }}>
+                       G-05, Ground Floor, Guru Ghasidas Plaza, Amapara, G.E. Road, Raipur (C.G.) – 492001
                       </div>
-                      <div style={{ fontSize: "7.2px", color: "#64748b" }}>
-                        Helpline: Sales (+91 92000 12500) /Service (+91 92000 12400) | Web: www.rbpindia.com | Email: gmsales@rbpindia.com
+                      <div style={{ fontSize: "7.5px", color: "#64748b" }}>
+                        Helpline: Sales (7880161141) | Web: www.solarkart.net | Email: sales@solarkart.net
                       </div>
                     </div>
                   </div>
@@ -573,8 +588,8 @@ export default function QuotationPreview({
                           <td style={{ ...cellV, fontWeight: "bold" }}>{customerName}</td>
                         </tr>
                         <tr>
-                          <td style={cellK}>Installation Site:</td>
-                          <td style={cellV}>{placeOfInstallation}</td>
+                          <td style={cellK}>District / State:</td>
+                          <td style={cellV}>{districtDisplay}</td>
                         </tr>
                         <tr>
                           <td style={cellK}>Contact / Mobile:</td>
@@ -980,7 +995,7 @@ export default function QuotationPreview({
                 style={{ borderTop: "1.5px solid #cbd5e1", paddingTop: "5px", marginTop: `${FOOT_GAP}px`, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "7px", color: "#64748b" }}
               >
                 <div>
-                  SOLARKART • Raipur (C.G.) • Helpline: +91 92000 12500 / 12400 • www.rbpindia.com
+                  SOLARKART • Raipur (C.G.) • Helpline: 7880161141 • www.solarkart.net
                 </div>
                 <div style={{ fontWeight: "bold", color: "#1e40af" }}>
                   Page 1 of 1 • Subject to Raipur Jurisdiction

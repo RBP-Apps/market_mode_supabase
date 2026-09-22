@@ -1513,6 +1513,7 @@ export default function QuatationCreate() {
             loadDetails: row.load_details,
             failureHours: row.failure_hours,
             placeOfInstallation: row.address,
+            district: row.district || "",
             enquiryNumber: row.enquiry_number
           };
         }
@@ -1608,6 +1609,7 @@ export default function QuatationCreate() {
         contactNo: selectedEnquiry.beneficiaryNumber || selectedEnquiry.contactNumber || "",
         structureType: selectedEnquiry.structureType,
         placeOfInstallation: selectedEnquiry.address,
+        district: selectedEnquiry.district || "",
         rating: "",
         loadDetails: selectedEnquiry.loadDetails,
         failureHours: selectedEnquiry.hoursOfFailure,
@@ -1721,6 +1723,7 @@ export default function QuatationCreate() {
       loadDetails: d.loadDetails || "",
       failureHours: d.failureHours || "",
       placeOfInstallation: d.placeOfInstallation || "",
+      district: d.district || "",
       enquiryNumber: d.enquiryNumber || "",
       generationGuarantee: "",
       moduleWattage: "",
@@ -1866,6 +1869,7 @@ export default function QuatationCreate() {
       phoneNo: row.phoneNo || row.alternativePhoneNo || "",
       structureType: row.structureType || "",
       placeOfInstallation: row.address || "",
+      district: row.district || "",
       termsConditions: row.termsConditions || "On Grid:\n1. We will process for approval...",
       rating: row.product || row.presentLoad || "",
       qty: row.qty ? String(row.qty) : "1",
