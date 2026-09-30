@@ -837,7 +837,7 @@ export default function QuatationCreate() {
           loadDetails: row.load_details || enq.load_details || "",
           hoursOfFailure: "",
           needType: row.need_type || enq.need_type || "",
-          qty: row.qty || enq.cspdcl_contract_demand || "",
+          qty: row.qty ? String(row.qty) : "1",
           projectMode: enq.project_mode || "",
           systemType: enq.system_type || "",
           roofType: enq.roof_type || "",
@@ -1507,7 +1507,7 @@ export default function QuatationCreate() {
             dealer: row.address,
             email: row.bp_number,
             rating: row.present_load,
-            qty: row.cspdcl_contract_demand,
+            qty: "1",
             structureType: row.structure_type,
             needType: row.need_type,
             loadDetails: row.load_details,
@@ -1614,7 +1614,7 @@ export default function QuatationCreate() {
         loadDetails: selectedEnquiry.loadDetails,
         failureHours: selectedEnquiry.hoursOfFailure,
         needType: selectedEnquiry.needType,
-        qty: selectedEnquiry.qty || "1",
+        qty: "1",
         enquiryNumber: selectedEnquiry.enquiryNumber,
         generationGuarantee: "",
         moduleWattage: "",
@@ -1717,7 +1717,7 @@ export default function QuatationCreate() {
       dealer: d.dealer || "",
       email: d.email || "",
       rating: "",
-      qty: d.qty || "",
+      qty: prev.qty || "1",
       structureType: d.structureType || "",
       needType: d.needType || "",
       loadDetails: d.loadDetails || "",
@@ -1821,7 +1821,7 @@ export default function QuatationCreate() {
     setProductDetails((prev) => {
       const updated = { ...prev, [name]: value };
       if (name === "rate") {
-        const qty = parseFloat(formData.qty || 0);
+        const qty = parseFloat(formData.qty || 1) || 1;
         const rate = parseFloat(value || 0);
         updated.amount = (qty * rate).toFixed(2);
       }
@@ -1833,9 +1833,10 @@ export default function QuatationCreate() {
     const v = e.target.value;
     setFormData((prev) => ({ ...prev, qty: v }));
     // Recalculate amount using current rate (which might be manually edited)
+    const effectiveQty = parseFloat(v || 1) || 1;
     setProductDetails((prev) => ({
       ...prev,
-      amount: (parseFloat(v || 0) * parseFloat(prev.rate || 0)).toFixed(2),
+      amount: (effectiveQty * parseFloat(prev.rate || 0)).toFixed(2),
     }));
   };
 

@@ -45,10 +45,16 @@ export default function PowerLoadInfoSection({
             <input
               type="number"
               name="qty"
-              value={formData.qty !== undefined && formData.qty !== null && formData.qty !== "" ? formData.qty : "1"}
+              min="1"
+              value={formData.qty ?? "1"}
               onChange={handleQuantityChange}
+              onBlur={(e) => {
+                if (!e.target.value || parseFloat(e.target.value) <= 0) {
+                  handleQuantityChange({ target: { value: "1" } });
+                }
+              }}
               className={inputClass}
-              placeholder="Enter quantity"
+              placeholder="1"
               required
             />
           </div>
